@@ -44,5 +44,4 @@ yarn-error.log
 
 /.vagrant
 
-/kppti_2.sql
-/kppti.sql
+*.sql
