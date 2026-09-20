@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Pengguna;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -91,5 +93,52 @@ class LoginController extends Controller
                 'minutes' => $minutes,
             ]),
         ])->status(Response::HTTP_TOO_MANY_REQUESTS);
+    }
+
+    protected function sendLoginResponse(Request $request)
+    {
+        $user = $request->user();
+        $user->load('activeRoles');
+
+        $user_session = [
+            'idpengguna' => $user->idpengguna,
+            'nama' => $user->nama,
+            'email' => $user->email,
+            'no_wa' => $user->no_wa,
+            // 'password' => $user->password,
+            'idinstitusi_asal' => $user->idinstitusi_asal,
+            'idrole_aktif' => $user->activeRoles->pluck('idrole')[0],
+        ];
+
+        // dd($user, $user->activeRoles->pluck('idrole')[0]);
+
+        Auth::login($user);
+
+        if ($user_session['idrole_aktif'] == 1) {
+            session(['userdata' => $user_session]);
+
+            // dd(session('userdata'));
+
+            return redirect()->intended('/home_admin')->with('success', 'Login successful!');
+        }
+
+    }
+
+    /**
+     * The user has been authenticated. Eager-load their active roles.
+     */
+    protected function authenticated(Request $request, Pengguna $user): void
+    {
+        $user->load('activeRoles');
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        session()->flush();
+
+        return redirect('/login');
     }
 }

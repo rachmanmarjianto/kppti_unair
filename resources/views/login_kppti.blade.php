@@ -8,6 +8,7 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('src/assets/img/favicon.ico') }}"/>
 
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700,800&family=Poppins:500,600,700,800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
     <link href="{{ asset('src/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
 
     <style>
@@ -102,6 +103,22 @@
             font-weight: 800;
             font-family: 'Poppins', sans-serif;
             font-size: 15px;
+        }
+
+        .kppti-logo-divider {
+            width: 1px;
+            height: 34px;
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .kppti-logo-row img.kppti-partner-logo {
+            height: 68px;
+            width: auto;
+            max-width: 110px;
+            object-fit: contain;
+            background: none;
+            border-radius: 0;
+            padding: 0;
         }
 
         .kppti-event-name {
@@ -350,6 +367,9 @@
             font-weight: 700;
             font-size: 15px;
             letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             box-shadow: 0 10px 20px -8px rgba(11, 31, 75, 0.55);
             transition: transform .15s ease, box-shadow .15s ease;
         }
@@ -358,6 +378,18 @@
             transform: translateY(-1px);
             box-shadow: 0 14px 24px -8px rgba(11, 31, 75, 0.6);
             color: #fff;
+        }
+
+        .btn-kppti-login:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-kppti-login .btn-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .kppti-divider {
@@ -412,6 +444,8 @@
         <div class="kppti-brand">
             <div class="kppti-brand-inner">
                 <div class="kppti-logo-row">
+                    <img class="kppti-partner-logo" src="{{ asset('src/assets/img/logo_unair_kecil.png') }}" alt="Logo Universitas Airlangga">
+                    <span class="kppti-logo-divider"></span>
                     <img src="{{ asset('src/assets/img/kppti_logo.png') }}" alt="Logo KPPTI"
                          onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'kppti-logo-fallback', innerText: 'KPPTI'}))">
                     <div>
@@ -491,7 +525,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ Route::has('login') ? route('login') : url('/login') }}">
+                <form id="formLoginKppti" method="POST" action="{{ Route::has('login') ? route('login') : url('/login') }}">
                     @csrf
 
                     <div class="kppti-input-group">
@@ -524,26 +558,23 @@
 
                     <div class="kppti-form-row">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-                            <label class="form-check-label" for="remember">Ingat saya</label>
+                            
+                            
                         </div>
                         @if (Route::has('password.request'))
                             <a href="{{ route('password.request') }}">Lupa kata sandi?</a>
                         @endif
                     </div>
 
-                    <button type="submit" class="btn btn-kppti-login">Masuk</button>
+                    <button type="submit" id="btnLoginKppti" class="btn btn-kppti-login" style="color: #fff;">
+                        <span class="btn-label" id="btnLabel">Masuk</span>
+                    </button>
                 </form>
 
                 <div class="kppti-divider">belum terdaftar</div>
 
                 <p class="kppti-footnote">
-                    Institusi Anda belum terdaftar?
-                    @if (Route::has('register'))
-                        <a href="{{ route('register') }}">Daftar sebagai peserta</a>
-                    @else
-                        <a href="#">Daftar sebagai peserta</a>
-                    @endif
+                    <a href="{{ route('registrasi_kppti') }}">Daftar sebagai peserta</a>
                 </p>
 
                 <p class="kppti-page-footer">&copy; {{ date('Y') }} KPPTI &mdash; Konferensi Puncak Pendidikan Tinggi</p>
@@ -553,6 +584,18 @@
     </div>
 
     <script>
+        document.getElementById('formLoginKppti').addEventListener('submit', function () {
+            const btn = document.getElementById('btnLoginKppti');
+
+            if (btn.disabled) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.querySelector('#btnLabel').innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color: #fff;"></i> Memproses...';
+            // $('#btnLabel').html('<i class="fa-solid fa-spinner fa-spin" style="color: #fff;"></i> Memproses...');
+        });
+
         function kpptiTogglePassword() {
             const input = document.getElementById('password');
             const isHidden = input.type === 'password';

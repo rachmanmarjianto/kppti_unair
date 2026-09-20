@@ -13,7 +13,6 @@ return new class extends Migration
             $table->string('nama', 1000)->nullable();
             $table->string('email', 500)->nullable();
             $table->string('no_wa', 30)->nullable();
-            $table->unsignedInteger('idrole')->nullable();
             $table->string('password')->nullable();
             $table->unsignedInteger('idinstitusi_asal')->nullable();
 
