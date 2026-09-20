@@ -180,7 +180,11 @@ var App = function() {
 
             var togglethemeEl = document.querySelector('.theme-toggle');
             var getBodyEl = document.body;
-            
+
+            if (!togglethemeEl) {
+                return;
+            }
+
             togglethemeEl.addEventListener('click', function() {
                 
                 var getLocalStorage = localStorage.getItem("theme");
