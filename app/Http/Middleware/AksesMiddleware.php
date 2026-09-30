@@ -22,7 +22,7 @@ class AksesMiddleware
             session()->flush();
             Auth::logout();
 
-            return redirect()->route('publik_login')->withErrors([
+            return redirect()->route('login')->withErrors([
                 'message' => 'Tidak memiliki akses pada halaman tersebut',
             ]);
 

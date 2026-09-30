@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'h2h' => [
+        'user' => env('H2H_USER'),
+        'key' => env('H2H_KEY'),
+    ],
+
 ];

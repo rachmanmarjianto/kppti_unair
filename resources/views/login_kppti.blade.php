@@ -520,8 +520,8 @@
                 @endif
 
                 @if (session('status'))
-                    <div class="alert alert-success py-2 px-3" role="alert" style="font-size: 13.5px; border-radius: 10px;">
-                        {{ session('status') }}
+                    <div class="alert alert-{{ session('status')['status'] }} py-2 px-3" role="alert" style="font-size: 13.5px; border-radius: 10px;">
+                        {{ session('status')['message'] }}
                     </div>
                 @endif
 
