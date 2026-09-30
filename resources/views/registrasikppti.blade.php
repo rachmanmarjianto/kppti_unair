@@ -9,6 +9,8 @@
 
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700,800&family=Poppins:500,600,700,800&display=swap" rel="stylesheet">
     <link href="{{ asset('src/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/tomSelect/tom-select.default.min.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
 
     <style>
         :root {
@@ -425,6 +427,18 @@
 
         .invalid-feedback { display: block; }
 
+        .kppti-input-group .ts-wrapper .ts-control {
+            padding: 13px 14px;
+            border-radius: 10px;
+            border: 1.5px solid #e3e7ee;
+            font-size: 14.5px;
+        }
+
+        .kppti-input-group .ts-wrapper.focus .ts-control {
+            border-color: var(--kppti-navy);
+            box-shadow: 0 0 0 3px rgba(11, 31, 75, 0.12);
+        }
+
         @media (max-width: 991.98px) {
             .kppti-brand { display: none; }
             .kppti-form-panel { flex: 1 1 100%; }
@@ -543,15 +557,82 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"></path></svg>
                             <select id="jenis_institusi" name="jenis_institusi" class="@error('jenis_institusi') is-invalid @enderror" required>
                                 <option value="" selected disabled>Pilih jenis institusi</option>
-                                @foreach($institusi_asal as $institusi)
-                                    <option value="{{ $institusi->idjenis_institusi }}" {{ old('jenis_institusi') == $institusi->idjenis_institusi ? 'selected' : '' }}>
-                                        {{ $institusi->nama_jenis_institusi }}
+                                @foreach($jenisInstitusi as $jenis)
+                                    <option value="{{ $jenis->idjenis_institusi }}" {{ old('jenis_institusi') == $jenis->idjenis_institusi ? 'selected' : '' }}>
+                                        {{ $jenis->nama_jenis_institusi }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="kppti-field-hint"></div>
                         @error('jenis_institusi')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group" id="groupPtnPts" style="display: none;">
+                        <label for="ptn_pts">PTN / PTS</label>
+                        <div class="kppti-input-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path></svg>
+                            <select id="ptn_pts" name="ptn_pts" class="@error('ptn_pts') is-invalid @enderror">
+                                <option value="" selected disabled>Pilih PTN atau PTS</option>
+                                <option value="1" {{ old('ptn_pts') == '1' ? 'selected' : '' }}>PTN</option>
+                                <option value="2" {{ old('ptn_pts') == '2' ? 'selected' : '' }}>PTS</option>
+                            </select>
+                        </div>
+                        <div class="kppti-field-hint"></div>
+                        @error('ptn_pts')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group" id="groupUniversitas" style="display: none;">
+                        <label for="iduniversitas">Nama Perguruan Tinggi</label>
+                        <select id="iduniversitas" name="iduniversitas" class="@error('iduniversitas') is-invalid @enderror"></select>
+                        <div class="kppti-field-hint"></div>
+                        @error('iduniversitas')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group" id="groupLldikti" style="display: none;">
+                        <label for="idlldikti">Wilayah LLDikti</label>
+                        <div class="kppti-input-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path></svg>
+                            <select id="idlldikti" name="idlldikti" class="@error('idlldikti') is-invalid @enderror">
+                                <option value="" selected disabled>Pilih wilayah LLDikti</option>
+                                @foreach($lldikti as $wilayah)
+                                    <option value="{{ $wilayah->idlldikti }}" {{ old('idlldikti') == $wilayah->idlldikti ? 'selected' : '' }}>
+                                        LLDikti {{ $wilayah->nomor_lldikti }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="kppti-field-hint"></div>
+                        @error('idlldikti')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group" id="groupNamaInstitusi" style="display: none;">
+                        <label for="nama_institusi">Nama Institusi</label>
+                        <select id="nama_institusi" name="nama_institusi" class="@error('nama_institusi') is-invalid @enderror"></select>
+                        <div class="kppti-field-hint">Ketik nama institusi Anda &mdash; pilih dari saran kalau institusi Anda sudah pernah terdaftar, supaya masuk kontingen yang sama.</div>
+                        @error('nama_institusi')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group" id="groupJabatan" style="display: none;">
+                        <label for="idjabatan">Jabatan</label>
+                        <div class="kppti-input-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <select id="idjabatan" name="idjabatan" class="@error('idjabatan') is-invalid @enderror">
+                                <option value="" selected disabled>Pilih jabatan</option>
+                            </select>
+                        </div>
+                        <div class="kppti-field-hint"></div>
+                        @error('idjabatan')
                             <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
                         @enderror
                     </div>
@@ -578,7 +659,7 @@
                         <div class="kppti-input-wrap">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             <input id="otp" type="text" name="otp" inputmode="numeric" maxlength="6" class="@error('otp') is-invalid @enderror"
-                                   value="{{ old('otp') }}" placeholder="Masukkan kode OTP" required>
+                                   placeholder="Masukkan kode OTP" required>
                         </div>
                         <div class="kppti-field-hint"></div>
                         @error('otp')
@@ -591,7 +672,7 @@
                         <div class="kppti-input-wrap">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6 12 13 2 6"></path><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
                             <input id="email" type="text" name="email" class="@error('email') is-invalid @enderror"
-                                   value="{{ old('email') }}" placeholder="nama@institusi.ac.id"
+                                   placeholder="nama@institusi.ac.id"
                                    required autocomplete="email">
                         </div>
                         <div id="emailHint" class="kppti-field-hint"></div>
@@ -639,7 +720,9 @@
                         <div id="passwordMatchHint" class="kppti-field-hint"></div>
                     </div>
 
-                    <button type="submit" id="btnRegistrasi" class="btn btn-kppti-login" disabled>Daftar</button>
+                    <button type="submit" id="btnRegistrasi" class="btn btn-kppti-login" disabled>
+                        <span class="btn-label">Daftar</span>
+                    </button>
                 </form>
 
                 <div class="kppti-divider">sudah punya akun</div>
@@ -654,6 +737,8 @@
 
     </div>
 
+    <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/tomSelect/tom-select.base.js') }}"></script>
     <script>
         function kpptiTogglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -665,7 +750,117 @@
                 : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
         }
 
-        (function () {
+        $(function () {
+            const csrfToken = document.querySelector('input[name="_token"]').value;
+            const kirimOtpUrl = "{{ route('registrasi_kppti.kirim_otp') }}";
+            const cekOtpUrl = "{{ route('registrasi_kppti.cek_otp') }}";
+            const searchUniversitasUrl = "{{ route('registrasi_kppti.search_universitas') }}";
+            const searchInstitusiUrl = "{{ route('registrasi_kppti.search_institusi') }}";
+            const jabatanPerJenis = @json($jabatanPerJenis);
+
+            /* ===== Field dinamis per Jenis Institusi ===== */
+            const jenisInstitusiSelect = document.getElementById('jenis_institusi');
+            const groupPtnPts = document.getElementById('groupPtnPts');
+            const groupUniversitas = document.getElementById('groupUniversitas');
+            const groupLldikti = document.getElementById('groupLldikti');
+            const groupNamaInstitusi = document.getElementById('groupNamaInstitusi');
+            const groupJabatan = document.getElementById('groupJabatan');
+            const idlldiktiSelect = document.getElementById('idlldikti');
+            const jabatanSelect = document.getElementById('idjabatan');
+
+            const tomSelectUniversitas = new TomSelect('#iduniversitas', {
+                valueField: 'iduniversitas',
+                labelField: 'nama_universitas',
+                searchField: ['nama_universitas'],
+                create: false,
+                maxItems: 1,
+                placeholder: 'Ketik nama perguruan tinggi...',
+                load: function (query, callback) {
+                    if (!query.length) {
+                        return callback();
+                    }
+
+                    $.ajax({ url: searchUniversitasUrl, data: { q: query }, dataType: 'json' })
+                        .done(function (data) { callback(data); })
+                        .fail(function () { callback(); });
+                },
+            });
+
+            const tomSelectNamaInstitusi = new TomSelect('#nama_institusi', {
+                valueField: 'nama_institusi',
+                labelField: 'nama_institusi',
+                searchField: ['nama_institusi'],
+                create: true,
+                createOnBlur: true,
+                maxItems: 1,
+                placeholder: 'Ketik nama institusi Anda...',
+                load: function (query, callback) {
+                    const jenis = jenisInstitusiSelect.value;
+
+                    if (!query.length || !jenis) {
+                        return callback();
+                    }
+
+                    $.ajax({
+                        url: searchInstitusiUrl,
+                        data: { q: query, jenis_institusi: jenis, idlldikti: idlldiktiSelect.value },
+                        dataType: 'json',
+                    })
+                        .done(function (data) {
+                            callback(data.map(function (item) { return { nama_institusi: item.nama_institusi }; }));
+                        })
+                        .fail(function () { callback(); });
+                },
+            });
+
+            function repopulateJabatan(jenis) {
+                jabatanSelect.innerHTML = '<option value="" selected disabled>Pilih jabatan</option>';
+
+                (jabatanPerJenis[jenis] || []).forEach(function (item) {
+                    const option = document.createElement('option');
+                    option.value = item.idjabatan;
+                    option.textContent = item.nama_jabatan;
+                    jabatanSelect.appendChild(option);
+                });
+            }
+
+            function updateDynamicFields() {
+                const jenis = jenisInstitusiSelect.value;
+                const isPerguruanTinggi = jenis === '1';
+                const isLldikti = jenis === '4';
+
+                groupPtnPts.style.display = isPerguruanTinggi ? '' : 'none';
+                groupUniversitas.style.display = isPerguruanTinggi ? '' : 'none';
+                groupLldikti.style.display = isLldikti ? '' : 'none';
+                groupNamaInstitusi.style.display = (jenis && !isPerguruanTinggi) ? '' : 'none';
+                groupJabatan.style.display = jenis ? '' : 'none';
+
+                document.getElementById('ptn_pts').required = isPerguruanTinggi;
+                document.getElementById('iduniversitas').required = isPerguruanTinggi;
+                idlldiktiSelect.required = isLldikti;
+                document.getElementById('nama_institusi').required = jenis && !isPerguruanTinggi;
+                jabatanSelect.required = !!jenis;
+
+                if (!isPerguruanTinggi) {
+                    document.getElementById('ptn_pts').value = '';
+                    tomSelectUniversitas.clear();
+                }
+
+                if (!isLldikti) {
+                    idlldiktiSelect.value = '';
+                }
+
+                if (isPerguruanTinggi) {
+                    tomSelectNamaInstitusi.clear();
+                }
+
+                repopulateJabatan(jenis);
+            }
+
+            jenisInstitusiSelect.addEventListener('change', updateDynamicFields);
+            updateDynamicFields();
+
+            /* ===== Kirim OTP ===== */
             const nomorWaInput = document.getElementById('nomor_wa');
             const btnKirimOtp = document.getElementById('btnKirimOtp');
             const waHint = document.getElementById('waHint');
@@ -682,7 +877,7 @@
             }
 
             function startOtpCountdown() {
-                otpCountdown = 60;
+                otpCountdown = 30;
                 btnKirimOtp.disabled = true;
                 btnKirimOtp.textContent = `Kirim ulang (${otpCountdown}s)`;
 
@@ -695,10 +890,14 @@
                         return;
                     }
                     btnKirimOtp.textContent = `Kirim ulang (${otpCountdown}s)`;
-                });
+                }, 1000);
             }
 
-            btnKirimOtp.addEventListener('click', async function () {
+            btnKirimOtp.addEventListener('click', function () {
+                if (btnKirimOtp.disabled) {
+                    return;
+                }
+
                 const nomorWa = nomorWaInput.value.trim();
 
                 if (!waRegex.test(nomorWa)) {
@@ -712,33 +911,77 @@
                 btnKirimOtp.disabled = true;
                 setWaHint('Mengirim OTP...', null);
 
-                try {
-                    const response = await fetch("{{ Route::has('registrasi_kppti.kirim_otp') ? route('registrasi_kppti.kirim_otp') : url('/registrasi-kppti/kirim-otp') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                        },
-                        body: JSON.stringify({ nomor_wa: nomorWa }),
+                $.ajax({
+                    url: kirimOtpUrl,
+                    method: 'POST',
+                    data: { no_wa: nomorWa },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                    .done(function (res) {
+                        setWaHint(res.message || 'Kode OTP telah dikirim ke WhatsApp Anda.', 'text-success');
+                    })
+                    .fail(function (xhr) {
+                        const res = xhr.responseJSON || {};
+                        let pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        } else if (res.errors) {
+                            pesan = Object.values(res.errors).flat().join('\n');
+                        }
+
+                        setWaHint(pesan, 'text-danger');
+                    })
+                    .always(function () {
+                        startOtpCountdown();
                     });
-
-                    if (response.ok) {
-                        setWaHint('Kode OTP telah dikirim ke WhatsApp Anda.', 'text-success');
-                    } else {
-                        setWaHint('Gagal mengirim OTP. Silakan coba lagi.', 'text-danger');
-                    }
-                } catch (error) {
-                    setWaHint('Gagal mengirim OTP. Silakan coba lagi.', 'text-danger');
-                }
-
-                startOtpCountdown();
             });
 
+            /* ===== Cek OTP (live) ===== */
+            const otpInput = document.getElementById('otp');
+            const otpHintEl = otpInput.closest('.kppti-input-group').querySelector('.kppti-field-hint');
+            let isOtpVerified = false;
+
+            otpInput.addEventListener('input', function () {
+                const otp = otpInput.value.trim();
+
+                if (otp.length !== 6) {
+                    isOtpVerified = false;
+                    setHint(otpHintEl, '', null);
+                    updateSubmitState();
+                    return;
+                }
+
+                setHint(otpHintEl, 'Memeriksa kode OTP...', null);
+
+                $.ajax({
+                    url: cekOtpUrl,
+                    method: 'POST',
+                    data: { no_wa: nomorWaInput.value.trim(), otp: otp },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                    .done(function (res) {
+                        isOtpVerified = true;
+                        setHint(otpHintEl, res.message || 'Kode OTP valid.', 'text-success');
+                        updateSubmitState();
+                    })
+                    .fail(function (xhr) {
+                        isOtpVerified = false;
+                        const res = xhr.responseJSON || {};
+                        setHint(otpHintEl, res.message || 'Kode OTP salah atau sudah kedaluwarsa.', 'text-danger');
+                        updateSubmitState();
+                    });
+            });
+
+            /* ===== Email, password, dan submit ===== */
             const emailInput = document.getElementById('email');
             const emailConfirmationInput = document.getElementById('email_confirmation');
             const passwordInput = document.getElementById('password');
             const passwordConfirmationInput = document.getElementById('password_confirmation');
             const btnRegistrasi = document.getElementById('btnRegistrasi');
+            const registrasiForm = document.getElementById('formRegistrasiKppti');
 
             const emailHint = document.getElementById('emailHint');
             const emailMatchHint = document.getElementById('emailMatchHint');
@@ -746,7 +989,6 @@
             const passwordMatchHint = document.getElementById('passwordMatchHint');
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const minPasswordLength = 8;
 
             const state = {
                 emailValid: false,
@@ -806,19 +1048,32 @@
                 updateSubmitState();
             }
 
+            function passwordStrengthMessage(value) {
+                if (value.length < 8) {
+                    return 'Kata sandi minimal 8 karakter.';
+                }
+                if (!/[a-z]/.test(value) || !/[A-Z]/.test(value)) {
+                    return 'Kata sandi harus mengandung huruf besar dan kecil.';
+                }
+                if (!/[0-9]/.test(value)) {
+                    return 'Kata sandi harus mengandung angka.';
+                }
+                if (!/[^A-Za-z0-9]/.test(value)) {
+                    return 'Kata sandi harus mengandung karakter khusus.';
+                }
+                return null;
+            }
+
             function validatePassword() {
                 const value = passwordInput.value;
-                state.passwordValid = value.length >= minPasswordLength;
+                const error = value.length > 0 ? passwordStrengthMessage(value) : null;
+                state.passwordValid = value.length > 0 && error === null;
                 setFieldStyle(passwordInput, state.passwordValid);
 
                 if (value.length === 0) {
                     setHint(passwordHint, '', null);
                 } else {
-                    setHint(
-                        passwordHint,
-                        state.passwordValid ? 'Kata sandi valid.' : `Kata sandi minimal ${minPasswordLength} karakter.`,
-                        state.passwordValid ? 'text-success' : 'text-danger'
-                    );
+                    setHint(passwordHint, error || 'Kata sandi valid.', error ? 'text-danger' : 'text-success');
                 }
 
                 validatePasswordMatch();
@@ -834,6 +1089,8 @@
                     setHint(passwordMatchHint, '', null);
                 } else if (value !== confirmation) {
                     setHint(passwordMatchHint, 'Kata sandi tidak sama.', 'text-danger');
+                } else if (!state.passwordValid) {
+                    setHint(passwordMatchHint, 'Kata sandi sudah sama, tapi belum memenuhi syarat di atas.', 'text-danger');
                 } else {
                     setHint(passwordMatchHint, 'Kata sandi cocok.', 'text-success');
                 }
@@ -842,15 +1099,28 @@
             }
 
             function updateSubmitState() {
-                const isFormValid = state.emailValid && state.emailMatch && state.passwordValid && state.passwordMatch;
+                const isFormValid = state.emailValid && state.emailMatch
+                    && state.passwordValid && state.passwordMatch
+                    && isOtpVerified;
                 btnRegistrasi.disabled = !isFormValid;
             }
 
             emailInput.addEventListener('input', validateEmail);
             emailConfirmationInput.addEventListener('input', validateEmailMatch);
+            emailConfirmationInput.addEventListener('paste', function (e) { e.preventDefault(); });
+            passwordConfirmationInput.addEventListener('paste', function (e) { e.preventDefault(); });
             passwordInput.addEventListener('input', validatePassword);
             passwordConfirmationInput.addEventListener('input', validatePasswordMatch);
-        })();
+
+            registrasiForm.addEventListener('submit', function () {
+                if (btnRegistrasi.disabled) {
+                    return;
+                }
+
+                btnRegistrasi.disabled = true;
+                btnRegistrasi.querySelector('.btn-label').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+            });
+        });
     </script>
 
 </body>

@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('no_wa', 30)->nullable();
             $table->string('password')->nullable();
             $table->unsignedInteger('idinstitusi_asal')->nullable();
+            $table->timestamp('created_at')->nullable();
+            $table->boolean('is_deleted')->default(false);
 
             $table->foreign('idinstitusi_asal')->references('idinstitusi_asal')->on('institusi_asal');
         });

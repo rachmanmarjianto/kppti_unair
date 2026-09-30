@@ -157,3 +157,42 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+# Project Instructions — KPPTI 2026
+
+<!-- Blok ini berada DI LUAR tag <laravel-boost-guidelines> agar tidak tertimpa saat `boost:install` / `boost:update`. -->
+
+Aplikasi registrasi dan administrasi event KPPTI 2026 (Universitas Airlangga). Developer bekerja **per fitur** dan mereview setiap perubahan sendiri.
+
+## Dokumen proyek (baca sesuai kebutuhan)
+
+- `docs/CONVENTIONS.md` — gaya kode Laravel developer. **Wajib dibaca sebelum menulis kode apa pun.**
+- `docs/ARCHITECTURE.md` — stack, struktur folder, pola halaman/rute/controller, role, integrasi. **Wajib dibaca sebelum membuat berkas baru.**
+- `docs/PRD.md` — tujuan produk, role, daftar fitur, alur bisnis. Baca bila perlu konteks bisnis.
+- `docs/features/NNN-*.md` — spesifikasi satu fitur. Jika developer menyebut sebuah fitur, **baca berkasnya dulu** dan kerjakan hanya yang tertulis di sana.
+- `kppti_5.sql` — skema database awal. Untuk kondisi terkini gunakan tool Boost `database-schema`.
+
+## Aturan pokok (ringkasan; rincian di CONVENTIONS.md)
+
+- **Tanpa Eloquent.** Gunakan Query Builder (`DB::table`). Jangan membuat model, relasi, atau factory.
+- Halaman baru dibuat dari `resources/views/blank_page.blade.php`. Pakai komponen template yang sudah ada.
+- Endpoint AJAX memakai `jsonResponse()` dari base `Controller`. Submit form biasa memakai flash `status` (`success`/`danger` + `message`); aksi JavaScript memakai SweetAlert2.
+- Tombol submit: disabled + loader saat diklik. Setiap `$.ajax` wajib punya penanganan error.
+- Akses dibatasi lewat middleware `akses:{idrole}` (1 Admin, 2 Peserta, 3 Nara Sumber, 4 SC). Hanya satu role aktif per pengguna.
+- Teks untuk pengguna dalam Bahasa Indonesia.
+
+## Cara kerja
+
+1. Untuk fitur baru atau perubahan besar: **buat rencana dulu (plan mode), jangan langsung menulis kode.** Tunggu persetujuan.
+2. Kerjakan hanya cakupan fitur yang diminta. Perhatikan bagian *Out of scope* di berkas fitur. Jangan mengubah kode lain sambil lalu.
+3. Bila spesifikasi ambigu atau ada keputusan yang bukan wewenang AI (skema DB, dependensi, folder baru), **tanyakan**, jangan menebak.
+4. Setelah selesai: jalankan `vendor/bin/pint --dirty --format agent`, jalankan tes terkait, lalu ringkas apa yang diubah dan cara memverifikasinya.
+5. Jangan mengubah kode lama yang tidak terkait, dan jangan "memperbaiki" opsi curl WA Gateway (mengikuti spesifikasi admin gateway).
+6. Jangan melakukan commit kecuali diminta.
+
+## Jangan pernah
+
+- Menulis kredensial/kunci API ke kode atau dokumen (pakai `config()` / `.env`).
+- Menambah atau mengubah dependensi Composer/npm tanpa persetujuan.
+- Menjalankan perintah destruktif pada database (`migrate:fresh`, `db:wipe`, `DROP`, `TRUNCATE`) tanpa persetujuan eksplisit.
+- Menampilkan pesan exception mentah atau detail SQL kepada pengguna.
