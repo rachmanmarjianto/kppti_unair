@@ -65,7 +65,7 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F13 | Dashboard dan rekap admin (jumlah peserta, pembayaran, pengajuan) | P1 | Belum |
 | F14 | Log aktivitas institusi | P2 | **Parsial** (pencatatan `log_institusi`/`log_peserta` sudah berjalan sebagai bagian dari F03/F11, belum ada halaman khusus untuk menampilkan riwayatnya) |
 | F15 | Ekspor data (Excel/PDF) | P2 | Belum |
-| F16 | Manajemen peserta oleh admin (lihat semua data peserta, dikelompokkan per institusi asal) dan dashboard ringkasan peserta | P1 | Belum |
+| F16 | Manajemen peserta oleh admin (lihat semua data peserta, dikelompokkan per institusi asal) dan dashboard ringkasan peserta | P1 | Selesai |
 
 > Urutan pengerjaan yang disarankan: **F01 → F03 → F04 → F05/F06 → F07/F08 → sisanya**.
 > Ini mengikuti kebutuhan minimum agar pendaftaran bisa dibuka.

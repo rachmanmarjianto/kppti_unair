@@ -233,6 +233,39 @@ class Controller extends BaseController
     }
 
     /**
+     * Register a peserta into every active, selectable, wajib (`opsi_pilih=3`)
+     * acara that doesn't already have a `peserta_acara` row for them. Called
+     * when a new peserta is created (see docs/features/010-peserta-pilih-acara.md
+     * §7); idempotent, so it's also safe to call repeatedly for backfilling
+     * existing peserta.
+     */
+    protected function registerWajibAcaraUntukPeserta(int $idpeserta): void
+    {
+        $idAcaraWajib = DB::table('acara')
+            ->where('opsi_pilih', '3')
+            ->where(fn ($q) => $q->where('has_child', false)->orWhereNull('has_child'))
+            ->where(fn ($q) => $q->where('status', true)->orWhereNull('status'))
+            ->pluck('idacara');
+
+        if ($idAcaraWajib->isEmpty()) {
+            return;
+        }
+
+        $idSudahTerdaftar = DB::table('peserta_acara')
+            ->where('idpeserta', $idpeserta)
+            ->whereIn('idacara', $idAcaraWajib)
+            ->pluck('idacara');
+
+        $baris = $idAcaraWajib->diff($idSudahTerdaftar)
+            ->map(fn ($idacara) => ['idpeserta' => $idpeserta, 'idacara' => $idacara])
+            ->values()->all();
+
+        if (! empty($baris)) {
+            DB::table('peserta_acara')->insert($baris);
+        }
+    }
+
+    /**
      * Base query for peserta rows with an active Peserta role and a non-deleted
      * pengguna row. Pass $idInstitusiAsal to scope to one kontingen (peserta
      * side); omit it (null) to query across every institusi (admin side).
