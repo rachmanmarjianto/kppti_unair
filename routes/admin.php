@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\JadwalPentingController;
 use App\Http\Controllers\PesertaAdminController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,4 +25,6 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
     Route::get('/nara-sumber', [AdminController::class, 'narasumber'])->name('admin.nara-sumber');
+    Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
+    Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
 });

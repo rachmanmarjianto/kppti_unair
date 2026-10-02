@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             JabatanSeeder::class,
             JenisInstitusiJabatanSeeder::class,
             AdminPenggunaSeeder::class,
+            JadwalPentingSeeder::class,
         ]);
     }
 }
