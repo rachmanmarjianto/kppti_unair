@@ -17,4 +17,8 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/peserta-sekontingen/foto', [PesertaController::class, 'foto'])->name('peserta.sekontingen.foto');
     Route::get('/peserta-sekontingen/foto/tampil', [PesertaController::class, 'tampilFoto'])->name('peserta.sekontingen.foto.tampil');
     Route::post('/peserta-sekontingen/foto/update', [PesertaController::class, 'updateFoto'])->name('peserta.sekontingen.foto.update');
+    Route::get('/peserta-acara', [PesertaController::class, 'acara'])->name('peserta.acara');
+    Route::get('/peserta-sekontingen/acara', [PesertaController::class, 'pilihAcara'])->name('peserta.sekontingen.acara');
+    Route::post('/peserta-sekontingen/acara/daftar', [PesertaController::class, 'daftarAcara'])->name('peserta.sekontingen.acara.daftar');
+    Route::post('/peserta-sekontingen/acara/batal', [PesertaController::class, 'batalAcara'])->name('peserta.sekontingen.acara.batal');
 });

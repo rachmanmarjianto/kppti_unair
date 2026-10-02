@@ -250,10 +250,12 @@ class PesertaController extends Controller
                     'status' => true,
                 ]);
 
-                DB::table('peserta')->insert([
+                $idpeserta = DB::table('peserta')->insertGetId([
                     'idpengguna' => $idpengguna,
                     'idjabatan' => $validated['idjabatan'],
-                ]);
+                ], 'idpeserta');
+
+                $this->registerWajibAcaraUntukPeserta($idpeserta);
 
                 return $idpengguna;
             });
@@ -724,6 +726,239 @@ class PesertaController extends Controller
             ->first();
 
         return $this->unduhKartuKontingenResponse($institusi);
+    }
+
+    /**
+     * Show the "Acara" page: the kontingen's peserta list (with a link per
+     * peserta to "Pilih Acara") and the full jadwal acara, each row showing
+     * which peserta from this kontingen are registered (see
+     * docs/features/010-peserta-pilih-acara.md §3–§4).
+     */
+    public function acara()
+    {
+        $menu = 'acara';
+        $submenu = '';
+
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $pesertaList = $this->pesertaDenganStatusLengkap($idInstitusiAsal);
+
+        $namaPerAcara = DB::table('peserta_acara as pa')
+            ->join('peserta as pe', 'pe.idpeserta', '=', 'pa.idpeserta')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->orderBy('p.nama')
+            ->select('pa.idacara', 'p.nama')
+            ->get()
+            ->groupBy('idacara');
+
+        $acaraAktifQuery = fn () => DB::table('acara')->where(fn ($q) => $q->where('status', true)->orWhereNull('status'));
+
+        $lengkapi = function ($acara) use ($namaPerAcara) {
+            $acara->namaPeserta = $namaPerAcara->get($acara->idacara, collect())->pluck('nama')->values();
+
+            return $acara;
+        };
+
+        $topLevel = $acaraAktifQuery()->whereNull('idparent_acara')->orderBy('idacara')->get();
+        $children = $topLevel->isEmpty()
+            ? collect()
+            : $acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->orderBy('idacara')->get();
+
+        $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
+            $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
+
+            return $acara;
+        })->values();
+
+        return view('peserta.acara', compact('menu', 'submenu', 'pesertaList', 'acaraList'));
+    }
+
+    /**
+     * Show the "Pilih Acara" page for a peserta — scoped to the logged-in
+     * peserta's own institusi (see docs/features/010-peserta-pilih-acara.md).
+     * The idpeserta travels as an encrypted `token` query value, not a raw GET
+     * parameter (CONVENTIONS.md §7).
+     */
+    public function pilihAcara(Request $request)
+    {
+        $userdata = session('userdata');
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $idpeserta = (int) $idpeserta;
+
+        $peserta = $this->findPesertaInOwnInstitusi($idpeserta, $userdata['idinstitusi_asal']);
+
+        if (! $peserta) {
+            abort(404);
+        }
+
+        $menu = 'acara';
+        $submenu = '';
+        $token = $this->encryptRouteValue($idpeserta);
+
+        $idacaraTerdaftar = DB::table('peserta_acara')
+            ->where('idpeserta', $idpeserta)
+            ->pluck('idacara');
+
+        $acaraAktifQuery = fn () => DB::table('acara')->where(fn ($q) => $q->where('status', true)->orWhereNull('status'));
+
+        $lengkapi = function ($acara) use ($idacaraTerdaftar) {
+            $acara->bisaDipilih = ! $acara->has_child && in_array($acara->opsi_pilih, ['2', '3'], true);
+            $acara->terkunci = $acara->opsi_pilih === '3';
+            $acara->sudahTerdaftar = $idacaraTerdaftar->contains($acara->idacara);
+
+            return $acara;
+        };
+
+        $topLevel = $acaraAktifQuery()->whereNull('idparent_acara')->orderBy('idacara')->get();
+        $children = $topLevel->isEmpty()
+            ? collect()
+            : $acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->orderBy('idacara')->get();
+
+        $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
+            $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
+
+            return $acara;
+        })->values();
+
+        return view('peserta.pilih-acara', compact('menu', 'submenu', 'peserta', 'idpeserta', 'token', 'acaraList'));
+    }
+
+    /**
+     * Register a peserta (self or another peserta in the same institusi) into
+     * an acara. Rejects acara that aren't selectable (has children, or
+     * opsi_pilih not 2/3), already-registered acara, and schedule conflicts
+     * (see docs/features/010-peserta-pilih-acara.md §5–§6).
+     */
+    public function daftarAcara(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaInOwnInstitusi((int) $validated['idpeserta'], $userdata['idinstitusi_asal']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $acara = DB::table('acara')
+            ->where('idacara', $validated['idacara'])
+            ->where(fn ($q) => $q->where('status', true)->orWhereNull('status'))
+            ->first();
+
+        if (! $acara) {
+            return $this->jsonResponse(404, 'Acara tidak ditemukan.');
+        }
+
+        if ($acara->has_child || $acara->opsi_pilih !== '2') {
+            return $this->jsonResponse(422, $acara->opsi_pilih === '3'
+                ? 'Acara wajib terdaftar otomatis, tidak perlu didaftarkan manual.'
+                : 'Acara ini tidak bisa dipilih.');
+        }
+
+        $sudahTerdaftar = DB::table('peserta_acara')
+            ->where('idpeserta', $peserta->idpeserta)
+            ->where('idacara', $acara->idacara)
+            ->exists();
+
+        if ($sudahTerdaftar) {
+            return $this->jsonResponse(409, 'Peserta sudah terdaftar di acara ini.');
+        }
+
+        $acaraBentrok = $this->acaraBentrok($peserta->idpeserta, $acara);
+
+        if ($acaraBentrok) {
+            $jamBentrok = $acaraBentrok->jam_mulai && $acaraBentrok->jam_akhir
+                ? substr($acaraBentrok->jam_mulai, 0, 5).'–'.substr($acaraBentrok->jam_akhir, 0, 5)
+                : '-';
+
+            return $this->jsonResponse(409, "Bentrok dengan acara yang sudah dipilih: {$acaraBentrok->tema} (Hari {$acaraBentrok->hari_ke}, {$jamBentrok}).");
+        }
+
+        DB::table('peserta_acara')->insert([
+            'idpeserta' => $peserta->idpeserta,
+            'idacara' => $acara->idacara,
+        ]);
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Mendaftar acara: {$acara->tema}");
+
+        return $this->jsonResponse(200, 'Berhasil didaftarkan ke acara ini.');
+    }
+
+    /**
+     * Unregister a peserta (self or another peserta in the same institusi)
+     * from an acara. No gate besides acara wajib being locked — cancelling an
+     * opsional acara is always allowed.
+     */
+    public function batalAcara(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaInOwnInstitusi((int) $validated['idpeserta'], $userdata['idinstitusi_asal']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $pesertaAcara = DB::table('peserta_acara')
+            ->where('idpeserta', $peserta->idpeserta)
+            ->where('idacara', $validated['idacara'])
+            ->first();
+
+        if (! $pesertaAcara) {
+            return $this->jsonResponse(404, 'Peserta belum terdaftar di acara ini.');
+        }
+
+        $acara = DB::table('acara')->where('idacara', $validated['idacara'])->first();
+
+        if ($acara && $acara->opsi_pilih === '3') {
+            return $this->jsonResponse(422, 'Acara wajib tidak bisa dibatalkan.');
+        }
+
+        DB::table('peserta_acara')->where('idpeserta_acara', $pesertaAcara->idpeserta_acara)->delete();
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Membatalkan pendaftaran acara: '.($acara->tema ?? '-'));
+
+        return $this->jsonResponse(200, 'Pendaftaran acara berhasil dibatalkan.');
+    }
+
+    /**
+     * The first acara already registered for $idpeserta whose hari_ke matches
+     * $acaraBaru and whose jam range overlaps it. Rows with a null hari_ke or
+     * null jam on either side are never considered a conflict (the overlap
+     * can't be determined), see docs/features/010-peserta-pilih-acara.md §5.
+     */
+    private function acaraBentrok(int $idpeserta, object $acaraBaru): ?object
+    {
+        if (! $acaraBaru->hari_ke || ! $acaraBaru->jam_mulai || ! $acaraBaru->jam_akhir) {
+            return null;
+        }
+
+        return DB::table('peserta_acara as pa')
+            ->join('acara as a', 'a.idacara', '=', 'pa.idacara')
+            ->where('pa.idpeserta', $idpeserta)
+            ->where('a.hari_ke', $acaraBaru->hari_ke)
+            ->whereNotNull('a.jam_mulai')
+            ->whereNotNull('a.jam_akhir')
+            ->where('a.jam_mulai', '<', $acaraBaru->jam_akhir)
+            ->where('a.jam_akhir', '>', $acaraBaru->jam_mulai)
+            ->select('a.tema', 'a.hari_ke', 'a.jam_mulai', 'a.jam_akhir')
+            ->first();
     }
 
     /**

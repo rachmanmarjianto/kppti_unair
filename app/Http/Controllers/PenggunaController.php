@@ -263,10 +263,12 @@ class PenggunaController extends Controller
                     'status' => true,
                 ]);
 
-                DB::table('peserta')->insert([
+                $idpeserta = DB::table('peserta')->insertGetId([
                     'idpengguna' => $idpengguna,
                     'idjabatan' => $validated['idjabatan'],
-                ]);
+                ], 'idpeserta');
+
+                $this->registerWajibAcaraUntukPeserta($idpeserta);
 
                 $latestToken = DB::table('token')
                     ->where('no_wa', $validated['nomor_wa'])
