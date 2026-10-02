@@ -17,12 +17,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::get('/registrasi', [PenggunaController::class, 'registrasi'])->name('registrasi_kppti');
-Route::post('/registrasi/kirim-otp', [PenggunaController::class, 'kirimOtp'])->name('registrasi_kppti.kirim_otp');
-Route::post('/registrasi/cek-otp', [PenggunaController::class, 'cekOtpRegistrasi'])->name('registrasi_kppti.cek_otp');
-Route::get('/registrasi/search-universitas', [PenggunaController::class, 'searchUniversitas'])->name('registrasi_kppti.search_universitas');
-Route::get('/registrasi/search-institusi', [PenggunaController::class, 'searchInstitusiAsal'])->name('registrasi_kppti.search_institusi');
-Route::post('/registrasi/store', [PenggunaController::class, 'storeRegistrasi'])->name('registrasi_kppti.store');
+Route::middleware(['jadwalPenting:1'])->group(function () {
+    Route::get('/registrasi', [PenggunaController::class, 'registrasi'])->name('registrasi_kppti');
+    Route::post('/registrasi/kirim-otp', [PenggunaController::class, 'kirimOtp'])->name('registrasi_kppti.kirim_otp');
+    Route::post('/registrasi/cek-otp', [PenggunaController::class, 'cekOtpRegistrasi'])->name('registrasi_kppti.cek_otp');
+    Route::get('/registrasi/search-universitas', [PenggunaController::class, 'searchUniversitas'])->name('registrasi_kppti.search_universitas');
+    Route::get('/registrasi/search-institusi', [PenggunaController::class, 'searchInstitusiAsal'])->name('registrasi_kppti.search_institusi');
+    Route::post('/registrasi/store', [PenggunaController::class, 'storeRegistrasi'])->name('registrasi_kppti.store');
+});
 
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
