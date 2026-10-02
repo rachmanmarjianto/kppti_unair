@@ -174,7 +174,7 @@
             var searchPenggunaUrl = '{{ route('admin.admin-users.search-pengguna') }}';
             var tambahBaruUrl = '{{ route('admin.admin-users.tambah-baru') }}';
             var tambahLamaUrl = '{{ route('admin.admin-users.tambah-lama') }}';
-            var detailUrlTemplate = '{{ route('admin.admin-users.detail', ':idpengguna') }}';
+            var detailUrl = '{{ route('admin.admin-users.detail') }}';
             var ubahRoleAktifUrl = '{{ route('admin.admin-users.ubah-role-aktif') }}';
             var updatePenggunaUrl = '{{ route('admin.admin-users.update') }}';
             var resetPasswordUrl = '{{ route('admin.admin-users.reset-password') }}';
@@ -292,13 +292,13 @@
                     renderRoles(data.roles);
                 }
 
-                function loadDetail(idpengguna) {
+                function loadDetail(idpengguna, token) {
                     currentIdpengguna = idpengguna;
                     loadingEl.classList.remove('d-none');
                     contentEl.classList.add('d-none');
                     hideModalAlert(modalEl);
 
-                    fetch(detailUrlTemplate.replace(':idpengguna', idpengguna))
+                    fetch(detailUrl + '?token=' + encodeURIComponent(token))
                         .then(function (response) {
                             return response.json().then(function (body) {
                                 return { ok: response.ok, body: body };
@@ -328,7 +328,7 @@
                     }
 
                     e.preventDefault();
-                    loadDetail(trigger.getAttribute('data-idpengguna'));
+                    loadDetail(trigger.getAttribute('data-idpengguna'), trigger.getAttribute('data-token'));
 
                     var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
                     modalInstance.show();
@@ -410,14 +410,14 @@
                     btnResetPassword.innerHTML = '<i class="fa-solid fa-key me-1"></i> Reset Password';
                 }
 
-                function loadDetail(idpengguna) {
+                function loadDetail(idpengguna, token) {
                     currentIdpengguna = idpengguna;
                     loadingEl.classList.remove('d-none');
                     contentEl.classList.add('d-none');
                     btnSubmit.disabled = true;
                     hideModalAlert(modalEl);
 
-                    fetch(detailUrlTemplate.replace(':idpengguna', idpengguna))
+                    fetch(detailUrl + '?token=' + encodeURIComponent(token))
                         .then(function (response) {
                             return response.json().then(function (body) {
                                 return { ok: response.ok, body: body };
@@ -456,7 +456,7 @@
                     }
 
                     e.preventDefault();
-                    loadDetail(trigger.getAttribute('data-idpengguna'));
+                    loadDetail(trigger.getAttribute('data-idpengguna'), trigger.getAttribute('data-token'));
 
                     var modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
                     modalInstance.show();
@@ -721,13 +721,14 @@
                         .then(function (result) {
                             if (result.ok) {
                                 var idpengguna = result.body.data.idpengguna;
+                                var token = result.body.data.token;
 
                                 dataTable.row.add([
                                     escapeHtml(payload.nama.toUpperCase()),
                                     escapeHtml(payload.email),
                                     escapeHtml(payload.no_wa),
-                                    '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + idpengguna + '"><i class="fa-solid fa-eye"></i></a> ' +
-                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + idpengguna + '"><i class="fa-solid fa-pen"></i></a>',
+                                    '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-eye"></i></a> ' +
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a>',
                                 ]).draw(false);
 
                                 var modalInstance = bootstrap.Modal.getInstance(modalEl);
@@ -848,12 +849,14 @@
                         })
                         .then(function (result) {
                             if (result.ok) {
+                                var token = result.body.data.token;
+
                                 dataTable.row.add([
                                     escapeHtml(nama),
                                     escapeHtml(email),
                                     escapeHtml(noWa),
-                                    '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + payload.idpengguna + '"><i class="fa-solid fa-eye"></i></a> ' +
-                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + payload.idpengguna + '"><i class="fa-solid fa-pen"></i></a>',
+                                    '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-eye"></i></a> ' +
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a>',
                                 ]).draw(false);
 
                                 var modalInstance = bootstrap.Modal.getInstance(modalEl);

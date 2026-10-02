@@ -288,11 +288,11 @@ class PenggunaController extends Controller
         }
 
         $pesan_1 = 'Akun KPPTI 2026 Anda telah dibuat. Berikut informasi login Anda:';
-        $pesan_2 = "Email: {$validated['email']} === Password: {$validated['password']}";
+        $pesan_2 = "Email: {$validated['email']} || Password: {$validated['password']}";
         $pesan_3 = 'Akun Aktif';
 
         try {
-            $this->kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $validated['nomor_wa']);
+            $result = $this->kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $validated['nomor_wa']);
         } catch (\Throwable $e) {
             report($e);
 
@@ -304,7 +304,7 @@ class PenggunaController extends Controller
 
         return redirect()->route('login')->with('status', [
             'status' => 'success',
-            'message' => 'Registrasi berhasil! Informasi login telah dikirim ke WhatsApp Anda. Silakan masuk.',
+            'message' => 'Registrasi berhasil, ! Informasi login telah dikirim ke WhatsApp Anda. Silakan masuk.',
         ]);
     }
 
@@ -332,18 +332,22 @@ class PenggunaController extends Controller
                 ->where('iduniversitas', $validated['iduniversitas'])
                 ->value('nama_universitas');
 
-            return DB::table('institusi_asal')->insertGetId([
+            $idInstitusiAsal = DB::table('institusi_asal')->insertGetId([
                 'idjenis_institusi' => 1,
                 'ptn_pts' => (string) $validated['ptn_pts'],
-                'nama_institusi' => $namaUniversitas,
+                'nama_institusi' => mb_strtoupper($namaUniversitas),
                 'tabel_ref_institusi' => 'universitas',
                 'idref_institusi' => $validated['iduniversitas'],
                 'kode_kontingen' => $this->generateKodeKontingen(),
                 'created_at' => now(),
             ], 'idinstitusi_asal');
+
+            $this->logInstitusiBaru($idInstitusiAsal);
+
+            return $idInstitusiAsal;
         }
 
-        $namaInstitusi = trim($validated['nama_institusi']);
+        $namaInstitusi = mb_strtoupper(trim($validated['nama_institusi']));
 
         $query = DB::table('institusi_asal')
             ->where('idjenis_institusi', $jenisInstitusi)
@@ -359,13 +363,17 @@ class PenggunaController extends Controller
             return $existing->idinstitusi_asal;
         }
 
-        return DB::table('institusi_asal')->insertGetId([
+        $idInstitusiAsal = DB::table('institusi_asal')->insertGetId([
             'idjenis_institusi' => $jenisInstitusi,
             'idlldikti' => $jenisInstitusi === 4 ? $validated['idlldikti'] : null,
             'nama_institusi' => $namaInstitusi,
             'kode_kontingen' => $this->generateKodeKontingen(),
             'created_at' => now(),
         ], 'idinstitusi_asal');
+
+        $this->logInstitusiBaru($idInstitusiAsal);
+
+        return $idInstitusiAsal;
     }
 
     /**
@@ -381,5 +389,15 @@ class PenggunaController extends Controller
             ->count() + 1;
 
         return $tanggal.str_pad((string) $urutan, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Record the creation of a new institusi_asal row in log_institusi. Called
+     * during self-registration, where there is no authenticated pengguna yet,
+     * so `done_by` is left null.
+     */
+    private function logInstitusiBaru(int $idInstitusiAsal): void
+    {
+        $this->logInstitusi($idInstitusiAsal, null, 'Create institusi baru');
     }
 }

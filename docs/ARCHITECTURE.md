@@ -138,10 +138,9 @@ Saat membuat fitur baru, **jadikan struktur `AdminController` dan view `admin/ad
 
 ## 10. Catatan dan utang teknis yang diketahui
 
-- Dua rute admin menunjuk ke method controller yang **tidak ada**, jadi akan error bila diakses:
+- Satu rute admin menunjuk ke method controller yang **tidak ada**, jadi akan error bila diakses:
   - `admin.nara-sumber` → `AdminController::narasumber` (dipakai link sidebar "Nara Sumber").
-  - `admin.user-account-settings` → `AdminController::useraccountsettings` (dipakai link sidebar "Peserta").
 
-  Ini **dibiarkan apa adanya untuk saat ini** — metode pengembangan proyek ini per fitur dengan supervisi developer; kedua rute ini akan ditangani (dibuat method-nya, atau dihapus) saat gilirannya sampai pada fitur Peserta/Nara Sumber, bukan diperbaiki mendahului rencana.
-- Beberapa method belum memiliki return type (`index`, `searchPengguna`, dst) dan penamaan ada yang tidak camelCase (`adminusers`, `useraccountsettings`). Kode baru mengikuti `CONVENTIONS.md`; **jangan refactor kode lama tanpa diminta**.
+  Ini **dibiarkan apa adanya untuk saat ini** — metode pengembangan proyek ini per fitur dengan supervisi developer; rute ini akan ditangani (dibuat method-nya, atau dihapus) saat gilirannya sampai pada fitur Nara Sumber, bukan diperbaiki mendahului rencana. (Rute serupa untuk "Peserta", `admin.user-account-settings`, sudah diperbaiki oleh F16 — lihat `app/Http/Controllers/PesertaAdminController.php`.)
+- Beberapa method belum memiliki return type (`index`, `searchPengguna`, dst) dan penamaan ada yang tidak camelCase (`adminusers`). Kode baru mengikuti `CONVENTIONS.md`; **jangan refactor kode lama tanpa diminta**.
 - Kata sandi acak yang dikirim lewat WA berupa teks biasa (memang disengaja untuk alur ini); pastikan pengguna dapat mengganti kata sandi. `[TBD: fitur ganti password]`

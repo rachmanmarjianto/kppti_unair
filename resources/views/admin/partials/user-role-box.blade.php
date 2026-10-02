@@ -42,10 +42,10 @@
                                 <td>{{ $user->email }}</td>
                                 <td>{{ $user->no_wa ?? '-' }}</td>
                                 <td class="text-center text-nowrap">
-                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}">
+                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}" data-token="{{ $user->token }}">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
-                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}">
+                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}" data-token="{{ $user->token }}">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
                                 </td>

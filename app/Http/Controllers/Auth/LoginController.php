@@ -95,6 +95,17 @@ class LoginController extends Controller
         ])->status(Response::HTTP_TOO_MANY_REQUESTS);
     }
 
+    /**
+     * Redirect targets per active role. Role 1 (Admin) and 2 (Peserta) have a home page;
+     * roles 3 (Nara Sumber) and 4 (SC) don't have an area built yet.
+     *
+     * @var array<int, string>
+     */
+    private const HOME_BY_ROLE = [
+        1 => '/home_admin',
+        2 => '/home-peserta',
+    ];
+
     protected function sendLoginResponse(Request $request)
     {
         $user = $request->user();
@@ -105,23 +116,22 @@ class LoginController extends Controller
             'nama' => $user->nama,
             'email' => $user->email,
             'no_wa' => $user->no_wa,
-            // 'password' => $user->password,
             'idinstitusi_asal' => $user->idinstitusi_asal,
             'idrole_aktif' => $user->activeRoles->pluck('idrole')[0],
         ];
 
-        // dd($user, $user->activeRoles->pluck('idrole')[0]);
+        if (! array_key_exists($user_session['idrole_aktif'], self::HOME_BY_ROLE)) {
+            Auth::logout();
 
-        Auth::login($user);
-
-        if ($user_session['idrole_aktif'] == 1) {
-            session(['userdata' => $user_session]);
-
-            // dd(session('userdata'));
-
-            return redirect()->intended('/home_admin')->with('success', 'Login successful!');
+            throw ValidationException::withMessages([
+                $this->username() => __('Area untuk role akun Anda belum tersedia.'),
+            ]);
         }
 
+        Auth::login($user);
+        session(['userdata' => $user_session]);
+
+        return redirect()->intended(self::HOME_BY_ROLE[$user_session['idrole_aktif']])->with('success', 'Login successful!');
     }
 
     /**

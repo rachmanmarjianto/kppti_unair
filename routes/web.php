@@ -5,6 +5,7 @@ use App\Http\Controllers\PenggunaController;
 use Illuminate\Support\Facades\Route;
 
 include_once 'admin.php';
+include_once 'peserta.php';
 
 // Route::get('/', function () {
 //     return view('blank_page');

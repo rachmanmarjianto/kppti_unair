@@ -24,42 +24,25 @@
                 <ul class="list-unstyled menu-categories" id="accordionExample">
 
                     <li class="menu @if($menu == 'home') active @endif">
-                        <a href="{{ route('admin.home') }}" aria-expanded="false" class="dropdown-toggle">
+                        <a href="{{ route('peserta.home') }}" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-                                <span>Home</span>
+                                <span>Beranda</span>
                             </div>
                         </a>
                     </li>
-                                     
 
-                    <li class="menu @if($menu == 'users') active @endif">
-                        <a href="#users" data-bs-toggle="collapse" aria-expanded="@if($menu == 'users') true @else false @endif" class="dropdown-toggle">
+                    <li class="menu @if($menu == 'sekontingen') active @endif">
+                        <a href="{{ route('peserta.sekontingen') }}" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                <span>Users</span>
-                            </div>
-                            <div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <span>Peserta Kontingen</span>
                             </div>
                         </a>
-                        <ul class="collapse submenu list-unstyled @if($menu == 'users') show @endif" id="users" data-bs-parent="#accordionExample">
-                            <li @if($submenu == 'admin') class="active" @endif>
-                                <a href="{{ route('admin.admin-users') }}"> Admin / SC </a>
-                            </li>
-                            <li @if($submenu == 'peserta') class="active" @endif>
-                                <a href="{{ route('admin.user-account-settings') }}"> Peserta </a>
-                            </li>
-                            <li @if($submenu == 'nara_sumber') class="active" @endif>
-                                <a href="{{ route('admin.nara-sumber') }}"> Nara Sumber </a>
-                            </li>
-                        </ul>
                     </li>
 
-                    
-                    
                 </ul>
-                
+
             </nav>
 
         </div>
