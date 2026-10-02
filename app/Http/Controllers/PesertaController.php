@@ -744,6 +744,18 @@ class PesertaController extends Controller
 
         $pesertaList = $this->pesertaDenganStatusLengkap($idInstitusiAsal);
 
+        $jumlahAcaraPerPeserta = DB::table('peserta_acara')
+            ->whereIn('idpeserta', $pesertaList->pluck('idpeserta'))
+            ->select('idpeserta', DB::raw('count(*) as jumlah'))
+            ->groupBy('idpeserta')
+            ->pluck('jumlah', 'idpeserta');
+
+        $pesertaList = $pesertaList->map(function ($peserta) use ($jumlahAcaraPerPeserta) {
+            $peserta->jumlahAcara = (int) ($jumlahAcaraPerPeserta[$peserta->idpeserta] ?? 0);
+
+            return $peserta;
+        });
+
         $namaPerAcara = DB::table('peserta_acara as pa')
             ->join('peserta as pe', 'pe.idpeserta', '=', 'pa.idpeserta')
             ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')

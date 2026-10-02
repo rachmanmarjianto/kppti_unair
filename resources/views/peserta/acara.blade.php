@@ -42,6 +42,7 @@
                             <tr>
                                 <th>Nama</th>
                                 <th>Jabatan</th>
+                                <th class="text-center">Jumlah Acara Diikuti</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -56,6 +57,9 @@
                                     </td>
                                     <td>{{ $peserta->nama_jabatan }}</td>
                                     <td class="text-center">
+                                        <span class="badge bg-info">{{ $peserta->jumlahAcara }}</span>
+                                    </td>
+                                    <td class="text-center">
                                         <a href="{{ route('peserta.sekontingen.acara') }}?token={{ $peserta->token }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fa-solid fa-calendar-check me-1"></i> Pilih Acara
                                         </a>
@@ -63,7 +67,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="text-center text-muted">Belum ada peserta.</td>
+                                    <td colspan="4" class="text-center text-muted">Belum ada peserta.</td>
                                 </tr>
                             @endforelse
                         </tbody>
