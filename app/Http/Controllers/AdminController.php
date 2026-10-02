@@ -120,10 +120,10 @@ class AdminController extends Controller
         try {
             $this->kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $validated['no_wa']);
         } catch (\Throwable $e) {
-            return $this->jsonResponse(500, 'Pengguna berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna]);
+            return $this->jsonResponse(500, 'Pengguna berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna, 'token' => $this->encryptRouteValue($idpengguna)]);
         }
 
-        return $this->jsonResponse(200, 'Pengguna berhasil ditambahkan dan informasi login telah dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna]);
+        return $this->jsonResponse(200, 'Pengguna berhasil ditambahkan dan informasi login telah dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna, 'token' => $this->encryptRouteValue($idpengguna)]);
     }
 
     /**
@@ -169,15 +169,25 @@ class AdminController extends Controller
             return $this->jsonResponse(500, 'Gagal menambahkan role pengguna.');
         }
 
-        return $this->jsonResponse(200, 'Role pengguna berhasil ditambahkan.', ['idpengguna' => $pengguna->idpengguna]);
+        return $this->jsonResponse(200, 'Role pengguna berhasil ditambahkan.', ['idpengguna' => $pengguna->idpengguna, 'token' => $this->encryptRouteValue($pengguna->idpengguna)]);
     }
 
     /**
      * Fetch a pengguna's details (every `pengguna` column except password) plus every
-     * role they hold and its active status, for the "Detail Pengguna" modal.
+     * role they hold and its active status, for the "Detail Pengguna" modal. The
+     * idpengguna travels as an encrypted `token` query value, not a raw GET
+     * parameter — see CONVENTIONS.md §7.
      */
-    public function detailPengguna(int $idpengguna)
+    public function detailPengguna(Request $request)
     {
+        $idpengguna = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpengguna === null) {
+            return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
+        }
+
+        $idpengguna = (int) $idpengguna;
+
         $pengguna = DB::table('pengguna as p')
             ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->where('p.idpengguna', $idpengguna)
@@ -380,6 +390,11 @@ class AdminController extends Controller
             ->where('p.is_deleted', false)
             ->select('p.idpengguna', 'p.nama', 'p.email', 'p.no_wa')
             ->orderBy('p.nama')
-            ->get();
+            ->get()
+            ->map(function ($user) {
+                $user->token = $this->encryptRouteValue($user->idpengguna);
+
+                return $user;
+            });
     }
 }

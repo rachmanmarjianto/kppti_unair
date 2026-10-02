@@ -33,6 +33,15 @@
                     </li>
                                      
 
+                    <li class="menu @if($menu == 'acara') active @endif">
+                        <a href="{{ route('admin.acara') }}" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                <span>Acara</span>
+                            </div>
+                        </a>
+                    </li>
+
                     <li class="menu @if($menu == 'users') active @endif">
                         <a href="#users" data-bs-toggle="collapse" aria-expanded="@if($menu == 'users') true @else false @endif" class="dropdown-toggle">
                             <div class="">
@@ -48,7 +57,7 @@
                                 <a href="{{ route('admin.admin-users') }}"> Admin / SC </a>
                             </li>
                             <li @if($submenu == 'peserta') class="active" @endif>
-                                <a href="{{ route('admin.user-account-settings') }}"> Peserta </a>
+                                <a href="{{ route('admin.peserta') }}"> Peserta </a>
                             </li>
                             <li @if($submenu == 'nara_sumber') class="active" @endif>
                                 <a href="{{ route('admin.nara-sumber') }}"> Nara Sumber </a>

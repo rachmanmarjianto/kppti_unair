@@ -50,21 +50,22 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 
 | ID | Fitur | Prioritas | Status |
 |---|---|---|---|
-| F01 | Registrasi peserta dengan form dinamis per jenis institusi (JavaScript) | P0 | Parsial |
-| F02 | Verifikasi OTP WhatsApp saat registrasi | P0 | `[TBD: apakah sudah tercakup di F01]` |
-| F03 | Manajemen institusi asal dan kode kontingen | P0 | Belum |
+| F01 | Registrasi peserta dengan form dinamis per jenis institusi (JavaScript) | P0 | Selesai |
+| F02 | Verifikasi OTP WhatsApp saat registrasi | P0 | Selesai (tercakup di F01) |
+| F03 | Manajemen institusi asal dan kode kontingen | P0 | Selesai |
 | F04 | Tagihan dan pembayaran VA BNI (pembuatan VA, callback, status, pembayaran sebagian) | P0 | Belum |
 | F05 | Pengajuan narasumber (draft, pengajuan, review, revisi, diterima/ditolak) | P0 | Belum |
 | F06 | Review narasumber oleh SC (unggah berkas, catatan, keputusan) | P0 | Belum |
 | F07 | Pengajuan pameran (alur status yang sama) dan penetapan nomor stand | P0 | Belum |
 | F08 | Review pameran oleh SC | P0 | Belum |
-| F09 | Manajemen acara/sesi (bertingkat, per hari dan jam) oleh admin | P1 | Belum |
+| F09 | Manajemen acara/sesi (bertingkat, per hari dan jam) oleh admin | P1 | Selesai |
 | F10 | Peserta memilih acara yang diikuti | P1 | Belum |
-| F11 | Data logistik peserta (transportasi, hotel, city tour) | P1 | Belum |
+| F11 | Data logistik peserta (transportasi, hotel, city tour), kartu registrasi kontingen (PDF), dan foto peserta untuk face recognition | P1 | Selesai |
 | F12 | Petugas jaga stand pameran | P1 | Belum |
 | F13 | Dashboard dan rekap admin (jumlah peserta, pembayaran, pengajuan) | P1 | Belum |
-| F14 | Log aktivitas institusi | P2 | Belum |
+| F14 | Log aktivitas institusi | P2 | **Parsial** (pencatatan `log_institusi`/`log_peserta` sudah berjalan sebagai bagian dari F03/F11, belum ada halaman khusus untuk menampilkan riwayatnya) |
 | F15 | Ekspor data (Excel/PDF) | P2 | Belum |
+| F16 | Manajemen peserta oleh admin (lihat semua data peserta, dikelompokkan per institusi asal) dan dashboard ringkasan peserta | P1 | Belum |
 
 > Urutan pengerjaan yang disarankan: **F01 → F03 → F04 → F05/F06 → F07/F08 → sisanya**.
 > Ini mengikuti kebutuhan minimum agar pendaftaran bisa dibuka.

@@ -170,6 +170,8 @@ Umpan balik langsung ke pengguna itu penting, bukan hanya setelah submit:
 - Jangan menulis kredensial/kunci API di kode atau dokumen; pakai `config()`/`.env`.
 - Kata sandi selalu di-hash (`Hash::make`).
 - Jangan log data sensitif (kata sandi, token OTP) dan jangan tampilkan pesan exception mentah ke pengguna.
+- **Berkas upload/download tidak boleh diakses langsung lewat URL publik** (tidak disimpan di `public/` atau folder lain yang bisa diakses langsung browser). Simpan lewat disk Laravel yang tidak publik (default `storage/app/`, bukan `storage/app/public/`), dan selalu sajikan lewat **controller** yang mengecek otorisasi dulu, pakai fungsi-fungsi `Storage` (`Storage::get()`, `Storage::download()`, `Storage::response()`, dsb.) — bukan link statis ke file.
+- **URL `GET` yang membawa nilai (parameter rute atau query string) harus dienkripsi AES-256**, bukan dikirim mentah (mis. `?id=123` atau `/detail/123`). Pakai `Crypt::encryptString()`/`Crypt::decryptString()` bawaan Laravel (AES-256-CBC) saat membuat dan membaca nilainya di controller.
 
 ## 8. Testing
 
