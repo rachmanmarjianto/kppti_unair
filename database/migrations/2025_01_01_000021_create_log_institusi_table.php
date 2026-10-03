@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('aktifitas', 1000)->nullable();
             $table->unsignedInteger('idinstitusi_asal')->nullable();
 
-            $table->foreign('done_by')->references('idpeserta')->on('peserta');
+            $table->foreign('done_by')->references('idpengguna')->on('pengguna');
             $table->foreign('idinstitusi_asal')->references('idinstitusi_asal')->on('institusi_asal');
         });
     }

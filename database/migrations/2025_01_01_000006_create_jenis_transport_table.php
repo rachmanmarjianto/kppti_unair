@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('jenis_transport', function (Blueprint $table) {
             $table->increments('idjenis_transport');
             $table->string('nama_jenis_transport')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->nullable()->default(true);
         });
     }
 

@@ -192,6 +192,200 @@ class PesertaAdminController extends Controller
     }
 
     /**
+     * List every peserta (cross-institusi), grouped jenis institusi → institusi,
+     * each with a "Pilih Acara" link — so an admin can manage any peserta's
+     * acara choices, including after `jadwalPenting:1,tutup` has locked
+     * peserta's own self-service routes (see
+     * docs/features/010-peserta-pilih-acara.md).
+     */
+    public function acara()
+    {
+        $menu = 'users';
+        $submenu = 'acara-peserta';
+
+        $pesertaList = $this->pesertaDenganStatusLengkap();
+
+        $institusiList = DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->orderBy('i.nama_institusi')
+            ->get()
+            ->map(function ($institusi) use ($pesertaList) {
+                $institusi->pesertaList = $pesertaList->where('idinstitusi_asal', $institusi->idinstitusi_asal)->values();
+                $institusi->jumlahPeserta = $institusi->pesertaList->count();
+
+                return $institusi;
+            });
+
+        $jenisInstitusiList = $institusiList->groupBy('nama_jenis_institusi')->map(function ($institusiPerJenis, $namaJenis) {
+            return (object) [
+                'nama_jenis_institusi' => $namaJenis,
+                'institusiList' => $institusiPerJenis->values(),
+            ];
+        })->values();
+
+        return view('admin.peserta-acara', compact('menu', 'submenu', 'jenisInstitusiList'));
+    }
+
+    /**
+     * Show the "Pilih Acara" page for any peserta — same as
+     * PesertaController::pilihAcara() but not scoped to one institusi (an
+     * admin may manage any peserta). The idpeserta travels as an encrypted
+     * `token` query value (CONVENTIONS.md §7).
+     */
+    public function pilihAcara(Request $request)
+    {
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $idpeserta = (int) $idpeserta;
+
+        $peserta = $this->findPesertaById($idpeserta);
+
+        if (! $peserta) {
+            abort(404);
+        }
+
+        $menu = 'users';
+        $submenu = 'acara-peserta';
+        $token = $this->encryptRouteValue($idpeserta);
+
+        $idacaraTerdaftar = DB::table('peserta_acara')
+            ->where('idpeserta', $idpeserta)
+            ->pluck('idacara');
+
+        $acaraAktifQuery = fn () => DB::table('acara')->where(fn ($q) => $q->where('status', true)->orWhereNull('status'));
+
+        $lengkapi = function ($acara) use ($idacaraTerdaftar) {
+            $acara->bisaDipilih = ! $acara->has_child && in_array($acara->opsi_pilih, ['2', '3'], true);
+            $acara->terkunci = $acara->opsi_pilih === '3';
+            $acara->sudahTerdaftar = $idacaraTerdaftar->contains($acara->idacara);
+
+            return $acara;
+        };
+
+        $topLevel = $acaraAktifQuery()->whereNull('idparent_acara')->orderBy('idacara')->get();
+        $children = $topLevel->isEmpty()
+            ? collect()
+            : $acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->orderBy('idacara')->get();
+
+        $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
+            $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
+
+            return $acara;
+        })->values();
+
+        return view('admin.pilih-acara', compact('menu', 'submenu', 'peserta', 'idpeserta', 'token', 'acaraList'));
+    }
+
+    /**
+     * Register any peserta into an acara — same rules as
+     * PesertaController::daftarAcara() (not scoped to one institusi).
+     */
+    public function daftarAcara(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $acara = DB::table('acara')
+            ->where('idacara', $validated['idacara'])
+            ->where(fn ($q) => $q->where('status', true)->orWhereNull('status'))
+            ->first();
+
+        if (! $acara) {
+            return $this->jsonResponse(404, 'Acara tidak ditemukan.');
+        }
+
+        if ($acara->has_child || $acara->opsi_pilih !== '2') {
+            return $this->jsonResponse(422, $acara->opsi_pilih === '3'
+                ? 'Acara wajib terdaftar otomatis, tidak perlu didaftarkan manual.'
+                : 'Acara ini tidak bisa dipilih.');
+        }
+
+        $sudahTerdaftar = DB::table('peserta_acara')
+            ->where('idpeserta', $peserta->idpeserta)
+            ->where('idacara', $acara->idacara)
+            ->exists();
+
+        if ($sudahTerdaftar) {
+            return $this->jsonResponse(409, 'Peserta sudah terdaftar di acara ini.');
+        }
+
+        $acaraBentrok = $this->acaraBentrok($peserta->idpeserta, $acara);
+
+        if ($acaraBentrok) {
+            $jamBentrok = $acaraBentrok->jam_mulai && $acaraBentrok->jam_akhir
+                ? substr($acaraBentrok->jam_mulai, 0, 5).'–'.substr($acaraBentrok->jam_akhir, 0, 5)
+                : '-';
+
+            return $this->jsonResponse(409, "Bentrok dengan acara yang sudah dipilih: {$acaraBentrok->tema} (Hari {$acaraBentrok->hari_ke}, {$jamBentrok}).");
+        }
+
+        DB::table('peserta_acara')->insert([
+            'idpeserta' => $peserta->idpeserta,
+            'idacara' => $acara->idacara,
+        ]);
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Mendaftar acara: {$acara->tema}");
+
+        return $this->jsonResponse(200, 'Berhasil didaftarkan ke acara ini.');
+    }
+
+    /**
+     * Unregister any peserta from an acara — same rules as
+     * PesertaController::batalAcara() (not scoped to one institusi).
+     */
+    public function batalAcara(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $pesertaAcara = DB::table('peserta_acara')
+            ->where('idpeserta', $peserta->idpeserta)
+            ->where('idacara', $validated['idacara'])
+            ->first();
+
+        if (! $pesertaAcara) {
+            return $this->jsonResponse(404, 'Peserta belum terdaftar di acara ini.');
+        }
+
+        $acara = DB::table('acara')->where('idacara', $validated['idacara'])->first();
+
+        if ($acara && $acara->opsi_pilih === '3') {
+            return $this->jsonResponse(422, 'Acara wajib tidak bisa dibatalkan.');
+        }
+
+        DB::table('peserta_acara')->where('idpeserta_acara', $pesertaAcara->idpeserta_acara)->delete();
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Membatalkan pendaftaran acara: '.($acara->tema ?? '-'));
+
+        return $this->jsonResponse(200, 'Pendaftaran acara berhasil dibatalkan.');
+    }
+
+    /**
      * Find a peserta by idpeserta across every institusi — Admin isn't scoped to
      * one kontingen the way a peserta is.
      */

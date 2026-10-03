@@ -15,7 +15,7 @@ return new class extends Migration
             $table->increments('idnarasumber_acara');
             $table->unsignedBigInteger('idacara')->nullable();
             $table->unsignedInteger('idnarasumber')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->nullable()->default(true);
 
             $table->foreign('idacara')->references('idacara')->on('acara');
             $table->foreign('idnarasumber')->references('idnarasumber')->on('narasumber');

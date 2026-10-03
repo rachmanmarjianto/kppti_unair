@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('password')->nullable();
             $table->unsignedInteger('idinstitusi_asal')->nullable();
             $table->timestamp('created_at')->nullable();
-            $table->boolean('is_deleted')->default(false);
+            $table->boolean('is_deleted')->nullable()->default(false);
 
             $table->foreign('idinstitusi_asal')->references('idinstitusi_asal')->on('institusi_asal');
         });

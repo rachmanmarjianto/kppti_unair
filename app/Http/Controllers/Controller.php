@@ -394,4 +394,31 @@ class Controller extends BaseController
             ->setPaper('a5', 'portrait')
             ->download('kartu-registrasi-kontingen-'.$institusi->kode_kontingen.'.pdf');
     }
+
+    /**
+     * The first acara already registered for $idpeserta whose hari_ke matches
+     * $acaraBaru and whose jam range overlaps it. Rows with a null hari_ke or
+     * null jam on either side are never considered a conflict (the overlap
+     * can't be determined), see docs/features/010-peserta-pilih-acara.md §5.
+     * Shared by PesertaController (own kontingen) and PesertaAdminController
+     * (any peserta, used when admin manages acara choices on a peserta's
+     * behalf after registration has closed).
+     */
+    protected function acaraBentrok(int $idpeserta, object $acaraBaru): ?object
+    {
+        if (! $acaraBaru->hari_ke || ! $acaraBaru->jam_mulai || ! $acaraBaru->jam_akhir) {
+            return null;
+        }
+
+        return DB::table('peserta_acara as pa')
+            ->join('acara as a', 'a.idacara', '=', 'pa.idacara')
+            ->where('pa.idpeserta', $idpeserta)
+            ->where('a.hari_ke', $acaraBaru->hari_ke)
+            ->whereNotNull('a.jam_mulai')
+            ->whereNotNull('a.jam_akhir')
+            ->where('a.jam_mulai', '<', $acaraBaru->jam_akhir)
+            ->where('a.jam_akhir', '>', $acaraBaru->jam_mulai)
+            ->select('a.tema', 'a.hari_ke', 'a.jam_mulai', 'a.jam_akhir')
+            ->first();
+    }
 }

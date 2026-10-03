@@ -92,10 +92,10 @@
                     <table class="table table-hover table-bordered" style="width:100%">
                         <thead>
                             <tr>
-                                <th>Tema</th>
-                                <th>Ruang</th>
                                 <th>Hari</th>
                                 <th>Jam</th>
+                                <th>Tema</th>
+                                <th>Ruang</th>
                                 <th>Opsi Pilih</th>
                                 <th>Peserta Mengikuti</th>
                             </tr>
@@ -103,10 +103,10 @@
                         @forelse ($acaraList as $acara)
                             <tbody>
                                 <tr>
-                                    <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
-                                    <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>
                                     <td>{{ $acara->hari_ke ?? '-' }}</td>
                                     <td>{{ $acara->children->isNotEmpty() ? '-' : ($acara->jam_mulai ? substr($acara->jam_mulai, 0, 5).' - '.substr($acara->jam_akhir, 0, 5) : '-') }}</td>
+                                    <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
+                                    <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>
                                     <td>
                                         @if(in_array($acara->opsi_pilih, ['2', '3'], true))
                                             @include('admin.partials.opsi-pilih-badge', ['opsi' => $acara->opsi_pilih])
@@ -129,10 +129,10 @@
                                 <tbody>
                                     @foreach ($acara->children as $anak)
                                         <tr class="baris-sub-acara">
-                                            <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
-                                            <td>{{ $anak->ruang ?? '-' }}</td>
                                             <td>{{ $anak->hari_ke ?? '-' }}</td>
                                             <td>{{ $anak->jam_mulai ? substr($anak->jam_mulai, 0, 5).' - '.substr($anak->jam_akhir, 0, 5) : '-' }}</td>
+                                            <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
+                                            <td>{{ $anak->ruang ?? '-' }}</td>
                                             <td>
                                                 @if(in_array($anak->opsi_pilih, ['2', '3'], true))
                                                     @include('admin.partials.opsi-pilih-badge', ['opsi' => $anak->opsi_pilih])
