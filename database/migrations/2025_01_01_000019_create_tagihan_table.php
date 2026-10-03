@@ -24,7 +24,6 @@ return new class extends Migration
             $table->char('va_status', 1)->nullable()->comment('1: aktif; 2: non aktif');
             $table->unsignedInteger('idpameran')->nullable();
 
-            $table->foreign('idinstitusi_asal')->references('idinstitusi_asal')->on('institusi_asal');
             $table->foreign('idpameran')->references('idpameran')->on('pameran');
         });
     }

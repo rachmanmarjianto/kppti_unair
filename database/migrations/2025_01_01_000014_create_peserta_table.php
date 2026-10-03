@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('tanggal_kepulangan')->nullable();
             $table->time('jam_kepulangan', 6)->nullable();
             $table->string('nama_hotel')->nullable();
-            $table->boolean('city_tour')->default(false);
+            $table->boolean('city_tour')->nullable()->default(false);
             $table->unsignedInteger('idpengguna')->nullable();
             $table->unsignedInteger('idjabatan')->nullable();
 

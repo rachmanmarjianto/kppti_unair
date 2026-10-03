@@ -24,6 +24,10 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-peserta/detail', [PesertaAdminController::class, 'detailPeserta'])->name('admin.peserta.detail');
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
+    Route::get('/admin-peserta/acara', [PesertaAdminController::class, 'acara'])->name('admin.peserta.acara');
+    Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');
+    Route::post('/admin-peserta/acara/daftar', [PesertaAdminController::class, 'daftarAcara'])->name('admin.peserta.acara.daftar');
+    Route::post('/admin-peserta/acara/batal', [PesertaAdminController::class, 'batalAcara'])->name('admin.peserta.acara.batal');
     Route::get('/nara-sumber', [AdminController::class, 'narasumber'])->name('admin.nara-sumber');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');

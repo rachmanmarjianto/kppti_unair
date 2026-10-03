@@ -67,9 +67,31 @@ View baru `resources/views/jadwal-tertutup.blade.php` — halaman mandiri (bukan
 - View baru `resources/views/admin/jadwal-penting.blade.php` — tabel 3 baris tetap (bukan accordion), tiap baris menampilkan `mode`, waktu buka/tutup, dan **badge status saat ini (Terbuka/Tertutup)** dihitung langsung di Blade dengan logika yang sama persis seperti `JadwalPentingMiddleware::sedangBuka()`, supaya admin langsung melihat efek perubahannya. Modal edit per baris (pola `$.ajax` + SweetAlert2 + `jsonResponse()`, sama seperti `admin/acara.blade.php`).
 - Menu sidebar baru "Jadwal Penting" di `resources/views/layout/menu_admin.blade.php`, sejajar menu "Acara".
 
-## 8. Di luar cakupan
+## 8. Gerbang kedua: kunci **pilihan acara** setelah `timestamp_tutup` (revisi kedua — cakupan dipersempit)
+
+Gerbang registrasi (§4) hanya mengatur **pendaftaran peserta baru**. Developer menambahkan syarat kedua: begitu **waktu sekarang ≥ `timestamp_tutup`** (jadwal id=1, Registrasi Peserta), peserta yang **sudah terdaftar** tidak boleh lagi mengubah **pilihan acaranya**.
+
+**Revisi developer**: cakupan awalnya sempat mencakup data kontingen juga (institusi, tambah/update peserta, logistik, foto), lalu **dipersempit hanya ke pilihan acara** — data peserta secara umum tetap boleh diubah kapan saja, tidak ikut dikunci. Alasannya: tujuan gerbang ini adalah **alokasi konsumsi di ruangan** (jumlah peserta per acara perlu final untuk perencanaan konsumsi/logistik ruangan), bukan membekukan seluruh data kontingen.
+
+Ini **beda logika** dari gerbang registrasi: gerbang registrasi menolak kalau **belum dibuka atau sudah ditutup** (dua sisi); gerbang ini **hanya** peduli "sudah lewat tutup" — sisi "belum dibuka" tidak relevan karena mustahil ada peserta terdaftar sebelum registrasi pernah dibuka.
+
+- `JadwalPentingMiddleware::handle()` menerima parameter ke-2 opsional `$syarat` (`'buka'` default, atau `'tutup'`). Saat `$syarat='tutup'`, middleware memanggil `belumTutup()` (bukan `sedangBuka()`): `mode='2'` tetap selalu lolos; `mode='1'` lolos selama `now() < timestamp_tutup` (null `timestamp_tutup` = tidak ada batas, selalu lolos).
+- Dipasang di `routes/peserta.php` sebagai `jadwalPenting:1,tutup`, membungkus **hanya 2 rute**: `peserta.sekontingen.acara.daftar` dan `peserta.sekontingen.acara.batal`. Rute data kontingen lain (`peserta.institusi.update`, `peserta.sekontingen.tambah`, `peserta.sekontingen.update`, `peserta.sekontingen.logistik.update`, `peserta.sekontingen.foto.update`, `peserta.sekontingen.reset-password`) **tidak** digerbangi — tetap bisa diubah kapan saja.
+- Rute yang digerbangi di sini adalah endpoint `$.ajax`/POST, jadi responsnya selalu JSON 403 (`{"code":403,"message":"Periode registrasi sudah ditutup. Data peserta dan pilihan acara tidak bisa diubah lagi."}`) — tidak pernah jatuh ke render halaman `jadwal-tertutup.blade.php` (itu hanya relevan untuk gerbang registrasi di §4/§5 yang punya halaman GET).
+
+## 9. Jalur admin: tetap bisa mengubah pilihan acara peserta setelah tutup
+
+**Jaga-jaga untuk hari pelaksanaan**: kalau ada peserta yang perlu mengubah pilihan acaranya setelah §8 mengunci rute `peserta.sekontingen.acara.*`, admin bisa melayani lewat jalur terpisah:
+
+- Menu baru "Acara" di bawah "Users" (`resources/views/layout/menu_admin.blade.php`) → `admin.peserta.acara` (daftar semua peserta lintas institusi, dikelompokkan jenis institusi → institusi, tombol "Pilih Acara" per baris) → `admin.peserta.pilih-acara` (halaman sama persis seperti `peserta/pilih-acara.blade.php`: checkbox wajib terkunci, badge opsi-pilih, validasi bentrok) → AJAX ke `admin.peserta.acara.daftar`/`.batal`.
+- Method-method ini (`PesertaAdminController::acara()`/`pilihAcara()`/`daftarAcara()`/`batalAcara()`) **menduplikasi logika persis** dari `PesertaController` yang sepadan, cuma ganti pencarian peserta dari `findPesertaInOwnInstitusi()` (scoped sekontingen) ke `findPesertaById()` (lintas institusi, sudah ada sejak F16) — pola duplikasi yang sama seperti method admin lain di controller ini.
+- **Rute ini hidup di grup `akses:1`, terpisah total dari grup `akses:2` milik peserta** — jadi secara struktural **tidak pernah** digerbangi `jadwalPenting:1,tutup` (middleware itu cuma dipasang di `routes/peserta.php`). Tidak perlu logika bypass khusus; admin otomatis bisa akses kapan pun, sebelum maupun sesudah tutup.
+- **Dikonfirmasi developer**: cakupan jalur admin ini **hanya untuk pilihan acara** — admin belum bisa mengedit data umum peserta (nama/email/jabatan/logistik/foto) lewat jalur ini.
+- `acaraBentrok()` (validasi bentrok jadwal) dipindah dari `PesertaController` (privat) ke base `Controller.php` (`protected`) supaya dipakai bareng kedua controller tanpa duplikasi logika pengecekan bentrok itu sendiri.
+
+## 10. Di luar cakupan
 
 - Gerbang sungguhan untuk Pengajuan Narasumber (F05)/Pengajuan Pameran (F07) — fiturnya sendiri belum dibangun, baris datanya sudah disiapkan tapi middleware-nya belum dipasang di rute manapun.
-- Login/akses existing user tidak digerbang oleh fitur ini — hanya proses pendaftaran baru yang dibatasi.
+- Login/akses existing user tidak digerbang oleh fitur ini — hanya proses pendaftaran baru dan perubahan data peserta/acara yang dibatasi.
 
 Dokumen ini siap dijadikan acuan implementasi.

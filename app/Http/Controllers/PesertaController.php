@@ -950,30 +950,6 @@ class PesertaController extends Controller
     }
 
     /**
-     * The first acara already registered for $idpeserta whose hari_ke matches
-     * $acaraBaru and whose jam range overlaps it. Rows with a null hari_ke or
-     * null jam on either side are never considered a conflict (the overlap
-     * can't be determined), see docs/features/010-peserta-pilih-acara.md §5.
-     */
-    private function acaraBentrok(int $idpeserta, object $acaraBaru): ?object
-    {
-        if (! $acaraBaru->hari_ke || ! $acaraBaru->jam_mulai || ! $acaraBaru->jam_akhir) {
-            return null;
-        }
-
-        return DB::table('peserta_acara as pa')
-            ->join('acara as a', 'a.idacara', '=', 'pa.idacara')
-            ->where('pa.idpeserta', $idpeserta)
-            ->where('a.hari_ke', $acaraBaru->hari_ke)
-            ->whereNotNull('a.jam_mulai')
-            ->whereNotNull('a.jam_akhir')
-            ->where('a.jam_mulai', '<', $acaraBaru->jam_akhir)
-            ->where('a.jam_akhir', '>', $acaraBaru->jam_mulai)
-            ->select('a.tema', 'a.hari_ke', 'a.jam_mulai', 'a.jam_akhir')
-            ->first();
-    }
-
-    /**
      * Re-encode an uploaded photo into exactly 600×800 JPEG (3:4 portrait),
      * compressed to fit Hikvision's documented 40–200 KB range, and store it
      * on the private `local` disk under `foto-peserta/`. Returns the stored

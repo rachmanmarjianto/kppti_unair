@@ -12,7 +12,7 @@ return new class extends Migration
             $table->increments('idrole_pengguna');
             $table->unsignedInteger('idpengguna')->nullable();
             $table->unsignedInteger('idrole')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status')->nullable()->default(true);
 
             $table->foreign('idpengguna')->references('idpengguna')->on('pengguna');
             $table->foreign('idrole')->references('idrole')->on('role');

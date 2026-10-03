@@ -19,6 +19,13 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/peserta-sekontingen/foto/update', [PesertaController::class, 'updateFoto'])->name('peserta.sekontingen.foto.update');
     Route::get('/peserta-acara', [PesertaController::class, 'acara'])->name('peserta.acara');
     Route::get('/peserta-sekontingen/acara', [PesertaController::class, 'pilihAcara'])->name('peserta.sekontingen.acara');
-    Route::post('/peserta-sekontingen/acara/daftar', [PesertaController::class, 'daftarAcara'])->name('peserta.sekontingen.acara.daftar');
-    Route::post('/peserta-sekontingen/acara/batal', [PesertaController::class, 'batalAcara'])->name('peserta.sekontingen.acara.batal');
+
+    // Hanya pilihan acara yang dikunci begitu timestamp_tutup jadwal_penting
+    // id=1 (Registrasi Peserta) terlewati — tujuannya alokasi konsumsi di
+    // ruangan, bukan data peserta secara umum (yang tetap boleh diubah kapan
+    // saja). Lihat docs/features/017-portal-registrasi-peserta.md.
+    Route::middleware(['jadwalPenting:1,tutup'])->group(function () {
+        Route::post('/peserta-sekontingen/acara/daftar', [PesertaController::class, 'daftarAcara'])->name('peserta.sekontingen.acara.daftar');
+        Route::post('/peserta-sekontingen/acara/batal', [PesertaController::class, 'batalAcara'])->name('peserta.sekontingen.acara.batal');
+    });
 });

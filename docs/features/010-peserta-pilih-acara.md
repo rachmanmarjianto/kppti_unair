@@ -69,13 +69,19 @@ Dikonfirmasi lewat data acara yang sudah ada (lihat hasil `php artisan tinker` s
 - **Node yang bisa dipilih** (§6): hanya acara tanpa anak (`has_child = false`) dengan `opsi_pilih` 2/3; dikonfirmasi empiris payung selalu `opsi_pilih = 1`.
 - **Acara wajib** (§7): otomatis terdaftar saat peserta dibuat, checkbox terkunci, tidak bisa dibatalkan.
 
-## 9. Di luar cakupan (out of scope)
+## 9. Kunci setelah tutup registrasi, dan jalur admin (revisi, bagian dari F17)
+
+**Revisi**: ternyata ada batas waktu — begitu `timestamp_tutup` jadwal "Registrasi Peserta" (`jadwal_penting` id=1) terlewati, `peserta.sekontingen.acara.daftar`/`.batal` ikut dikunci lewat middleware `jadwalPenting:1,tutup` (lihat `docs/features/017-portal-registrasi-peserta.md` §8) — peserta **tidak bisa lagi** mengubah pilihan acaranya sendiri setelah itu.
+
+**Jalur admin tetap terbuka** untuk kebutuhan di hari pelaksanaan: `PesertaAdminController::pilihAcara()`/`daftarAcara()`/`batalAcara()` (rute `admin.peserta.acara.*`, menu "Acara" di bawah "Users") memakai logika **persis sama** (checkbox wajib terkunci, validasi bentrok, dsb.) tapi lewat rute `akses:1` yang terpisah dari grup `akses:2` milik peserta — jadi **tidak pernah** digerbangi `jadwalPenting:1,tutup`. Validasi bentrok (`acaraBentrok()`) dipindah jadi `protected` di base `Controller.php` supaya dipakai bareng kedua controller.
+
+## 10. Di luar cakupan (out of scope)
 
 - **Tidak mengubah definisi "data lengkap"** yang menggerbangi cetak kartu kontingen (F11/F16) — pemilihan acara **tidak** jadi syarat tambahan untuk kartu registrasi di versi ini.
-- **Tidak ada batas waktu/pengisian terkunci** untuk acara opsional — peserta bisa ubah pilihan kapan saja, tidak ada tanggal cutoff di versi ini.
 - **Tidak ada dashboard/rekap admin** terkait jumlah peserta per acara di fitur ini (bisa jadi bagian F13 kalau dibutuhkan nanti).
 - **Tidak ada ekspor jadwal pribadi** (PDF/cetak) — di luar cakupan F10, bisa jadi bagian F15 kalau dibutuhkan nanti.
 - **Tidak menghubungkan auto-registrasi ke pembuatan acara wajib baru** (F09) — lihat keterbatasan di §7.
+- **Admin belum bisa mengedit data umum peserta** (nama/email/jabatan/logistik/foto) setelah tutup — jalur admin di §9 cuma untuk pilihan acara, bukan data umum (dikonfirmasi developer, bisa jadi permintaan terpisah nanti).
 
 ## 10. Implementasi (gambaran teknis)
 

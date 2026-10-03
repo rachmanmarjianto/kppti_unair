@@ -11,18 +11,28 @@ class JadwalPentingMiddleware
 {
     /**
      * Gate access to a scheduled process based on the `jadwal_penting` master
-     * table (see docs/features/017-portal-registrasi-peserta.md). Mode '2'
-     * (open) always passes; mode '1' (auto) only passes while now() is within
-     * [timestamp_buka, timestamp_tutup] (either bound may be null, meaning no
-     * limit on that side). A missing row fails closed.
+     * table (see docs/features/017-portal-registrasi-peserta.md).
+     *
+     * `$syarat`:
+     * - 'buka' (default) — passes only while currently open (see
+     *   `sedangBuka()`), used to gate the registration flow itself.
+     * - 'tutup' — passes until `timestamp_tutup` is reached (ignores
+     *   `timestamp_buka`), used to lock peserta's own data/acara edits once
+     *   the registration period has closed — "not yet open" is irrelevant
+     *   here since no peserta could exist before registration opened.
+     *
+     * Mode '2' (open) always passes for either `$syarat`. A missing row
+     * fails closed.
      *
      * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next, string $idJadwalPenting): Response
+    public function handle(Request $request, Closure $next, string $idJadwalPenting, string $syarat = 'buka'): Response
     {
         $jadwal = DB::table('jadwal_penting')->where('idjadwal_penting', $idJadwalPenting)->first();
 
-        if ($this->sedangBuka($jadwal)) {
+        $lolos = $syarat === 'tutup' ? $this->belumTutup($jadwal) : $this->sedangBuka($jadwal);
+
+        if ($lolos) {
             return $next($request);
         }
 
@@ -30,7 +40,9 @@ class JadwalPentingMiddleware
             return response()->json([
                 'code' => 403,
                 'status' => 'Forbidden',
-                'message' => 'Sesi ini sedang ditutup.',
+                'message' => $syarat === 'tutup'
+                    ? 'Periode registrasi sudah ditutup. Data peserta dan pilihan acara tidak bisa diubah lagi.'
+                    : 'Sesi ini sedang ditutup.',
                 'data' => null,
             ], 403);
         }
@@ -59,5 +71,18 @@ class JadwalPentingMiddleware
         }
 
         return true;
+    }
+
+    private function belumTutup(?object $jadwal): bool
+    {
+        if (! $jadwal) {
+            return false;
+        }
+
+        if ($jadwal->mode === '2') {
+            return true;
+        }
+
+        return ! ($jadwal->timestamp_tutup && now()->gte($jadwal->timestamp_tutup));
     }
 }

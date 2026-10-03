@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('aktifitas', 2000)->nullable();
             $table->unsignedBigInteger('idpeserta')->nullable();
 
-            $table->foreign('done_by')->references('idpengguna')->on('pengguna');
             $table->foreign('idpeserta')->references('idpeserta')->on('peserta');
         });
     }
