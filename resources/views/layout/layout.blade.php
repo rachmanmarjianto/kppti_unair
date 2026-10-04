@@ -237,6 +237,8 @@
             @include('layout.menu_admin')
         @elseif(session('userdata')['idrole_aktif'] == 2)
             @include('layout.menu_peserta')
+        @elseif(session('userdata')['idrole_aktif'] == 4)
+            @include('layout.menu_sc')
         @endif
         
         <!--  BEGIN CONTENT AREA  -->

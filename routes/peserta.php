@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\PameranController;
 use App\Http\Controllers\PesertaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['akses:2'])->group(function () {
     Route::get('/home-peserta', [PesertaController::class, 'home'])->name('peserta.home');
+    Route::get('/pameran', [PameranController::class, 'index'])->name('peserta.pameran');
+    Route::post('/pameran/simpan-draft', [PameranController::class, 'simpanDraft'])->name('peserta.pameran.simpan-draft');
+    Route::post('/pameran/ajukan', [PameranController::class, 'ajukan'])->name('peserta.pameran.ajukan');
+    Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');

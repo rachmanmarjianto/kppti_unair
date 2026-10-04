@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'akses' => AksesMiddleware::class,
             'jadwalPenting' => JadwalPentingMiddleware::class,
         ]);
+
+        // Webhook publik dari BNI — tidak membawa CSRF token Laravel.
+        $middleware->validateCsrfTokens(except: [
+            'callback/bni-va',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
