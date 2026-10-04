@@ -12,7 +12,6 @@ class PenggunaController extends Controller
 {
     public function registrasi()
     {
-        dd(config('services.h2h.user'), config('services.h2h.key'));
         $jenisInstitusi = DB::table('jenis_institusi')->orderBy('idjenis_institusi')->get();
         $lldikti = DB::table('lldikti')->orderBy('nomor_lldikti')->get();
 
