@@ -919,10 +919,12 @@
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
                     .done(function (res) {
+                        console.log('OTP sent:', res);
                         setWaHint(res.message || 'Kode OTP telah dikirim ke WhatsApp Anda.', 'text-success');
                     })
                     .fail(function (xhr) {
                         const res = xhr.responseJSON || {};
+                        console.error('Error sending OTP:', res);
                         let pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
 
                         if (xhr.status === 0) {

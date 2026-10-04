@@ -4,6 +4,7 @@ use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\JadwalPentingController;
 use App\Http\Controllers\PesertaAdminController;
+use App\Http\Controllers\TagihanPameranController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['akses:1'])->group(function () {
@@ -31,4 +32,6 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/nara-sumber', [AdminController::class, 'narasumber'])->name('admin.nara-sumber');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
+    Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');
+    Route::post('/admin-tagihan-pameran/tandai-lunas', [TagihanPameranController::class, 'tandaiLunas'])->name('admin.tagihan-pameran.tandai-lunas');
 });
