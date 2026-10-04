@@ -96,14 +96,15 @@ class LoginController extends Controller
     }
 
     /**
-     * Redirect targets per active role. Role 1 (Admin) and 2 (Peserta) have a home page;
-     * roles 3 (Nara Sumber) and 4 (SC) don't have an area built yet.
+     * Redirect targets per active role. Role 3 (Nara Sumber) doesn't have an
+     * area built yet.
      *
      * @var array<int, string>
      */
     private const HOME_BY_ROLE = [
         1 => '/home_admin',
         2 => '/home-peserta',
+        4 => '/sc/pameran',
     ];
 
     protected function sendLoginResponse(Request $request)

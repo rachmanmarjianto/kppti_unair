@@ -421,4 +421,113 @@ class Controller extends BaseController
             ->select('a.tema', 'a.hari_ke', 'a.jam_mulai', 'a.jam_akhir')
             ->first();
     }
+
+    /**
+     * Find a peserta by idpeserta, but only if they belong to $idInstitusiAsal —
+     * used to enforce that a peserta may only view/edit peserta (or be chosen
+     * as PIC for a pameran submission) from their own kontingen.
+     */
+    protected function findPesertaInOwnInstitusi(int $idpeserta, int $idInstitusiAsal): ?object
+    {
+        return DB::table('pengguna as p')
+            ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+            ->where('pe.idpeserta', $idpeserta)
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->where('p.is_deleted', false)
+            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'pe.idjabatan')
+            ->first();
+    }
+
+    /**
+     * Reduce WYSIWYG (Quill) output down to a safe formatting-only HTML
+     * subset before it's stored. The hidden form field a WYSIWYG editor
+     * writes into can be edited directly (devtools/Postman) bypassing the
+     * toolbar entirely, so the toolbar is not a security boundary — this is
+     * the actual guard against stored XSS, since the saved value is later
+     * rendered unescaped (`{!! !!}`) back to other users (SC/admin).
+     */
+    protected function sanitizeRichText(?string $html): ?string
+    {
+        if ($html === null || trim($html) === '') {
+            return $html;
+        }
+
+        $tagDiizinkan = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'a'];
+        $tagDihapusTotal = ['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'svg', 'form', 'input', 'button', 'textarea', 'select', 'option', 'img', 'video', 'audio', 'source', 'link', 'meta'];
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?><div>'.$html.'</div>', LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $container = $dom->getElementsByTagName('div')->item(0);
+
+        if (! $container) {
+            return '';
+        }
+
+        $this->bersihkanNodeHtml($container, $tagDiizinkan, $tagDihapusTotal);
+
+        $hasil = '';
+        foreach (iterator_to_array($container->childNodes) as $child) {
+            $hasil .= $dom->saveHTML($child);
+        }
+
+        return trim($hasil);
+    }
+
+    /**
+     * @param  string[]  $tagDiizinkan
+     * @param  string[]  $tagDihapusTotal
+     */
+    private function bersihkanNodeHtml(\DOMNode $node, array $tagDiizinkan, array $tagDihapusTotal): void
+    {
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                $node->removeChild($child);
+
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, $tagDihapusTotal, true)) {
+                $node->removeChild($child);
+
+                continue;
+            }
+
+            // Bersihkan anak-anaknya dulu sebelum memutuskan nasib tag ini sendiri,
+            // supaya konten yang dipromosikan saat unwrap juga sudah bersih.
+            $this->bersihkanNodeHtml($child, $tagDiizinkan, $tagDihapusTotal);
+
+            if (! in_array($tag, $tagDiizinkan, true)) {
+                while ($child->firstChild) {
+                    $node->insertBefore($child->firstChild, $child);
+                }
+                $node->removeChild($child);
+
+                continue;
+            }
+
+            foreach (iterator_to_array($child->attributes ?? []) as $attr) {
+                if ($tag === 'a' && $attr->name === 'href' && $this->hrefAman($attr->value)) {
+                    continue;
+                }
+
+                $child->removeAttribute($attr->name);
+            }
+        }
+    }
+
+    private function hrefAman(string $href): bool
+    {
+        $href = trim($href);
+
+        return (bool) preg_match('/^(https?:|mailto:)/i', $href) || str_starts_with($href, '/') || str_starts_with($href, '#');
+    }
 }

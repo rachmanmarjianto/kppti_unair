@@ -74,6 +74,9 @@
                             <li @if($submenu == 'nara_sumber') class="active" @endif>
                                 <a href="{{ route('admin.nara-sumber') }}"> Nara Sumber </a>
                             </li>
+                            <li @if($submenu == 'tagihan-pameran') class="active" @endif>
+                                <a href="{{ route('admin.tagihan-pameran') }}"> Tagihan Pameran </a>
+                            </li>
                         </ul>
                     </li>
 

@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BniCallbackController;
 use App\Http\Controllers\PenggunaController;
 use Illuminate\Support\Facades\Route;
 
 include_once 'admin.php';
 include_once 'peserta.php';
+include_once 'sc.php';
 
 // Route::get('/', function () {
 //     return view('blank_page');
@@ -33,3 +35,6 @@ Route::middleware(['akses:All'])->group(function () {
     Route::get('/profile', [PenggunaController::class, 'profile'])->name('profile');
     Route::post('/profile/password', [PenggunaController::class, 'updatePassword'])->name('profile.password.update');
 });
+
+// Webhook publik dari BNI — tidak ada sesi, tidak digerbangi middleware akses.
+Route::post('/callback/bni-va', [BniCallbackController::class, 'handle'])->name('callback.bni-va');

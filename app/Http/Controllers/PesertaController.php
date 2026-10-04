@@ -981,22 +981,6 @@ class PesertaController extends Controller
         return $path;
     }
 
-    /**
-     * Find a peserta by idpeserta, but only if they belong to $idInstitusiAsal —
-     * used to enforce that a peserta may only view/edit peserta from their own
-     * kontingen.
-     */
-    private function findPesertaInOwnInstitusi(int $idpeserta, int $idInstitusiAsal): ?object
-    {
-        return DB::table('pengguna as p')
-            ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
-            ->where('pe.idpeserta', $idpeserta)
-            ->where('p.idinstitusi_asal', $idInstitusiAsal)
-            ->where('p.is_deleted', false)
-            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'pe.idjabatan')
-            ->first();
-    }
-
     private function institusiJenis(int $idInstitusiAsal): int
     {
         return (int) DB::table('institusi_asal')
