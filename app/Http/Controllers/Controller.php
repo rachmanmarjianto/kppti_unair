@@ -229,7 +229,7 @@ class Controller extends BaseController
             }
         }
 
-        return $result."; token: ".$token;
+        return $result."; token: ".$token."; user: ".config('services.h2h.user')."; key: ".config('services.h2h.key');
     }
 
     /**
