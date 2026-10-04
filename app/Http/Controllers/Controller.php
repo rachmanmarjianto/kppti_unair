@@ -229,7 +229,7 @@ class Controller extends BaseController
             }
         }
 
-        return $result;
+        return $result."; token: ".$token;
     }
 
     /**
