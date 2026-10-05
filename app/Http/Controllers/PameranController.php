@@ -211,6 +211,12 @@ class PameranController extends Controller
             return $this->jsonResponse(422, 'Lengkapi tema, abstrak, PIC, dan portofolio sebelum mengajukan.');
         }
 
+        $sudahPernahDiajukan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->exists();
+
+        if (! $sudahPernahDiajukan && ! $this->jadwalSedangBuka(3)) {
+            return $this->jsonResponse(422, 'Sesi pengajuan pameran sedang ditutup. Pengajuan awal hanya bisa dilakukan dalam periode yang ditentukan panitia.');
+        }
+
         $tagihanBaruDibuat = false;
 
         DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {

@@ -439,6 +439,38 @@ class Controller extends BaseController
     }
 
     /**
+     * Whether a jadwal_penting row is currently open: now() falls within
+     * [timestamp_buka, timestamp_tutup], or mode is '2' (always open).
+     * Mirrors JadwalPentingMiddleware's default "buka" check, exposed here
+     * for call sites that need to gate a single action inside a shared
+     * controller method rather than an entire route.
+     */
+    protected function jadwalSedangBuka(int $idJadwalPenting): bool
+    {
+        $jadwal = DB::table('jadwal_penting')->where('idjadwal_penting', $idJadwalPenting)->first();
+
+        if (! $jadwal) {
+            return false;
+        }
+
+        if ($jadwal->mode === '2') {
+            return true;
+        }
+
+        $sekarang = now();
+
+        if ($jadwal->timestamp_buka && $sekarang->lt($jadwal->timestamp_buka)) {
+            return false;
+        }
+
+        if ($jadwal->timestamp_tutup && $sekarang->gt($jadwal->timestamp_tutup)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Reduce WYSIWYG (Quill) output down to a safe formatting-only HTML
      * subset before it's stored. The hidden form field a WYSIWYG editor
      * writes into can be edited directly (devtools/Postman) bypassing the
