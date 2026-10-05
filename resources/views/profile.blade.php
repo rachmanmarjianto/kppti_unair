@@ -51,6 +51,32 @@
                     </div>
                 </div>
             </div>
+
+            <div class="widget-content-area p-4 mt-4">
+                <h3>Role Saya</h3>
+
+                <div class="alert d-none mb-3" id="alertRole" role="alert"></div>
+
+                <ul class="list-group mt-3" id="listRole">
+                    @foreach ($rolePengguna as $r)
+                        <li class="list-group-item d-flex justify-content-between align-items-center" data-idrole="{{ $r->idrole }}">
+                            <span>
+                                {{ $r->nama_role }}
+                                @if ($r->status)
+                                    <span class="badge bg-success">Aktif</span>
+                                @else
+                                    <span class="badge bg-secondary">Tidak Aktif</span>
+                                @endif
+                            </span>
+                            @if (! $r->status)
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-jadikan-aktif" data-idrole="{{ $r->idrole }}">
+                                    <span class="btn-label">Jadikan Aktif</span>
+                                </button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
 
         <div class="col-lg-8 col-md-12 layout-spacing">
@@ -98,7 +124,54 @@
 @endsection
 
 @section('page-js')
+    <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+
     <script>
+        (function () {
+            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+            var ubahRoleAktifUrl = '{{ route('profile.role.aktifkan') }}';
+            var $alert = $('#alertRole');
+
+            function hideAlert() {
+                $alert.addClass('d-none').removeClass('alert-success alert-danger').text('');
+            }
+
+            function showAlert(jenis, pesan) {
+                $alert.removeClass('d-none alert-success alert-danger').addClass('alert-' + jenis).text(pesan);
+            }
+
+            $('#listRole').on('click', '.btn-jadikan-aktif', function () {
+                var $btn = $(this);
+                var idrole = $btn.data('idrole');
+                var labelAsli = $btn.find('.btn-label').html();
+
+                hideAlert();
+                $btn.prop('disabled', true);
+                $btn.find('.btn-label').html('<i class="fa-solid fa-spinner fa-spin"></i> Memproses...');
+
+                $.ajax({
+                    url: ubahRoleAktifUrl,
+                    method: 'POST',
+                    data: { idrole: idrole },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    window.location.href = res.data.redirect;
+                })
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    }
+                    showAlert('danger', pesan);
+                    $btn.prop('disabled', false);
+                    $btn.find('.btn-label').html(labelAsli);
+                });
+            });
+        })();
+
         (function () {
             const passwordInput = document.getElementById('password');
             const passwordConfirmationInput = document.getElementById('password_confirmation');

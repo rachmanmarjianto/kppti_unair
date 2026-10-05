@@ -28,6 +28,20 @@ class Controller extends BaseController
     private const ROLE_PESERTA = 2;
 
     /**
+     * Redirect target (route name) per active role. Role 3 (Nara Sumber)
+     * doesn't have an area built yet. Shared by LoginController (initial
+     * redirect after login) and PenggunaController (switching active role
+     * from the profile page).
+     *
+     * @var array<int, string>
+     */
+    protected const HOME_BY_ROLE = [
+        1 => 'admin.home',
+        2 => 'peserta.home',
+        4 => 'sc.pameran',
+    ];
+
+    /**
      * Standard JSON response shape for this app's AJAX endpoints:
      * `code` (HTTP status code), `status` (its text interpretation),
      * `message`, and `data` (the endpoint's payload, if any — null otherwise).
@@ -436,6 +450,54 @@ class Controller extends BaseController
             ->where('p.is_deleted', false)
             ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'pe.idjabatan')
             ->first();
+    }
+
+    /**
+     * Every role a pengguna holds (not just the active one), for the "Role"
+     * list shown on both the admin "Detail Pengguna" modal and the pengguna's
+     * own profile page.
+     *
+     * @return Collection<int, object>
+     */
+    protected function rolesForPengguna(int $idpengguna): Collection
+    {
+        return DB::table('role_pengguna as rp')
+            ->join('role as r', 'r.idrole', '=', 'rp.idrole')
+            ->where('rp.idpengguna', $idpengguna)
+            ->select('r.idrole', 'r.nama_role', 'rp.status')
+            ->orderBy('r.nama_role')
+            ->get();
+    }
+
+    /**
+     * Deactivate all of a pengguna's roles, then activate the given one — reactivating
+     * their existing row for it if one exists, or inserting a new row otherwise. Ensures
+     * a pengguna never ends up with more than one active role. Shared by AdminController
+     * (changing another pengguna's active role) and PenggunaController (a pengguna
+     * changing their own, from the profile page).
+     */
+    protected function activateSingleRole(int $idpengguna, int $idrole): void
+    {
+        DB::table('role_pengguna')
+            ->where('idpengguna', $idpengguna)
+            ->update(['status' => false]);
+
+        $existingRole = DB::table('role_pengguna')
+            ->where('idpengguna', $idpengguna)
+            ->where('idrole', $idrole)
+            ->first();
+
+        if ($existingRole) {
+            DB::table('role_pengguna')
+                ->where('idrole_pengguna', $existingRole->idrole_pengguna)
+                ->update(['status' => true]);
+        } else {
+            DB::table('role_pengguna')->insert([
+                'idpengguna' => $idpengguna,
+                'idrole' => $idrole,
+                'status' => true,
+            ]);
+        }
     }
 
     /**

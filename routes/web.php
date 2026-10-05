@@ -34,6 +34,7 @@ Route::middleware(['akses:All'])->group(function () {
     Route::get('/logout/', [LoginController::class, 'logout'])->name('logout');
     Route::get('/profile', [PenggunaController::class, 'profile'])->name('profile');
     Route::post('/profile/password', [PenggunaController::class, 'updatePassword'])->name('profile.password.update');
+    Route::post('/profile/role-aktif', [PenggunaController::class, 'ubahRoleAktif'])->name('profile.role.aktifkan');
 });
 
 // Webhook publik dari BNI — tidak ada sesi, tidak digerbangi middleware akses.

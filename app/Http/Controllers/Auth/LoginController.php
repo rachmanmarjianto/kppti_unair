@@ -95,18 +95,6 @@ class LoginController extends Controller
         ])->status(Response::HTTP_TOO_MANY_REQUESTS);
     }
 
-    /**
-     * Redirect targets per active role. Role 3 (Nara Sumber) doesn't have an
-     * area built yet.
-     *
-     * @var array<int, string>
-     */
-    private const HOME_BY_ROLE = [
-        1 => '/home_admin',
-        2 => '/home-peserta',
-        4 => '/sc/pameran',
-    ];
-
     protected function sendLoginResponse(Request $request)
     {
         $user = $request->user();
@@ -132,7 +120,7 @@ class LoginController extends Controller
         Auth::login($user);
         session(['userdata' => $user_session]);
 
-        return redirect()->intended(self::HOME_BY_ROLE[$user_session['idrole_aktif']])->with('success', 'Login successful!');
+        return redirect()->intended(route(self::HOME_BY_ROLE[$user_session['idrole_aktif']]))->with('success', 'Login successful!');
     }
 
     /**

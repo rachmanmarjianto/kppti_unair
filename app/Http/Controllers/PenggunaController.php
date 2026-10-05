@@ -37,7 +37,63 @@ class PenggunaController extends Controller
             ? DB::table('institusi_asal')->where('idinstitusi_asal', $userdata['idinstitusi_asal'])->value('nama_institusi')
             : null;
 
-        return view('profile', compact('role', 'institusi', 'menu', 'submenu'));
+        $rolePengguna = $this->rolesForPengguna($userdata['idpengguna']);
+
+        return view('profile', compact('role', 'rolePengguna', 'institusi', 'menu', 'submenu'));
+    }
+
+    /**
+     * Switch which of the signed-in pengguna's own roles is active — same
+     * underlying mechanism as AdminController::ubahRoleAktif() (which does
+     * this on behalf of another pengguna from the admin-users modal), via
+     * the shared activateSingleRole() helper. The target role must already
+     * be assigned to the pengguna; this only changes which one is active.
+     * Additionally syncs session('userdata.idrole_aktif') so the change
+     * takes effect immediately, without requiring the pengguna to log out.
+     */
+    public function ubahRoleAktif(Request $request)
+    {
+        $validated = $request->validate([
+            'idrole' => ['required', 'integer'],
+        ]);
+
+        $userdata = session('userdata');
+        $idRole = (int) $validated['idrole'];
+
+        $rolePengguna = DB::table('role_pengguna')
+            ->where('idpengguna', $userdata['idpengguna'])
+            ->where('idrole', $idRole)
+            ->first();
+
+        if (! $rolePengguna) {
+            return $this->jsonResponse(404, 'Anda tidak memiliki role tersebut.');
+        }
+
+        if ($rolePengguna->status) {
+            return $this->jsonResponse(409, 'Role tersebut sudah aktif.');
+        }
+
+        if (! array_key_exists($idRole, self::HOME_BY_ROLE)) {
+            return $this->jsonResponse(422, 'Area untuk role ini belum tersedia.');
+        }
+
+        try {
+            DB::transaction(function () use ($userdata, $idRole) {
+                $this->activateSingleRole($userdata['idpengguna'], $idRole);
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengubah role aktif.');
+        }
+
+        $userdata['idrole_aktif'] = $idRole;
+        session(['userdata' => $userdata]);
+
+        return $this->jsonResponse(200, 'Role aktif berhasil diubah.', [
+            'roles' => $this->rolesForPengguna($userdata['idpengguna']),
+            'redirect' => route(self::HOME_BY_ROLE[$idRole]),
+        ]);
     }
 
     public function updatePassword(Request $request)

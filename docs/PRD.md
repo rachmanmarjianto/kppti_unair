@@ -56,12 +56,12 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F04 | Tagihan dan pembayaran VA BNI (pembuatan VA, callback, status, pembayaran sebagian) | P0 | Belum |
 | F05 | Pengajuan narasumber (draft, pengajuan, review, revisi, diterima/ditolak) | P0 | Belum |
 | F06 | Review narasumber oleh SC (unggah berkas, catatan, keputusan) | P0 | Belum |
-| F07 | Pengajuan pameran (alur status yang sama) dan penetapan nomor stand | P0 | Belum |
-| F08 | Review pameran oleh SC | P0 | Belum |
+| F07 | Pengajuan pameran (alur status yang sama) dan penetapan nomor stand | P0 | Selesai |
+| F08 | Review pameran oleh SC | P0 | Selesai |
 | F09 | Manajemen acara/sesi (bertingkat, per hari dan jam) oleh admin | P1 | Selesai |
 | F10 | Peserta memilih acara yang diikuti | P1 | Selesai |
 | F11 | Data logistik peserta (transportasi, hotel, city tour), kartu registrasi kontingen (PDF), dan foto peserta untuk face recognition | P1 | Selesai |
-| F12 | Petugas jaga stand pameran | P1 | Belum |
+| F12 | Petugas jaga stand pameran | P1 | Selesai |
 | F13 | Dashboard dan rekap admin (jumlah peserta, pembayaran, pengajuan) | P1 | Belum |
 | F14 | Log aktivitas institusi | P2 | **Parsial** (pencatatan `log_institusi`/`log_peserta` sudah berjalan sebagai bagian dari F03/F11, belum ada halaman khusus untuk menampilkan riwayatnya) |
 | F15 | Ekspor data (Excel/PDF) | P2 | Belum |

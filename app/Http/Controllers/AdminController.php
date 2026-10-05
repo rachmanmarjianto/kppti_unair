@@ -336,48 +336,6 @@ class AdminController extends Controller
     }
 
     /**
-     * Deactivate all of a pengguna's roles, then activate the given one — reactivating
-     * their existing row for it if one exists, or inserting a new row otherwise. Ensures
-     * a pengguna never ends up with more than one active role.
-     */
-    private function activateSingleRole(int $idpengguna, int $idrole): void
-    {
-        DB::table('role_pengguna')
-            ->where('idpengguna', $idpengguna)
-            ->update(['status' => false]);
-
-        $existingRole = DB::table('role_pengguna')
-            ->where('idpengguna', $idpengguna)
-            ->where('idrole', $idrole)
-            ->first();
-
-        if ($existingRole) {
-            DB::table('role_pengguna')
-                ->where('idrole_pengguna', $existingRole->idrole_pengguna)
-                ->update(['status' => true]);
-        } else {
-            DB::table('role_pengguna')->insert([
-                'idpengguna' => $idpengguna,
-                'idrole' => $idrole,
-                'status' => true,
-            ]);
-        }
-    }
-
-    /**
-     * @return Collection<int, object>
-     */
-    private function rolesForPengguna(int $idpengguna)
-    {
-        return DB::table('role_pengguna as rp')
-            ->join('role as r', 'r.idrole', '=', 'rp.idrole')
-            ->where('rp.idpengguna', $idpengguna)
-            ->select('r.idrole', 'r.nama_role', 'rp.status')
-            ->orderBy('r.nama_role')
-            ->get();
-    }
-
-    /**
      * @return Collection<int, object>
      */
     private function getUsersByRole(int $idrole)
