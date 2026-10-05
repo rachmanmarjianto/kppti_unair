@@ -32,9 +32,24 @@ class PameranController extends Controller
         $userdata = session('userdata');
         $idInstitusiAsal = $userdata['idinstitusi_asal'];
 
-        $pameran = DB::table('pameran')
-            ->where('idinstitusi_asal', $idInstitusiAsal)
+        $pameran = DB::table('pameran as p')
+            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
+            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->select('p.*', 'pic.nama as nama_pic')
             ->first();
+
+        $tagihan = $pameran ? DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first() : null;
+
+        $penjagaStand = ($pameran && $pameran->status_ajuan === '5')
+            ? DB::table('petugas_jaga as pj')
+                ->join('peserta as pe', 'pe.idpeserta', '=', 'pj.idpeserta')
+                ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
+                ->where('pj.idpameran', $pameran->idpameran)
+                ->select('pj.idpetugas_jaga', 'pj.idpeserta', 'p.nama')
+                ->orderBy('pj.idpetugas_jaga')
+                ->get()
+            : collect();
 
         $pesertaOptions = $this->pesertaAktifQuery($idInstitusiAsal)
             ->select('pe.idpeserta', 'p.nama')
@@ -42,7 +57,10 @@ class PameranController extends Controller
             ->get();
 
         $riwayat = collect();
-        $sedangDireview = false;
+        $sedangDireview = $pameran && (
+            $pameran->status_ajuan === '3'
+            || ($pameran->status_ajuan === '2' && $pameran->direview_oleh !== null)
+        );
         $draftSaatIni = null;
 
         if ($pameran) {
@@ -52,17 +70,16 @@ class PameranController extends Controller
                 ->get()
                 ->map(function ($baris) {
                     $baris->token = $this->encryptRouteValue($baris->idreview);
-                    $baris->kriteria = $this->kriteriaUntukReview($baris->idreview);
+                    $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
+                        ? $this->kriteriaUntukReview($baris->idreview)
+                        : collect();
 
                     return $baris;
                 });
 
             $terakhir = $semuaRiwayat->last();
 
-            if ($terakhir && $terakhir->status_ajuan === '3') {
-                $sedangDireview = true;
-                $riwayat = $semuaRiwayat->slice(0, -1)->values();
-            } elseif ($terakhir && $terakhir->status_ajuan === '1') {
+            if ($terakhir && $terakhir->status_ajuan === '1') {
                 $draftSaatIni = $terakhir;
                 $riwayat = $semuaRiwayat->slice(0, -1)->values();
             } else {
@@ -73,8 +90,8 @@ class PameranController extends Controller
         $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
 
         return view('peserta.pameran', compact(
-            'menu', 'submenu', 'pameran', 'pesertaOptions', 'riwayat',
-            'sedangDireview', 'draftSaatIni', 'bisaEdit'
+            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'riwayat',
+            'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand'
         ));
     }
 
@@ -194,13 +211,17 @@ class PameranController extends Controller
             return $this->jsonResponse(422, 'Lengkapi tema, abstrak, PIC, dan portofolio sebelum mengajukan.');
         }
 
-        DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata) {
+        $tagihanBaruDibuat = false;
+
+        DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
             DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
             DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
             $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
 
             if (! $tagihan) {
+                $tagihanBaruDibuat = true;
+
                 $idtagihan = DB::table('tagihan')->insertGetId([
                     'idinstitusi_asal' => $idInstitusiAsal,
                     'idpameran' => $pameran->idpameran,
@@ -219,7 +240,100 @@ class PameranController extends Controller
             $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
         });
 
-        return $this->jsonResponse(200, 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.');
+        $pesan = $tagihanBaruDibuat
+            ? 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.'
+            : 'Pengajuan pameran berhasil dikirim ulang untuk direview SC.';
+
+        return $this->jsonResponse(200, $pesan);
+    }
+
+    /**
+     * Tambah satu penjaga stand — maksimal 2 orang per pameran, dari
+     * kontingen sendiri (PIC boleh ikut dipilih), cuma setelah Diterima.
+     */
+    public function tambahPenjaga(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+        ]);
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $pameran || $pameran->status_ajuan !== '5') {
+            return $this->jsonResponse(422, 'Pengajuan harus sudah Diterima.');
+        }
+
+        if ($pameran->nomor_stand) {
+            return $this->jsonResponse(422, 'Nomor stand sudah ditetapkan. Hubungi admin untuk mengubah penjaga stand.');
+        }
+
+        $peserta = $this->findPesertaInOwnInstitusi((int) $validated['idpeserta'], $idInstitusiAsal);
+
+        if (! $peserta) {
+            return $this->jsonResponse(422, 'Penjaga stand harus peserta dari kontingen Anda sendiri.');
+        }
+
+        $jumlahSaatIni = DB::table('petugas_jaga')->where('idpameran', $pameran->idpameran)->count();
+
+        if ($jumlahSaatIni >= 2) {
+            return $this->jsonResponse(422, 'Maksimal 2 penjaga stand.');
+        }
+
+        $sudahJadiPenjaga = DB::table('petugas_jaga')
+            ->where('idpameran', $pameran->idpameran)
+            ->where('idpeserta', $validated['idpeserta'])
+            ->exists();
+
+        if ($sudahJadiPenjaga) {
+            return $this->jsonResponse(422, 'Peserta ini sudah jadi penjaga stand.');
+        }
+
+        DB::table('petugas_jaga')->insert([
+            'idpameran' => $pameran->idpameran,
+            'idpeserta' => $validated['idpeserta'],
+        ]);
+
+        $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Menambahkan {$peserta->nama} sebagai penjaga stand pameran.");
+
+        return $this->jsonResponse(200, 'Penjaga stand berhasil ditambahkan.');
+    }
+
+    /**
+     * Hapus satu penjaga stand — hanya baris milik pameran institusi sesi
+     * ini yang boleh dihapus.
+     */
+    public function hapusPenjaga(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $validated = $request->validate([
+            'idpetugas_jaga' => ['required', 'integer'],
+        ]);
+
+        $petugas = DB::table('petugas_jaga as pj')
+            ->join('pameran as p', 'p.idpameran', '=', 'pj.idpameran')
+            ->where('pj.idpetugas_jaga', $validated['idpetugas_jaga'])
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->select('pj.idpetugas_jaga', 'p.nomor_stand')
+            ->first();
+
+        if (! $petugas) {
+            return $this->jsonResponse(404, 'Penjaga stand tidak ditemukan.');
+        }
+
+        if ($petugas->nomor_stand) {
+            return $this->jsonResponse(422, 'Nomor stand sudah ditetapkan. Hubungi admin untuk mengubah penjaga stand.');
+        }
+
+        DB::table('petugas_jaga')->where('idpetugas_jaga', $petugas->idpetugas_jaga)->delete();
+
+        $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Menghapus satu penjaga stand pameran.');
+
+        return $this->jsonResponse(200, 'Penjaga stand berhasil dihapus.');
     }
 
     /**

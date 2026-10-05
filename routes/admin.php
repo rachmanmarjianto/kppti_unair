@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\JadwalPentingController;
+use App\Http\Controllers\PameranAdminController;
 use App\Http\Controllers\PesertaAdminController;
 use App\Http\Controllers\TagihanPameranController;
 use Illuminate\Support\Facades\Route;
@@ -34,4 +35,11 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');
     Route::post('/admin-tagihan-pameran/tandai-lunas', [TagihanPameranController::class, 'tandaiLunas'])->name('admin.tagihan-pameran.tandai-lunas');
+    Route::get('/admin-pameran/ajuan', [PameranAdminController::class, 'index'])->name('admin.pameran.ajuan');
+    Route::get('/admin-pameran/ajuan/detail', [PameranAdminController::class, 'detail'])->name('admin.pameran.ajuan.detail');
+    Route::get('/admin-pameran/ajuan/portofolio', [PameranAdminController::class, 'tampilPortofolio'])->name('admin.pameran.ajuan.portofolio');
+    Route::get('/admin-pameran/nomor-stand', [PameranAdminController::class, 'nomorStand'])->name('admin.pameran.nomor-stand');
+    Route::post('/admin-pameran/nomor-stand/update', [PameranAdminController::class, 'updateNomorStand'])->name('admin.pameran.nomor-stand.update');
+    Route::post('/admin-pameran/penjaga/tambah', [PameranAdminController::class, 'tambahPenjaga'])->name('admin.pameran.penjaga.tambah');
+    Route::post('/admin-pameran/penjaga/hapus', [PameranAdminController::class, 'hapusPenjaga'])->name('admin.pameran.penjaga.hapus');
 });

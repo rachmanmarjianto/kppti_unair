@@ -22,13 +22,15 @@
         }
 
         .check-acara,
-        .check-acara-terkunci {
+        .check-acara-terkunci,
+        .check-acara-wajib-penjaga {
             width: 1.15em;
             height: 1.15em;
             border: 2px solid #4361ee;
         }
 
-        .check-acara:checked {
+        .check-acara:checked,
+        .check-acara-wajib-penjaga:checked {
             background-color: #4361ee;
             border-color: #4361ee;
         }
@@ -80,7 +82,11 @@
                                     <td class="text-center">
                                         @if($acara->bisaDipilih)
                                             @if($acara->terkunci)
-                                                <input type="checkbox" class="form-check-input check-acara-terkunci" checked disabled title="Terdaftar otomatis (wajib)">
+                                                @if($adalahPenjagaStand)
+                                                    <input type="checkbox" class="form-check-input check-acara-wajib-penjaga" data-idacara="{{ $acara->idacara }}" @checked($acara->sudahTerdaftar) title="Anda terdaftar sebagai penjaga stand — boleh membatalkan acara wajib ini">
+                                                @else
+                                                    <input type="checkbox" class="form-check-input check-acara-terkunci" checked disabled title="Terdaftar otomatis (wajib)">
+                                                @endif
                                             @else
                                                 <input type="checkbox" class="form-check-input check-acara" data-idacara="{{ $acara->idacara }}" @checked($acara->sudahTerdaftar)>
                                             @endif
@@ -105,7 +111,11 @@
                                             <td class="text-center">
                                                 @if($anak->bisaDipilih)
                                                     @if($anak->terkunci)
-                                                        <input type="checkbox" class="form-check-input check-acara-terkunci" checked disabled title="Terdaftar otomatis (wajib)">
+                                                        @if($adalahPenjagaStand)
+                                                            <input type="checkbox" class="form-check-input check-acara-wajib-penjaga" data-idacara="{{ $anak->idacara }}" @checked($anak->sudahTerdaftar) title="Anda terdaftar sebagai penjaga stand — boleh membatalkan acara wajib ini">
+                                                        @else
+                                                            <input type="checkbox" class="form-check-input check-acara-terkunci" checked disabled title="Terdaftar otomatis (wajib)">
+                                                        @endif
                                                     @else
                                                         <input type="checkbox" class="form-check-input check-acara" data-idacara="{{ $anak->idacara }}" @checked($anak->sudahTerdaftar)>
                                                     @endif
@@ -148,6 +158,7 @@
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var daftarUrl = '{{ route('peserta.sekontingen.acara.daftar') }}';
             var batalUrl = '{{ route('peserta.sekontingen.acara.batal') }}';
+            var toggleWajibPenjagaUrl = '{{ route('peserta.sekontingen.acara.batal-wajib-penjaga') }}';
             var idpeserta = {{ (int) $idpeserta }};
 
             $('.check-acara').on('change', function () {
@@ -176,6 +187,40 @@
                         pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
                     }
                     $checkbox.prop('checked', !mauDidaftarkan);
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                })
+                .always(function () {
+                    $checkbox.prop('disabled', false);
+                    $spinner.addClass('d-none');
+                });
+            });
+
+            $('.check-acara-wajib-penjaga').on('change', function () {
+                var $checkbox = $(this);
+                var $spinner = $checkbox.closest('tr').find('.spinner-border').first();
+                var idacara = $checkbox.data('idacara');
+                var statusSebelum = !$checkbox.prop('checked');
+
+                $checkbox.prop('disabled', true);
+                $spinner.removeClass('d-none');
+
+                $.ajax({
+                    url: toggleWajibPenjagaUrl,
+                    method: 'POST',
+                    data: { idpeserta: idpeserta, idacara: idacara },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
+                })
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    }
+                    $checkbox.prop('checked', statusSebelum);
                     Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
                 })
                 .always(function () {

@@ -3,10 +3,29 @@
 @section('title', 'Pengajuan Pameran')
 
 @section('page-css')
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/table/datatable/datatables.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/table/datatable/dt-global_style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/table/datatable/dt-global_style.css') }}">
+    <style>
+        /* dt-global_style.css mematok .page-link ke kotak 33x33px untuk tombol
+           ikon — di halaman ini labelnya berupa teks ("Sebelumnya"/"Berikutnya"),
+           jadi tombol sebelum/berikutnya perlu lebar otomatis supaya teksnya
+           tidak tumpang tindih (paling kentara saat tabel kosong, karena saat
+           itu cuma dua tombol ini yang berdampingan tanpa tombol halaman lain). */
+        .dataTables_wrapper .page-item.previous .page-link,
+        .dataTables_wrapper .page-item.next .page-link,
+        .dataTables_wrapper .page-item.first .page-link,
+        .dataTables_wrapper .page-item.last .page-link {
+            width: auto;
+            white-space: nowrap;
+            padding: 0 12px;
+        }
+
+        .table-sc-pameran {
+            width: 95% !important;
+            margin: 0 auto;
+        }
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -15,6 +34,7 @@
 
 @php
     $labelStatus = [
+        '2' => ['Sedang Direview', 'bg-warning'],
         '3' => ['Sedang Direview', 'bg-warning'],
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
@@ -33,10 +53,8 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
-                <div class="page-alert alert alert-danger d-none mb-3" role="alert"></div>
-
                 <div class="table-responsive">
-                    <table class="table table-hover table-bordered" style="width:100%">
+                    <table id="table-antrean-pameran" class="table table-hover table-bordered table-sc-pameran">
                         <thead>
                             <tr>
                                 <th>Institusi</th>
@@ -45,21 +63,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($antrean as $baris)
+                            @foreach($antrean as $baris)
                                 <tr>
                                     <td>{{ $baris->nama_institusi }}</td>
                                     <td>{{ $baris->tema }}</td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-primary btn-klaim" data-idpameran="{{ $baris->idpameran }}">
-                                            <span class="btn-label">Klaim</span>
-                                        </button>
+                                        <a href="{{ route('sc.pameran.detail') }}?token={{ $baris->token }}" class="btn btn-sm btn-outline-secondary">Lihat Detail</a>
                                     </td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="3" class="text-center">Tidak ada pengajuan yang menunggu review.</td>
-                                </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
@@ -78,7 +90,7 @@
             </div>
             <div class="widget-content widget-content-area">
                 <div class="table-responsive">
-                    <table class="table table-hover table-bordered" style="width:100%">
+                    <table id="table-diproses-pameran" class="table table-hover table-bordered table-sc-pameran">
                         <thead>
                             <tr>
                                 <th>Institusi</th>
@@ -88,7 +100,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($diproses as $baris)
+                            @foreach($diproses as $baris)
                                 <tr>
                                     <td>{{ $baris->nama_institusi }}</td>
                                     <td>{{ $baris->tema }}</td>
@@ -98,14 +110,10 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ route('sc.pameran.detail') }}?token={{ $baris->token }}" class="btn btn-sm btn-outline-secondary">Lihat</a>
+                                        <a href="{{ route('sc.pameran.detail') }}?token={{ $baris->token }}" class="btn btn-sm btn-outline-secondary">Lihat Detail</a>
                                     </td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center">Belum ada yang diproses.</td>
-                                </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
@@ -116,58 +124,38 @@
 
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
-    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
 
     <script>
         $(function () {
-            var csrfToken = $('meta[name="csrf-token"]').attr('content');
-            var klaimUrl = '{{ route('sc.pameran.klaim') }}';
-            var detailUrl = '{{ route('sc.pameran.detail') }}';
+            var bahasaDataTable = {
+                search: 'Cari:',
+                lengthMenu: 'Tampilkan _MENU_ baris',
+                info: 'Menampilkan _START_ - _END_ dari _TOTAL_ baris',
+                infoEmpty: 'Tidak ada data',
+                infoFiltered: '(disaring dari _MAX_ baris)',
+                zeroRecords: 'Data tidak ditemukan',
+                paginate: { previous: 'Sebelumnya', next: 'Berikutnya' },
+            };
 
-            $('.btn-klaim').on('click', function () {
-                var $btn = $(this);
-                var idpameran = $btn.data('idpameran');
+            var domLayout = "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
+                "<'table-responsive'tr>" +
+                "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>";
 
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: 'Klaim pengajuan ini untuk direview? Hanya satu SC yang bisa mereview setiap pengajuan.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, klaim',
-                    cancelButtonText: 'Batal',
-                }).then(function (result) {
-                    if (!result.isConfirmed) {
-                        return;
-                    }
+            $('#table-antrean-pameran').DataTable({
+                dom: domLayout,
+                language: $.extend({}, bahasaDataTable, { emptyTable: 'Tidak ada pengajuan yang menunggu review.' }),
+                lengthMenu: [10, 25, 50],
+                pageLength: 10,
+                columnDefs: [{ orderable: false, targets: -1 }],
+            });
 
-                    var teksAwal = $btn.html();
-                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
-                    $('.page-alert').addClass('d-none').text('');
-
-                    $.ajax({
-                        url: klaimUrl,
-                        method: 'POST',
-                        data: { idpameran: idpameran },
-                        dataType: 'json',
-                        headers: { 'X-CSRF-TOKEN': csrfToken },
-                    })
-                    .done(function (res) {
-                        window.location.href = detailUrl + '?token=' + res.data.token;
-                    })
-                    .fail(function (xhr) {
-                        var res = xhr.responseJSON || {};
-                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
-                        if (xhr.status === 0) {
-                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-                        }
-                        $('.page-alert').removeClass('d-none').text(pesan);
-                        $btn.prop('disabled', false).html(teksAwal);
-
-                        if (xhr.status === 409) {
-                            location.reload();
-                        }
-                    });
-                });
+            $('#table-diproses-pameran').DataTable({
+                dom: domLayout,
+                language: $.extend({}, bahasaDataTable, { emptyTable: 'Belum ada yang diproses.' }),
+                lengthMenu: [10, 25, 50],
+                pageLength: 10,
+                columnDefs: [{ orderable: false, targets: -1 }],
             });
         });
     </script>

@@ -7,7 +7,7 @@
                     <div class="nav-logo">
                         <div class="nav-item theme-logo">
                             <a href="./index.html">
-                                <img src="../src/assets/img/logo.svg" class="navbar-logo" alt="logo">
+                                <img src="{{ asset('src/assets/img/logo.svg') }}" class="navbar-logo" alt="logo">
                             </a>
                         </div>
                         <div class="nav-item theme-text">
@@ -74,14 +74,34 @@
                             <li @if($submenu == 'nara_sumber') class="active" @endif>
                                 <a href="{{ route('admin.nara-sumber') }}"> Nara Sumber </a>
                             </li>
+                        </ul>
+                    </li>
+
+                    <li class="menu @if($menu == 'pameran') active @endif">
+                        <a href="#pameran" data-bs-toggle="collapse" aria-expanded="@if($menu == 'pameran') true @else false @endif" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clipboard"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                <span>Pameran</span>
+                            </div>
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </div>
+                        </a>
+                        <ul class="collapse submenu list-unstyled @if($menu == 'pameran') show @endif" id="pameran" data-bs-parent="#accordionExample">
+                            <li @if($submenu == 'ajuan') class="active" @endif>
+                                <a href="{{ route('admin.pameran.ajuan') }}"> Ajuan </a>
+                            </li>
                             <li @if($submenu == 'tagihan-pameran') class="active" @endif>
                                 <a href="{{ route('admin.tagihan-pameran') }}"> Tagihan Pameran </a>
+                            </li>
+                            <li @if($submenu == 'nomor-stand') class="active" @endif>
+                                <a href="{{ route('admin.pameran.nomor-stand') }}"> Nomor Stand </a>
                             </li>
                         </ul>
                     </li>
 
-                    
-                    
+
+
                 </ul>
                 
             </nav>

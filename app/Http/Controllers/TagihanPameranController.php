@@ -14,7 +14,7 @@ class TagihanPameranController extends Controller
      */
     public function index()
     {
-        $menu = 'users';
+        $menu = 'pameran';
         $submenu = 'tagihan-pameran';
 
         $tagihan = DB::table('tagihan as t')

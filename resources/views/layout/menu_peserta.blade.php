@@ -7,7 +7,7 @@
                     <div class="nav-logo">
                         <div class="nav-item theme-logo">
                             <a href="./index.html">
-                                <img src="../src/assets/img/logo.svg" class="navbar-logo" alt="logo">
+                                <img src="{{ asset('src/assets/img/logo.svg') }}" class="navbar-logo" alt="logo">
                             </a>
                         </div>
                         <div class="nav-item theme-text">

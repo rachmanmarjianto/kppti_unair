@@ -4,6 +4,8 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/assets/css/light/components/modal.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/assets/css/dark/components/modal.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
@@ -18,11 +20,18 @@
 @php
     $labelStatus = [
         '1' => ['Draft', 'bg-secondary'],
-        '2' => ['Menunggu Pembayaran / Antrean Review', 'bg-info'],
-        '3' => ['Sedang Direview SC', 'bg-warning'],
+        '2' => ['Pengajuan', 'bg-info'],
+        '3' => ['Review', 'bg-warning'],
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
         '6' => ['Ditolak', 'bg-danger'],
+    ];
+
+    $labelTagihan = [
+        1 => ['Tertagih', 'bg-secondary'],
+        2 => ['Terbayar Sebagian', 'bg-info'],
+        3 => ['Lunas', 'bg-success'],
+        4 => ['Batal', 'bg-danger'],
     ];
 @endphp
 
@@ -40,20 +49,90 @@
                 <div class="page-alert alert alert-danger d-none mb-3" role="alert"></div>
 
                 @if($pameran)
-                    <p>
-                        Status saat ini:
-                        <span class="badge {{ $labelStatus[$pameran->status_ajuan][1] ?? 'bg-secondary' }}">
-                            {{ $labelStatus[$pameran->status_ajuan][0] ?? '-' }}
-                        </span>
-                        @if($pameran->nomor_stand)
-                            &mdash; Nomor Stand: <strong>{{ $pameran->nomor_stand }}</strong>
-                        @endif
-                    </p>
+                    <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">Status</div>
+                        <div class="col-12 col-sm-10">
+                            <span class="badge {{ $labelStatus[$pameran->status_ajuan][1] ?? 'bg-secondary' }}">
+                                {{ $labelStatus[$pameran->status_ajuan][0] ?? '-' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    @if($tagihan)
+                        <div class="row mb-2">
+                            <div class="col-12 col-sm-2 fw-bold">Status Pembayaran</div>
+                            <div class="col-12 col-sm-10">
+                                <span class="badge {{ $labelTagihan[$tagihan->status][1] ?? 'bg-secondary' }}">
+                                    {{ $labelTagihan[$tagihan->status][0] ?? '-' }}
+                                </span>
+                            </div>
+                        </div>
+                    @endif
                 @endif
 
                 @if($sedangDireview)
                     <div class="alert alert-info">
                         Pengajuan ini sedang direview oleh SC. Mohon tunggu keputusan sebelum dapat mengubah data.
+                    </div>
+                @endif
+
+                @if($pameran && ! $bisaEdit)
+                    <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">PIC</div>
+                        <div class="col-12 col-sm-10">{{ $pameran->nama_pic }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">Tema</div>
+                        <div class="col-12 col-sm-10">{{ $pameran->tema }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">Abstrak</div>
+                        <div class="col-12 col-sm-10">{!! $pameran->abstract !!}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">Nomor Stand</div>
+                        <div class="col-12 col-sm-10" style="font-weight: bold; color:red">
+                            {{ $pameran->nomor_stand ?? '-' }}
+                        </div>
+                    </div>
+                @endif
+
+                @if($pameran && $pameran->status_ajuan === '5')
+                    <hr class="mt-4">
+                    <h5>Penjaga Stand</h5>
+
+                    @if($pameran->nomor_stand)
+                        <p class="text-muted" style="font-size: 12.5px;">
+                            Nomor stand sudah ditetapkan — hubungi admin untuk mengubah penjaga stand.
+                        </p>
+                    @else
+                        <p class="text-muted" style="font-size: 12.5px;">
+                            Maksimal 2 penjaga stand, dipilih dari peserta kontingen sendiri — PIC pameran juga boleh dipilih.
+                        </p>
+                    @endif
+
+                    <div class="row" style="max-width: 700px;">
+                        @for($slot = 0; $slot < 2; $slot++)
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Penjaga {{ $slot + 1 }}</label>
+                                <div class="d-flex align-items-center gap-2 border rounded p-2">
+                                    @if($penjagaStand->get($slot))
+                                        <span class="flex-grow-1">{{ $penjagaStand[$slot]->nama }}</span>
+                                        @unless($pameran->nomor_stand)
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-hapus-penjaga" data-idpetugas-jaga="{{ $penjagaStand[$slot]->idpetugas_jaga }}">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        @endunless
+                                    @elseif($pameran->nomor_stand)
+                                        <span class="flex-grow-1 text-muted">-</span>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-pilih-penjaga flex-grow-1">
+                                            Pilih Penjaga
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endfor
                     </div>
                 @endif
 
@@ -114,7 +193,7 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header">
                                     <button class="accordion-button @if(!$loop->last) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $i }}">
-                                        Giliran #{{ $i + 1 }} &mdash;
+                                        #{{ $i + 1 }} &mdash;
                                         <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
                                         </span>
@@ -147,7 +226,7 @@
                                                     @foreach($baris->kriteria as $k)
                                                         <tr>
                                                             <td>{{ $k->nama_topik }}</td>
-                                                            <td>{{ $k->isi_review }}</td>
+                                                            <td>{!! $k->isi_review !!}</td>
                                                             <td>
                                                                 @if($k->memenuhi)
                                                                     <span class="badge bg-success">Ya</span>
@@ -169,6 +248,38 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: pilih penjaga stand --}}
+    @if($pameran && $pameran->status_ajuan === '5')
+        <div class="modal fade" id="modal-pilih-penjaga" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form-pilih-penjaga">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Pilih Penjaga Stand</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                            <select name="idpeserta" id="input-pilih-penjaga" class="form-control" required>
+                                <option value="">-- Pilih Peserta --</option>
+                                @foreach($pesertaOptions->whereNotIn('idpeserta', $penjagaStand->pluck('idpeserta')) as $opsi)
+                                    <option value="{{ $opsi->idpeserta }}">{{ $opsi->nama }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-submit-pilih-penjaga">
+                                <span class="btn-label">Simpan</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection
 
 @section('page-js')
@@ -183,6 +294,9 @@
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var simpanDraftUrl = '{{ route('peserta.pameran.simpan-draft') }}';
             var ajukanUrl = '{{ route('peserta.pameran.ajukan') }}';
+            var tambahPenjagaUrl = '{{ route('peserta.pameran.penjaga.tambah') }}';
+            var hapusPenjagaUrl = '{{ route('peserta.pameran.penjaga.hapus') }}';
+            var sudahAdaTagihan = {{ $tagihan ? 'true' : 'false' }};
 
             @if($bisaEdit)
                 var quillAbstract = new Quill('#editor-abstract', {
@@ -211,30 +325,26 @@
                 $('.page-alert').removeClass('d-none').text(pesan);
             }
 
-            $('#form-pameran').on('submit', function (e) {
+            var $modalPilihPenjaga = $('#modal-pilih-penjaga');
+
+            $('.btn-pilih-penjaga').on('click', function () {
+                $modalPilihPenjaga.find('.modal-alert').addClass('d-none').text('');
+                $('#input-pilih-penjaga').val('');
+                $modalPilihPenjaga.modal('show');
+            });
+
+            $('#form-pilih-penjaga').on('submit', function (e) {
                 e.preventDefault();
 
-                $('.page-alert').addClass('d-none').text('');
-
-                if (quillAbstract.getText().trim() === '') {
-                    $('.page-alert').removeClass('d-none').text('Abstrak tidak boleh kosong.');
-                    return;
-                }
-
-                $('#input-abstract').val(quillAbstract.root.innerHTML);
-
-                var $btn = $('#btn-simpan-draft');
+                var $btn = $('.btn-submit-pilih-penjaga');
                 var teksAwal = $btn.html();
                 $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
-
-                var formData = new FormData(this);
+                $modalPilihPenjaga.find('.modal-alert').addClass('d-none').text('');
 
                 $.ajax({
-                    url: simpanDraftUrl,
+                    url: tambahPenjagaUrl,
                     method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
+                    data: $(this).serialize(),
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
@@ -243,36 +353,97 @@
                         location.reload();
                     });
                 })
-                .fail(tampilkanError)
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    } else if (res.errors) {
+                        pesan = Object.values(res.errors).flat().join('\n');
+                    }
+                    $modalPilihPenjaga.find('.modal-alert').removeClass('d-none').text(pesan);
+                })
                 .always(function () {
                     $btn.prop('disabled', false).html(teksAwal);
                 });
             });
 
-            $('#btn-ajukan').on('click', function () {
+            $('.btn-hapus-penjaga').on('click', function () {
+                var $btn = $(this);
+                var idpetugasJaga = $btn.data('idpetugas-jaga');
+
                 Swal.fire({
                     title: 'Konfirmasi',
-                    text: 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?',
+                    text: 'Hapus penjaga stand ini?',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Ya, ajukan',
+                    confirmButtonText: 'Ya, hapus',
                     cancelButtonText: 'Batal',
                 }).then(function (result) {
                     if (!result.isConfirmed) {
                         return;
                     }
 
-                    var $btn = $('#btn-ajukan');
-                    var teksAwal = $btn.html();
-                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                    $btn.prop('disabled', true);
                     $('.page-alert').addClass('d-none').text('');
 
                     $.ajax({
-                        url: ajukanUrl,
+                        url: hapusPenjagaUrl,
                         method: 'POST',
+                        data: { idpetugas_jaga: idpetugasJaga },
                         dataType: 'json',
                         headers: { 'X-CSRF-TOKEN': csrfToken },
                     })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanError(xhr);
+                        $btn.prop('disabled', false);
+                    });
+                });
+            });
+
+            function abstrakKosong() {
+                if (quillAbstract.getText().trim() === '') {
+                    $('.page-alert').removeClass('d-none').text('Abstrak tidak boleh kosong.');
+                    return true;
+                }
+                return false;
+            }
+
+            function simpanDraft() {
+                $('#input-abstract').val(quillAbstract.root.innerHTML);
+
+                var formData = new FormData(document.getElementById('form-pameran'));
+
+                return $.ajax({
+                    url: simpanDraftUrl,
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                });
+            }
+
+            $('#form-pameran').on('submit', function (e) {
+                e.preventDefault();
+
+                $('.page-alert').addClass('d-none').text('');
+
+                if (abstrakKosong()) {
+                    return;
+                }
+
+                var $btn = $('#btn-simpan-draft');
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+
+                simpanDraft()
                     .done(function (res) {
                         Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
                             location.reload();
@@ -282,6 +453,55 @@
                     .always(function () {
                         $btn.prop('disabled', false).html(teksAwal);
                     });
+            });
+
+            $('#btn-ajukan').on('click', function () {
+                var teksKonfirmasi = sudahAdaTagihan
+                    ? 'Abstrak dan portofolio akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
+                    : 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?';
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: teksKonfirmasi,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, ajukan',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $('.page-alert').addClass('d-none').text('');
+
+                    if (abstrakKosong()) {
+                        return;
+                    }
+
+                    var $btn = $('#btn-ajukan');
+                    var teksAwal = $btn.html();
+                    $('#btn-simpan-draft, #btn-ajukan').prop('disabled', true);
+                    $btn.html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+
+                    simpanDraft()
+                        .then(function () {
+                            return $.ajax({
+                                url: ajukanUrl,
+                                method: 'POST',
+                                dataType: 'json',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                            });
+                        })
+                        .done(function (res) {
+                            Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                                location.reload();
+                            });
+                        })
+                        .fail(tampilkanError)
+                        .always(function () {
+                            $('#btn-simpan-draft, #btn-ajukan').prop('disabled', false);
+                            $btn.html(teksAwal);
+                        });
                 });
             });
         });

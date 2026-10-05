@@ -10,6 +10,8 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/pameran/simpan-draft', [PameranController::class, 'simpanDraft'])->name('peserta.pameran.simpan-draft');
     Route::post('/pameran/ajukan', [PameranController::class, 'ajukan'])->name('peserta.pameran.ajukan');
     Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
+    Route::post('/pameran/penjaga/tambah', [PameranController::class, 'tambahPenjaga'])->name('peserta.pameran.penjaga.tambah');
+    Route::post('/pameran/penjaga/hapus', [PameranController::class, 'hapusPenjaga'])->name('peserta.pameran.penjaga.hapus');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');
@@ -24,6 +26,11 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/peserta-sekontingen/foto/update', [PesertaController::class, 'updateFoto'])->name('peserta.sekontingen.foto.update');
     Route::get('/peserta-acara', [PesertaController::class, 'acara'])->name('peserta.acara');
     Route::get('/peserta-sekontingen/acara', [PesertaController::class, 'pilihAcara'])->name('peserta.sekontingen.acara');
+
+    // Khusus penjaga stand pameran × acara wajib — sengaja TIDAK digerbangi
+    // jadwalPenting, karena mereka boleh membatalkan/mendaftar ulang acara
+    // wajib kapan pun walau sesi registrasi acara sudah ditutup.
+    Route::post('/peserta-sekontingen/acara/batal-wajib-penjaga', [PesertaController::class, 'toggleAcaraWajibPenjaga'])->name('peserta.sekontingen.acara.batal-wajib-penjaga');
 
     // Hanya pilihan acara yang dikunci begitu timestamp_tutup jadwal_penting
     // id=1 (Registrasi Peserta) terlewati — tujuannya alokasi konsumsi di

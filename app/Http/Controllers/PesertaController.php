@@ -814,6 +814,8 @@ class PesertaController extends Controller
         $submenu = '';
         $token = $this->encryptRouteValue($idpeserta);
 
+        $adalahPenjagaStand = DB::table('petugas_jaga')->where('idpeserta', $idpeserta)->exists();
+
         $idacaraTerdaftar = DB::table('peserta_acara')
             ->where('idpeserta', $idpeserta)
             ->pluck('idacara');
@@ -839,7 +841,9 @@ class PesertaController extends Controller
             return $acara;
         })->values();
 
-        return view('peserta.pilih-acara', compact('menu', 'submenu', 'peserta', 'idpeserta', 'token', 'acaraList'));
+        return view('peserta.pilih-acara', compact(
+            'menu', 'submenu', 'peserta', 'idpeserta', 'token', 'acaraList', 'adalahPenjagaStand'
+        ));
     }
 
     /**
@@ -947,6 +951,73 @@ class PesertaController extends Controller
         $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Membatalkan pendaftaran acara: '.($acara->tema ?? '-'));
 
         return $this->jsonResponse(200, 'Pendaftaran acara berhasil dibatalkan.');
+    }
+
+    /**
+     * Toggle keikutsertaan acara WAJIB — khusus peserta yang jadi penjaga
+     * stand pameran (`petugas_jaga`), dan khusus acara wajib (opsi_pilih=3).
+     * Tidak digerbangi `jadwalPenting` — penjaga stand boleh mengubah ini
+     * kapan pun, termasuk setelah sesi registrasi acara ditutup. Acara
+     * opsional tetap lewat `daftarAcara()`/`batalAcara()` biasa.
+     */
+    public function toggleAcaraWajibPenjaga(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaInOwnInstitusi((int) $validated['idpeserta'], $userdata['idinstitusi_asal']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $adalahPenjagaStand = DB::table('petugas_jaga')->where('idpeserta', $peserta->idpeserta)->exists();
+
+        if (! $adalahPenjagaStand) {
+            return $this->jsonResponse(403, 'Hanya penjaga stand pameran yang bisa mengubah keikutsertaan acara wajib.');
+        }
+
+        $acara = DB::table('acara')->where('idacara', $validated['idacara'])->first();
+
+        if (! $acara || $acara->has_child || $acara->opsi_pilih !== '3') {
+            return $this->jsonResponse(422, 'Ini bukan acara wajib.');
+        }
+
+        $pesertaAcara = DB::table('peserta_acara')
+            ->where('idpeserta', $peserta->idpeserta)
+            ->where('idacara', $acara->idacara)
+            ->first();
+
+        if ($pesertaAcara) {
+            DB::table('peserta_acara')->where('idpeserta_acara', $pesertaAcara->idpeserta_acara)->delete();
+
+            $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Penjaga stand membatalkan keikutsertaan acara wajib: {$acara->tema}");
+
+            return $this->jsonResponse(200, 'Berhasil tidak mengikuti acara wajib ini.');
+        }
+
+        $acaraBentrok = $this->acaraBentrok($peserta->idpeserta, $acara);
+
+        if ($acaraBentrok) {
+            $jamBentrok = $acaraBentrok->jam_mulai && $acaraBentrok->jam_akhir
+                ? substr($acaraBentrok->jam_mulai, 0, 5).'–'.substr($acaraBentrok->jam_akhir, 0, 5)
+                : '-';
+
+            return $this->jsonResponse(409, "Bentrok dengan acara yang sudah dipilih: {$acaraBentrok->tema} (Hari {$acaraBentrok->hari_ke}, {$jamBentrok}).");
+        }
+
+        DB::table('peserta_acara')->insert([
+            'idpeserta' => $peserta->idpeserta,
+            'idacara' => $acara->idacara,
+        ]);
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Penjaga stand mendaftar ulang acara wajib: {$acara->tema}");
+
+        return $this->jsonResponse(200, 'Berhasil mendaftar ulang ke acara wajib ini.');
     }
 
     /**

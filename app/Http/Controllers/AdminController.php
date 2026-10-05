@@ -86,7 +86,7 @@ class AdminController extends Controller
             return $this->jsonResponse(409, 'Email atau nomor WhatsApp sudah terdaftar.');
         }
 
-        $password = $this->generateRandomToken(10);
+        $password = $this->generateRandomPassword(10);
 
         try {
             $idpengguna = DB::transaction(function () use ($validated, $idrole, $password) {
@@ -316,7 +316,7 @@ class AdminController extends Controller
             return $this->jsonResponse(422, 'Pengguna belum memiliki nomor WhatsApp.');
         }
 
-        $password = $this->generateRandomToken(8);
+        $password = $this->generateRandomPassword(8);
 
         DB::table('pengguna')
             ->where('idpengguna', $validated['idpengguna'])
