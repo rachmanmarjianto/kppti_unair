@@ -95,7 +95,8 @@
                                 <th>Hari</th>
                                 <th>Jam</th>
                                 <th>Tema</th>
-                                <th>Ruang</th>
+                                <th>Ruang</th>                                
+                                <th>Pembicara</th>
                                 <th>Opsi Pilih</th>
                                 <th>Peserta Mengikuti</th>
                             </tr>
@@ -108,10 +109,23 @@
                                     <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
                                     <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>
                                     <td>
+                                        @if(! $acara->perlu_narsum)
+                                            {{ $acara->speaker ?? '-' }}
+                                        @elseif($acara->narasumberList->isNotEmpty())
+                                            <ul class="list-unstyled mb-0">
+                                                @foreach($acara->narasumberList as $ns)
+                                                    <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <span class="text-muted fst-italic">Menunggu hasil review narasumber</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @if(in_array($acara->opsi_pilih, ['2', '3'], true))
                                             @include('admin.partials.opsi-pilih-badge', ['opsi' => $acara->opsi_pilih])
                                         @endif
-                                    </td>
+                                    </td>                                    
                                     <td>
                                         @if($acara->namaPeserta->isNotEmpty())
                                             <ul class="mb-0 ps-3">
@@ -134,10 +148,23 @@
                                             <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
                                             <td>{{ $anak->ruang ?? '-' }}</td>
                                             <td>
+                                                @if(! $anak->perlu_narsum)
+                                                    {{ $anak->speaker ?? '-' }}
+                                                @elseif($anak->narasumberList->isNotEmpty())
+                                                    <ul class="list-unstyled mb-0">
+                                                        @foreach($anak->narasumberList as $ns)
+                                                            <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <span class="text-muted fst-italic">Menunggu hasil review narasumber</span>
+                                                @endif
+                                            </td>
+                                            <td>
                                                 @if(in_array($anak->opsi_pilih, ['2', '3'], true))
                                                     @include('admin.partials.opsi-pilih-badge', ['opsi' => $anak->opsi_pilih])
                                                 @endif
-                                            </td>
+                                            </td>                                            
                                             <td>
                                                 @if($anak->namaPeserta->isNotEmpty())
                                                     <ul class="mb-0 ps-3">
@@ -156,7 +183,7 @@
                         @empty
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">Belum ada acara.</td>
+                                    <td colspan="7" class="text-center text-muted">Belum ada acara.</td>
                                 </tr>
                             </tbody>
                         @endforelse

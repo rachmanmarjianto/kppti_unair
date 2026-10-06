@@ -765,18 +765,19 @@ class PesertaController extends Controller
             ->get()
             ->groupBy('idacara');
 
-        $acaraAktifQuery = fn () => DB::table('acara')->where(fn ($q) => $q->where('status', true)->orWhereNull('status'));
+        $topLevel = $this->acaraAktifQuery()->whereNull('idparent_acara')->get();
+        $children = $topLevel->isEmpty()
+            ? collect()
+            : $this->acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->get();
 
-        $lengkapi = function ($acara) use ($namaPerAcara) {
+        $narasumberPerAcara = $this->narasumberPerAcara($topLevel->pluck('idacara')->merge($children->pluck('idacara')));
+
+        $lengkapi = function ($acara) use ($namaPerAcara, $narasumberPerAcara) {
             $acara->namaPeserta = $namaPerAcara->get($acara->idacara, collect())->pluck('nama')->values();
+            $acara->narasumberList = $narasumberPerAcara->get($acara->idacara, collect())->values();
 
             return $acara;
         };
-
-        $topLevel = $acaraAktifQuery()->whereNull('idparent_acara')->orderBy('idacara')->get();
-        $children = $topLevel->isEmpty()
-            ? collect()
-            : $acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->orderBy('idacara')->get();
 
         $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
             $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
@@ -820,20 +821,21 @@ class PesertaController extends Controller
             ->where('idpeserta', $idpeserta)
             ->pluck('idacara');
 
-        $acaraAktifQuery = fn () => DB::table('acara')->where(fn ($q) => $q->where('status', true)->orWhereNull('status'));
+        $topLevel = $this->acaraAktifQuery()->whereNull('idparent_acara')->get();
+        $children = $topLevel->isEmpty()
+            ? collect()
+            : $this->acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->get();
 
-        $lengkapi = function ($acara) use ($idacaraTerdaftar) {
+        $narasumberPerAcara = $this->narasumberPerAcara($topLevel->pluck('idacara')->merge($children->pluck('idacara')));
+
+        $lengkapi = function ($acara) use ($idacaraTerdaftar, $narasumberPerAcara) {
             $acara->bisaDipilih = ! $acara->has_child && in_array($acara->opsi_pilih, ['2', '3'], true);
             $acara->terkunci = $acara->opsi_pilih === '3';
             $acara->sudahTerdaftar = $idacaraTerdaftar->contains($acara->idacara);
+            $acara->narasumberList = $narasumberPerAcara->get($acara->idacara, collect())->values();
 
             return $acara;
         };
-
-        $topLevel = $acaraAktifQuery()->whereNull('idparent_acara')->orderBy('idacara')->get();
-        $children = $topLevel->isEmpty()
-            ? collect()
-            : $acaraAktifQuery()->whereIn('idparent_acara', $topLevel->pluck('idacara'))->orderBy('idacara')->get();
 
         $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
             $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();

@@ -501,6 +501,115 @@ class Controller extends BaseController
     }
 
     /**
+     * Base query for acara rows that are not soft-deleted. `status` is nullable
+     * on old rows (no explicit value ever set), which still counts as active.
+     * Shared by AcaraController (F09 admin management) and
+     * NarasumberReviewController (picking a sesi when deciding Diterima).
+     */
+    protected function acaraAktifQuery()
+    {
+        return DB::table('acara')
+            ->where(function ($query) {
+                $query->where('acara.status', true)->orWhereNull('acara.status');
+            })
+            ->orderBy('acara.idacara');
+    }
+
+    /**
+     * Accepted (Diterima) narasumber assignments for the given acara ids,
+     * grouped by idacara — each entry carries `nama` (the narasumber's own
+     * nama) and `subtema`. Shared by AcaraController (F09 admin, read-only)
+     * and PesertaController (read-only display on the peserta's Acara /
+     * Pilih Acara pages) — see docs/features/009-manajemen-acara.md §2.2.
+     *
+     * @param  Collection<int, int>  $idAcaraList
+     * @return Collection<int, Collection<int, object>>
+     */
+    protected function narasumberPerAcara($idAcaraList): Collection
+    {
+        if ($idAcaraList->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('narasumber_acara as na')
+            ->join('narasumber as n', 'n.idnarasumber', '=', 'na.idnarasumber')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->whereIn('na.idacara', $idAcaraList)
+            ->where('na.status', true)
+            ->where('n.status_ajuan', '5')
+            ->select('na.idacara', 'p.nama', 'n.subtema')
+            ->get()
+            ->groupBy('idacara');
+    }
+
+    /**
+     * Border accent colors per hari_ke, cycled if there are more days than colors.
+     * Reuses the admin template's existing theme palette (primary, success,
+     * warning, info, secondary, danger) for visual consistency.
+     *
+     * @var array<int, string>
+     */
+    private const WARNA_HARI = ['#4361ee', '#00ab55', '#e2a03f', '#2196f3', '#805dca', '#e7515a'];
+
+    private function warnaHari(?int $hariKe): string
+    {
+        if (! $hariKe || $hariKe < 1) {
+            return '#bfc9d4';
+        }
+
+        return self::WARNA_HARI[($hariKe - 1) % count(self::WARNA_HARI)];
+    }
+
+    /**
+     * Top-level acara (+ their children), each enriched with `narasumberList`
+     * and `warna_hari`, plus the per-hari color legend — the full read-only
+     * display data for an acara listing. Shared by AcaraController (F09
+     * admin, which adds its own edit-modal-only data on top) and
+     * AcaraScController (SC's read-only Acara menu).
+     *
+     * @return array{acaraList: Collection<int, object>, legendaHari: Collection<int, object>}
+     */
+    protected function acaraListDenganPembicara(): array
+    {
+        $topLevel = $this->acaraAktifQuery()
+            ->whereNull('idparent_acara')
+            ->get();
+
+        $children = collect();
+
+        if ($topLevel->isNotEmpty()) {
+            $children = $this->acaraAktifQuery()
+                ->whereIn('idparent_acara', $topLevel->pluck('idacara'))
+                ->get();
+        }
+
+        $narasumberPerAcara = $this->narasumberPerAcara($topLevel->pluck('idacara')->merge($children->pluck('idacara')));
+
+        $lengkapi = function ($acara) use ($narasumberPerAcara) {
+            $acara->narasumberList = $narasumberPerAcara->get($acara->idacara, collect())->values();
+            $acara->warna_hari = $this->warnaHari($acara->hari_ke);
+
+            return $acara;
+        };
+
+        $acaraList = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
+            $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
+
+            return $acara;
+        })->values();
+
+        $legendaHari = $acaraList->flatMap(fn ($a) => collect([$a])->merge($a->children))
+            ->pluck('hari_ke')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->map(fn ($hari) => (object) ['hari_ke' => $hari, 'warna' => $this->warnaHari($hari)])
+            ->values();
+
+        return ['acaraList' => $acaraList, 'legendaHari' => $legendaHari];
+    }
+
+    /**
      * Whether a jadwal_penting row is currently open: now() falls within
      * [timestamp_buka, timestamp_tutup], or mode is '2' (always open).
      * Mirrors JadwalPentingMiddleware's default "buka" check, exposed here

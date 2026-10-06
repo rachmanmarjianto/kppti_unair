@@ -8,63 +8,12 @@ use Illuminate\Validation\ValidationException;
 
 class AcaraController extends Controller
 {
-    /**
-     * status_ajuan value meaning "diterima" on the `narasumber` table.
-     */
-    private const NARASUMBER_DITERIMA = 5;
-
-    /**
-     * Border accent colors per hari_ke, cycled if there are more days than colors.
-     * Reuses the admin template's existing theme palette (primary, success,
-     * warning, info, secondary, danger) for visual consistency.
-     *
-     * @var array<int, string>
-     */
-    private const WARNA_HARI = ['#4361ee', '#00ab55', '#e2a03f', '#2196f3', '#805dca', '#e7515a'];
-
     public function index()
     {
         $menu = 'acara';
         $submenu = '';
 
-        $topLevel = $this->acaraAktifQuery()
-            ->whereNull('idparent_acara')
-            ->get();
-
-        $children = collect();
-
-        if ($topLevel->isNotEmpty()) {
-            $children = $this->acaraAktifQuery()
-                ->whereIn('idparent_acara', $topLevel->pluck('idacara'))
-                ->get();
-        }
-
-        $semuaIdAcara = $topLevel->pluck('idacara')->merge($children->pluck('idacara'));
-
-        $narasumberPerAcara = $semuaIdAcara->isEmpty()
-            ? collect()
-            : DB::table('narasumber_acara as na')
-                ->join('narasumber as n', 'n.idnarasumber', '=', 'na.idnarasumber')
-                ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
-                ->whereIn('na.idacara', $semuaIdAcara)
-                ->where('na.status', true)
-                ->where('n.status_ajuan', self::NARASUMBER_DITERIMA)
-                ->select('na.idacara', 'p.nama', 'n.subtema')
-                ->get()
-                ->groupBy('idacara');
-
-        $lengkapi = function ($acara) use ($narasumberPerAcara) {
-            $acara->narasumberList = $narasumberPerAcara->get($acara->idacara, collect())->values();
-            $acara->warna_hari = $this->warnaHari($acara->hari_ke);
-
-            return $acara;
-        };
-
-        $topLevel = $topLevel->map($lengkapi)->map(function ($acara) use ($children, $lengkapi) {
-            $acara->children = $children->where('idparent_acara', $acara->idacara)->map($lengkapi)->values();
-
-            return $acara;
-        })->values();
+        ['acaraList' => $topLevel, 'legendaHari' => $legendaHari] = $this->acaraListDenganPembicara();
 
         $keDataJs = function ($a) {
             return [
@@ -88,14 +37,6 @@ class AcaraController extends Controller
 
         $acaraDataJs = $topLevel->flatMap(fn ($a) => collect([$a])->merge($a->children))
             ->map($keDataJs)
-            ->values();
-
-        $legendaHari = $topLevel->flatMap(fn ($a) => collect([$a])->merge($a->children))
-            ->pluck('hari_ke')
-            ->filter()
-            ->unique()
-            ->sort()
-            ->map(fn ($hari) => (object) ['hari_ke' => $hari, 'warna' => $this->warnaHari($hari)])
             ->values();
 
         return view('admin.acara', [
@@ -231,32 +172,5 @@ class AcaraController extends Controller
             ->exists();
 
         DB::table('acara')->where('idacara', $idacara)->update(['has_child' => $adaAnakAktif]);
-    }
-
-    /**
-     * Border accent color for a given hari_ke, cycling through WARNA_HARI if
-     * there are more days than colors. Returns a neutral gray when hari_ke is
-     * not set.
-     */
-    private function warnaHari(?int $hariKe): string
-    {
-        if (! $hariKe || $hariKe < 1) {
-            return '#bfc9d4';
-        }
-
-        return self::WARNA_HARI[($hariKe - 1) % count(self::WARNA_HARI)];
-    }
-
-    /**
-     * Base query for acara rows that are not soft-deleted. `status` is nullable
-     * on old rows (no explicit value ever set), which still counts as active.
-     */
-    private function acaraAktifQuery()
-    {
-        return DB::table('acara')
-            ->where(function ($query) {
-                $query->where('status', true)->orWhereNull('status');
-            })
-            ->orderBy('idacara');
     }
 }

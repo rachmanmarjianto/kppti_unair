@@ -70,7 +70,8 @@
                             <tr>
                                 <th style="width: 40px;"></th>
                                 <th>Tema</th>
-                                <th>Ruang</th>
+                                <th>Ruang</th>                                
+                                <th>Pembicara</th>
                                 <th>Hari</th>
                                 <th>Jam</th>
                                 <th>Opsi Pilih</th>
@@ -93,7 +94,20 @@
                                         @endif
                                     </td>
                                     <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
-                                    <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>
+                                    <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>                                    
+                                    <td>
+                                        @if(! $acara->perlu_narsum)
+                                            {{ $acara->speaker ?? '-' }}
+                                        @elseif($acara->narasumberList->isNotEmpty())
+                                            <ul class="list-unstyled mb-0">
+                                                @foreach($acara->narasumberList as $ns)
+                                                    <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <span class="text-muted fst-italic">Menunggu hasil review narasumber</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $acara->hari_ke ?? '-' }}</td>
                                     <td>{{ $acara->children->isNotEmpty() ? '-' : ($acara->jam_mulai ? substr($acara->jam_mulai, 0, 5).' - '.substr($acara->jam_akhir, 0, 5) : '-') }}</td>
                                     <td>
@@ -122,7 +136,20 @@
                                                 @endif
                                             </td>
                                             <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
-                                            <td>{{ $anak->ruang ?? '-' }}</td>
+                                            <td>{{ $anak->ruang ?? '-' }}</td>                                            
+                                            <td>
+                                                @if(! $anak->perlu_narsum)
+                                                    {{ $anak->speaker ?? '-' }}
+                                                @elseif($anak->narasumberList->isNotEmpty())
+                                                    <ul class="list-unstyled mb-0">
+                                                        @foreach($anak->narasumberList as $ns)
+                                                            <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <span class="text-muted fst-italic">Menunggu hasil review narasumber</span>
+                                                @endif
+                                            </td>
                                             <td>{{ $anak->hari_ke ?? '-' }}</td>
                                             <td>{{ $anak->jam_mulai ? substr($anak->jam_mulai, 0, 5).' - '.substr($anak->jam_akhir, 0, 5) : '-' }}</td>
                                             <td>
@@ -138,7 +165,7 @@
                         @empty
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">Belum ada acara.</td>
+                                    <td colspan="7" class="text-center text-muted">Belum ada acara.</td>
                                 </tr>
                             </tbody>
                         @endforelse
