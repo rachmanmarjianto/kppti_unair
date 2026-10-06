@@ -114,7 +114,7 @@ class Controller extends BaseController
 
     protected function generateRandomToken(int $length = 6): string
     {
-        $characters = '123456789abcdefghijklmnopqrstuvwxyz';
+        $characters = '1234567890';
         $token = '';
 
         for ($i = 0; $i < $length; $i++) {
