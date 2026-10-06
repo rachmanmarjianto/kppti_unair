@@ -111,13 +111,13 @@ class BniVirtualAccountService
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-        // curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+        curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
         $rs = curl_exec($ch);
 
-        // $rawRequestHeaders = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+        $rawRequestHeaders = curl_getinfo($ch, CURLINFO_HEADER_OUT);
 
-        // dd($rawRequestHeaders, $post, $rs);
+        dd($rawRequestHeaders, $post, $rs);
 
         if(empty($rs)){
             var_dump($rs, curl_error($ch));
