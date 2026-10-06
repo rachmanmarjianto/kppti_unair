@@ -66,7 +66,7 @@ class BniVirtualAccountService
         $response = $this->get_content(config('services.bni.url'), json_encode($data_va));
         $response_json = json_decode($response, true);
 
-        dd($response, config('services.bni.api_url'));
+        dd($response, config('services.bni.url'));
 
         $ret_array = array(
             'va_number' => $va_number,
