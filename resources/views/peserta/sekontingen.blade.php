@@ -304,7 +304,7 @@
 
     {{-- Modal: data logistik peserta --}}
     <div class="modal fade" id="modal-logistik-peserta" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-logistik-peserta">
                     <input type="hidden" name="idpeserta">
@@ -320,6 +320,24 @@
                         </div>
 
                         <div class="logistik-content d-none">
+                            <div class="mb-3">
+                                <label class="form-label">Salin Data dari Peserta Lain</label>
+                                <div class="input-group">
+                                    <select class="form-select select-copy-dari-peserta">
+                                        <option value="" selected>-- Pilih peserta yang datanya sudah lengkap --</option>
+                                        @foreach ($pesertaList as $p)
+                                            @if ($p->logistikLengkap)
+                                                <option value="{{ $p->token }}">{{ $p->nama }}</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-secondary btn-salin-logistik">
+                                        <i class="fa-solid fa-copy me-1"></i> Salin
+                                    </button>
+                                </div>
+                                <div class="form-text">Hanya menyalin data logistik (transportasi, hotel, city tour) — data belum tersimpan sampai Anda klik Simpan.</div>
+                            </div>
+
                             <h6>Kedatangan</h6>
                             <div class="mb-3">
                                 <label class="form-label">Jenis Transportasi</label>
@@ -633,6 +651,24 @@
             var $selectTransportKepulangan = $modalLogistik.find('.select-transport-kepulangan');
             var $groupStasiunKedatangan = $modalLogistik.find('.group-stasiun-kedatangan');
             var $groupStasiunKepulangan = $modalLogistik.find('.group-stasiun-kepulangan');
+            var $selectCopyDariPeserta = $modalLogistik.find('.select-copy-dari-peserta');
+            var $btnSalinLogistik = $modalLogistik.find('.btn-salin-logistik');
+
+            function isiFormLogistik(data) {
+                $selectTransportKedatangan.val(data.idjenis_transportasi_kedatangan);
+                $modalLogistik.find('[name="stasiun_kedatangan"]').val(data.stasiun_kedatangan);
+                $modalLogistik.find('[name="tanggal_kedatangan"]').val(data.tanggal_kedatangan);
+                $modalLogistik.find('[name="jam_kedatangan"]').val(data.jam_kedatangan ? data.jam_kedatangan.substring(0, 5) : '');
+                $selectTransportKepulangan.val(data.idjenis_transportasi_kepulangan);
+                $modalLogistik.find('[name="stasiun_kepulangan"]').val(data.stasiun_kepulangan);
+                $modalLogistik.find('[name="tanggal_kepulangan"]').val(data.tanggal_kepulangan);
+                $modalLogistik.find('[name="jam_kepulangan"]').val(data.jam_kepulangan ? data.jam_kepulangan.substring(0, 5) : '');
+                $modalLogistik.find('[name="nama_hotel"]').val(data.nama_hotel);
+                $modalLogistik.find('[name="city_tour"]').prop('checked', !!data.city_tour);
+
+                toggleStasiun($selectTransportKedatangan, $groupStasiunKedatangan);
+                toggleStasiun($selectTransportKepulangan, $groupStasiunKepulangan);
+            }
 
             function toggleStasiun($select, $group) {
                 var isKendaraanPribadi = parseInt($select.val(), 10) === idKendaraanPribadi;
@@ -658,6 +694,9 @@
                 $logistikContent.addClass('d-none');
                 $btnSimpanLogistik.addClass('d-none');
                 $modalLogistik.find('.modal-alert').addClass('d-none').text('');
+                $selectCopyDariPeserta.val('');
+                $selectCopyDariPeserta.find('option').prop('disabled', false);
+                $selectCopyDariPeserta.find('option[value="' + token + '"]').prop('disabled', true);
                 $modalLogistik.modal('show');
 
                 $.ajax({
@@ -669,19 +708,7 @@
                 .done(function (res) {
                     var data = res.data;
                     $modalLogistik.find('[name="idpeserta"]').val(data.idpeserta);
-                    $selectTransportKedatangan.val(data.idjenis_transportasi_kedatangan);
-                    $modalLogistik.find('[name="stasiun_kedatangan"]').val(data.stasiun_kedatangan);
-                    $modalLogistik.find('[name="tanggal_kedatangan"]').val(data.tanggal_kedatangan);
-                    $modalLogistik.find('[name="jam_kedatangan"]').val(data.jam_kedatangan ? data.jam_kedatangan.substring(0, 5) : '');
-                    $selectTransportKepulangan.val(data.idjenis_transportasi_kepulangan);
-                    $modalLogistik.find('[name="stasiun_kepulangan"]').val(data.stasiun_kepulangan);
-                    $modalLogistik.find('[name="tanggal_kepulangan"]').val(data.tanggal_kepulangan);
-                    $modalLogistik.find('[name="jam_kepulangan"]').val(data.jam_kepulangan ? data.jam_kepulangan.substring(0, 5) : '');
-                    $modalLogistik.find('[name="nama_hotel"]').val(data.nama_hotel);
-                    $modalLogistik.find('[name="city_tour"]').prop('checked', !!data.city_tour);
-
-                    toggleStasiun($selectTransportKedatangan, $groupStasiunKedatangan);
-                    toggleStasiun($selectTransportKepulangan, $groupStasiunKepulangan);
+                    isiFormLogistik(data);
 
                     $logistikLoading.addClass('d-none');
                     $logistikContent.removeClass('d-none');
@@ -689,6 +716,37 @@
                 })
                 .fail(function (xhr) {
                     tampilkanKesalahanAjax($modalLogistik, xhr);
+                });
+            });
+
+            $btnSalinLogistik.on('click', function () {
+                var sourceToken = $selectCopyDariPeserta.val();
+
+                if (! sourceToken) {
+                    tampilkanKesalahanAjax($modalLogistik, { responseJSON: { message: 'Pilih peserta sumber data terlebih dahulu.' } });
+
+                    return;
+                }
+
+                var $btn = $(this);
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+                $modalLogistik.find('.modal-alert').addClass('d-none').text('');
+
+                $.ajax({
+                    url: detailLogistikUrl + '?token=' + encodeURIComponent(sourceToken),
+                    method: 'GET',
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    isiFormLogistik(res.data);
+                })
+                .fail(function (xhr) {
+                    tampilkanKesalahanAjax($modalLogistik, xhr);
+                })
+                .always(function () {
+                    $btn.prop('disabled', false).html(teksAwal);
                 });
             });
 

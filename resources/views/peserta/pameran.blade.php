@@ -497,7 +497,10 @@
                                 location.reload();
                             });
                         })
-                        .fail(tampilkanError)
+                        .fail(function (xhr) {
+                            console.log(xhr.responseText);
+                            tampilkanError(xhr);
+                        })
                         .always(function () {
                             $('#btn-simpan-draft, #btn-ajukan').prop('disabled', false);
                             $btn.html(teksAwal);

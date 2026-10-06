@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -390,15 +391,14 @@ class PenggunaController extends Controller
                 ->where('iduniversitas', $validated['iduniversitas'])
                 ->value('nama_universitas');
 
-            $idInstitusiAsal = DB::table('institusi_asal')->insertGetId([
+            $idInstitusiAsal = $this->insertInstitusiAsalDenganKodeUnik([
                 'idjenis_institusi' => 1,
                 'ptn_pts' => (string) $validated['ptn_pts'],
                 'nama_institusi' => mb_strtoupper($namaUniversitas),
                 'tabel_ref_institusi' => 'universitas',
                 'idref_institusi' => $validated['iduniversitas'],
-                'kode_kontingen' => $this->generateKodeKontingen(),
                 'created_at' => now(),
-            ], 'idinstitusi_asal');
+            ], 1);
 
             $this->logInstitusiBaru($idInstitusiAsal);
 
@@ -421,13 +421,12 @@ class PenggunaController extends Controller
             return $existing->idinstitusi_asal;
         }
 
-        $idInstitusiAsal = DB::table('institusi_asal')->insertGetId([
+        $idInstitusiAsal = $this->insertInstitusiAsalDenganKodeUnik([
             'idjenis_institusi' => $jenisInstitusi,
             'idlldikti' => $jenisInstitusi === 4 ? $validated['idlldikti'] : null,
             'nama_institusi' => $namaInstitusi,
-            'kode_kontingen' => $this->generateKodeKontingen(),
             'created_at' => now(),
-        ], 'idinstitusi_asal');
+        ], $jenisInstitusi);
 
         $this->logInstitusiBaru($idInstitusiAsal);
 
@@ -435,18 +434,50 @@ class PenggunaController extends Controller
     }
 
     /**
-     * Format XXZZZ: XX = registration date (day of month, 2 digits), ZZZ =
-     * global sequence of institusi_asal rows created that same day (3 digits).
+     * Insert a new institusi_asal row with a freshly generated kode_kontingen,
+     * retrying with a newly generated code if a concurrent request already
+     * claimed the one just generated (institusi_asal.kode_kontingen has a
+     * unique index — generateKodeKontingen()'s count-then-insert is not
+     * atomic, so two requests in the same month can race for the same
+     * sequence number).
+     *
+     * @param  array<string, mixed>  $dataTanpaKode
      */
-    private function generateKodeKontingen(): string
+    private function insertInstitusiAsalDenganKodeUnik(array $dataTanpaKode, int $idJenisInstitusi): int
     {
-        $tanggal = str_pad((string) now()->day, 2, '0', STR_PAD_LEFT);
+        $maksimalPercobaan = 5;
+
+        for ($percobaan = 1; $percobaan <= $maksimalPercobaan; $percobaan++) {
+            try {
+                return DB::table('institusi_asal')->insertGetId(
+                    $dataTanpaKode + ['kode_kontingen' => $this->generateKodeKontingen($idJenisInstitusi)],
+                    'idinstitusi_asal'
+                );
+            } catch (UniqueConstraintViolationException $e) {
+                if ($percobaan === $maksimalPercobaan) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Format MMZZZYY: MM = registration month (2 digits), ZZZ = sequence of
+     * institusi_asal rows created that same month (3 digits), YY =
+     * idjenis_institusi (2 digits).
+     */
+    private function generateKodeKontingen(int $idJenisInstitusi): string
+    {
+        $bulan = now()->format('m');
 
         $urutan = DB::table('institusi_asal')
-            ->whereDate('created_at', now()->toDateString())
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
             ->count() + 1;
 
-        return $tanggal.str_pad((string) $urutan, 3, '0', STR_PAD_LEFT);
+        $jenis = str_pad((string) $idJenisInstitusi, 2, '0', STR_PAD_LEFT);
+
+        return $bulan.str_pad((string) $urutan, 3, '0', STR_PAD_LEFT).$jenis;
     }
 
     /**

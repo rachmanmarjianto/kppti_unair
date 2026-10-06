@@ -274,11 +274,11 @@ class PesertaController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna]);
+            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp, PERIKSA NOMOR WHATSAPP dan Silahkan Refresh Halaman!!', ['idpengguna' => $idpengguna]);
         }
 
         if (strtoupper($result) != 'SUKSES') {
-            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp. Respon: '.$result, ['idpengguna' => $idpengguna]);
+            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp, PERIKSA NOMOR WHATSAPP dan Silahkan Refresh Halaman!!', ['idpengguna' => $idpengguna]);
         } else {
             return $this->jsonResponse(200, 'Peserta berhasil ditambahkan dan informasi login telah dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna, 'wa_response' => $result]);
         }

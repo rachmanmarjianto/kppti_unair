@@ -40,4 +40,13 @@ return [
         'key' => env('H2H_KEY'),
     ],
 
+    'bni' => [
+        'url' => env('BNI_API_URL'),
+        'prefix' => env('BNI_PREFIX'),
+        'cid' => env('BNI_CID'),
+        'secret_key' => env('BNI_SECRET_KEY'),
+    ],
+
+    'biaya_pameran' => env('BIAYA_PAMERAN'),
+
 ];

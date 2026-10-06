@@ -220,6 +220,8 @@ class PameranController extends Controller
         $tagihanBaruDibuat = false;
 
         DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
+        
+        
             DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
             DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
@@ -239,8 +241,9 @@ class PameranController extends Controller
                 ], 'idtagihan');
 
                 $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
-
-                app(BniVirtualAccountService::class)->requestVa($tagihan);
+                
+                $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
+                
             }
 
             $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");

@@ -94,14 +94,12 @@ Alur saat submit (di dalam `DB::transaction`, sebelum insert `pengguna` supaya b
 
 ### 7.2 Generate kode kontingen (hanya saat institusi_asal baris baru)
 
-Format `XXZZZ` (`kppti_5.sql`, komentar kolom `institusi_asal.kode_kontingen`): `XX` = tanggal 2 digit, `ZZZ` = urutan pada hari itu.
+Format `MMZZZYY` (`kppti_18.sql`, komentar kolom `institusi_asal.kode_kontingen`; diubah dari format lama `XXZZZ` berbasis tanggal): `MM` = bulan 2 digit, `ZZZ` = urutan pada bulan itu, `YY` = `idjenis_institusi` 2 digit.
 
-**Dikonfirmasi developer**: pakai tanggal registrasi + urutan global per hari.
-
-- `XX` = tanggal **hari ini** (tanggal saat baris `institusi_asal` baru dibuat, bukan tanggal event), di-pad 2 digit (`str_pad($tanggal, 2, '0', STR_PAD_LEFT)`, mis. tanggal 5 → `"05"`).
-- `ZZZ` = urutan **global** per hari, dihitung dari jumlah `institusi_asal` yang **baru dibuat** hari itu: `count(institusi_asal WHERE date(created_at) = today) + 1`, di-pad **3 digit** (`str_pad($urutan, 3, '0', STR_PAD_LEFT)`, mis. urutan ke-7 → `"007"`).
-- Total **harus tepat 5 karakter** (`XX` 2 digit + `ZZZ` 3 digit) karena kolom `institusi_asal.kode_kontingen` adalah `varchar(5)` — kalau urutan tembus 4 digit (>999 institusi baru dalam satu hari) kode akan terpotong/invalid; secara realistis jumlah institusi (bukan peserta) yang mendaftar per hari sangat kecil dibanding jumlah peserta, jadi risiko ini diterima untuk event ini, tidak perlu penanganan khusus.
-- **Catatan keterbatasan** (bukan bug, tapi perlu disadari): karena `XX` hanya tanggal (tanpa bulan), kode kontingen bisa "tabrakan" kalau periode registrasi mencakup **tanggal yang sama di bulan berbeda** (mis. institusi baru pertama tanggal 5 Oktober dan tanggal 5 November sama-sama dapat `XX="05"`, `ZZZ="001"` → kode identik `"05001"`). Ini mengikuti format yang sudah ditentukan di `kppti_5.sql` apa adanya (bukan sesuatu yang kita ubah), risikonya kecil karena periode pendaftaran KPPTI 2026 menurut `PRD.md` hanya beberapa minggu (buka sekitar Oktober, event November).
+- `MM` = bulan **saat ini** (bulan saat baris `institusi_asal` baru dibuat, bukan bulan event), di-pad 2 digit (`now()->format('m')`, mis. Oktober → `"10"`).
+- `ZZZ` = urutan per **bulan** (dan tahun, supaya tidak tabrakan antar tahun), dihitung dari jumlah `institusi_asal` yang **baru dibuat** bulan itu: `count(institusi_asal WHERE year(created_at) = tahun_ini AND month(created_at) = bulan_ini) + 1`, di-pad **3 digit** (mis. urutan ke-7 → `"007"`).
+- `YY` = `idjenis_institusi` baris yang baru dibuat, di-pad 2 digit (mis. jenis 1 → `"01"`).
+- Total **7 karakter** (`MM` 2 digit + `ZZZ` 3 digit + `YY` 2 digit) — kolom `institusi_asal.kode_kontingen` sudah diperbesar ke `varchar(7)` untuk format ini (migrasi `2026_10_06_063732_change_kode_kontingen_length_in_institusi_asal_table`).
 - Karena ini dibaca-lalu-tulis (race condition mungkin kalau 2 peserta dari institusi berbeda submit bersamaan di detik yang sama), generate `kode_kontingen` dilakukan **di dalam** `DB::transaction` yang sama dengan insert `institusi_asal`-nya.
 
 ## 8. Alur OTP
@@ -186,7 +184,7 @@ Semua poin yang sebelumnya terbuka **sudah diputuskan** developer. Ringkasan:
 
 - **Field dinamis** (§4–§6): PTN/PTS self-declared (tidak memfilter TomSelect universitas), `idlldikti` hanya untuk jenis "LLDikti", Jabatan mengikuti `jenis_institusi_jabatan` untuk semua jenis.
 - **Satu institusi = satu kontingen** (§7): dikonfirmasi — `institusi_asal` dipakai bersama, dicocokkan otomatis (Perguruan Tinggi via `idref_institusi`) atau lewat TomSelect saran+create (jenis lain), dengan fallback pencocokan server `trim()`+`ilike` exact match.
-- **Kode kontingen** (§7.2): tanggal registrasi (`XX`, 2 digit) + urutan global per hari (`ZZZ`, 3 digit) — total wajib 5 karakter sesuai kolom `varchar(5)`.
+- **Kode kontingen** (§7.2): bulan registrasi (`MM`, 2 digit) + urutan global per bulan (`ZZZ`, 3 digit) + id institusi asal (`ZZ`, 2 digit) — total wajib 7 karakter sesuai kolom `varchar(7)`.
 - **OTP** (§8): live-check AJAX wajib untuk mengaktifkan tombol submit, pakai `$.ajax` jQuery (bukan `fetch()`) sesuai `CONVENTIONS.md` §6.2; `cekOtp()` dijadikan generik lewat helper `isOtpValid()` di base `Controller.php` (dipakai ulang oleh Admin & registrasi peserta, beda hanya parameter `$maxAgeSeconds`); notifikasi tombol "Kirim OTP" tetap hint inline (bukan SweetAlert2) — cuma soal transport-nya yang wajib `$.ajax`.
 - **Password** (§9): aturan kekuatan disamakan dengan `PenggunaController::updatePassword` (`min(8)->mixedCase()->numbers()->symbols()`); JS di halaman perlu diperbarui mengikuti pola `profile.blade.php`.
 

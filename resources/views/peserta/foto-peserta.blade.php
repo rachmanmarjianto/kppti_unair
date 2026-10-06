@@ -73,9 +73,14 @@
                 @endif
 
                 <p>
-                    Foto ini akan digunakan untuk pendaftaran perangkat <em>face recognition</em> di lokasi acara.
-                    Pastikan wajah terlihat jelas, menghadap kamera, tanpa penutup kepala, dan sesuai panduan
-                    kepala &amp; bahu di bawah.
+                    Foto ini akan digunakan untuk pendaftaran perangkat 
+                    <b><em>face recognition</em></b> di lokasi acara. Dimohon:
+                    <ol>
+                        <li>Gunakan foto terbaru.</li>
+                        <li>Pastikan wajah terlihat jelas, menghadap kamera, tanpa penutup kepala.</li>
+                        <li>Ikuti panduan kepala &amp; bahu di bawah.</li>
+                    </ol>
+                    Demi kelancaran acara, pastikan foto yang diunggah sesuai dengan ketentuan di atas.
                 </p>
 
                 <div class="mb-3">
