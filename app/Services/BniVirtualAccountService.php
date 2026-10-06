@@ -37,6 +37,8 @@ class BniVirtualAccountService
         $sisa_len = 16 - strlen($va_number);
         $va_number .= str_pad($idtagihan, $sisa_len, '0', STR_PAD_LEFT);
 
+        dd($va_number);
+
         $data_asli = [
             'type' => 'createBilling',
             'client_id' => config('services.bni.cid'),
