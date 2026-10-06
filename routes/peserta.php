@@ -13,6 +13,7 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
     Route::post('/pameran/penjaga/tambah', [PameranController::class, 'tambahPenjaga'])->name('peserta.pameran.penjaga.tambah');
     Route::post('/pameran/penjaga/hapus', [PameranController::class, 'hapusPenjaga'])->name('peserta.pameran.penjaga.hapus');
+    Route::post('/pameran/jadwal-loading', [PameranController::class, 'simpanJadwalLoading'])->name('peserta.pameran.jadwal-loading');
     Route::get('/narasumber', [NarasumberController::class, 'index'])->name('peserta.narasumber');
     Route::post('/narasumber/simpan-draft', [NarasumberController::class, 'simpanDraft'])->name('peserta.narasumber.simpan-draft');
     Route::post('/narasumber/ajukan', [NarasumberController::class, 'ajukan'])->name('peserta.narasumber.ajukan');

@@ -96,7 +96,7 @@ class PameranAdminController extends Controller
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
             ->where('p.status_ajuan', '5')
-            ->select('p.idpameran', 'p.idinstitusi_asal', 'p.tema', 'p.nomor_stand', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
+            ->select('p.idpameran', 'p.idinstitusi_asal', 'p.tema', 'p.nomor_stand', 'p.jadwal_loading', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
             ->orderBy('p.idpameran')
             ->get()
             ->map(function ($row) {
@@ -148,6 +148,10 @@ class PameranAdminController extends Controller
 
         if (! $adaPenjaga) {
             return $this->jsonResponse(422, 'Pengajuan ini belum punya penjaga stand. Minimal 1 penjaga stand diperlukan sebelum nomor stand bisa diberikan.');
+        }
+
+        if (! $pameran->jadwal_loading) {
+            return $this->jsonResponse(422, 'Tanggal loading belum diisi peserta. Tanggal loading diperlukan sebelum nomor stand bisa diberikan.');
         }
 
         $sudahDipakai = DB::table('pameran')

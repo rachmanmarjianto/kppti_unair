@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Services\BniEncService;
 use Illuminate\Support\Facades\Log;
 
 class BniVirtualAccountService
@@ -16,9 +15,9 @@ class BniVirtualAccountService
 
     // FROM BNI
     // private $prefix = config('services.bni.prefix');
-    
+
     // private $secret_key = config('services.bni.secret_key');
-    
+
     // //url production
     // private $url = config('services.bni.url');
 
@@ -38,54 +37,75 @@ class BniVirtualAccountService
         $sisa_len = 16 - strlen($va_number);
         $va_number .= str_pad($idtagihan, $sisa_len, '0', STR_PAD_LEFT);
 
-        $data_asli = array(
-                    "type" => "createBilling",
-                    'client_id' => config('services.bni.cid'),
-                    'trx_id' => $idtagihan, // fill with Billing ID
-                    'trx_amount' => config('services.biaya_pameran'),
-                    'billing_type' => 'c',
-                    'datetime_expired' => $exp_payment_date, // billing will be expired in 6 hours 
-                    'virtual_account' => $va_number,
-                    'customer_name' => $nama,
-                    'customer_email' => $email,
-                    'customer_phone' => $hp,
-                    'description' => 'Biaya Registrasi Pameran KPPTI 2026 dengan kode biaya: '.$idtagihan,
-                );
+        $data_asli = [
+            'type' => 'createBilling',
+            'client_id' => config('services.bni.cid'),
+            'trx_id' => $idtagihan, // fill with Billing ID
+            'trx_amount' => config('services.biaya_pameran'),
+            'billing_type' => 'c',
+            'datetime_expired' => $exp_payment_date, // billing will be expired in 6 hours
+            'virtual_account' => $va_number,
+            'customer_name' => $nama,
+            'customer_email' => $email,
+            'customer_phone' => $hp,
+            'description' => 'Biaya Registrasi Pameran KPPTI 2026 dengan kode biaya: '.$idtagihan,
+        ];
 
         $hashed_string = $this->BniEnc->encrypt(
-                    $data_asli,
-                    config('services.bni.cid'),
-                    config('services.bni.secret_key')
-                );
+            $data_asli,
+            config('services.bni.cid'),
+            config('services.bni.secret_key')
+        );
 
-        $data_va = array(
-                    'client_id' => config('services.bni.cid'),
-                    'data' => $hashed_string,
-                );
+        $data_va = [
+            'client_id' => config('services.bni.cid'),
+            'data' => $hashed_string,
+        ];
 
         $response = $this->get_content(config('services.bni.url'), json_encode($data_va));
         $response_json = json_decode($response, true);
 
-        dd($response, config('services.bni.url'));
+        if ($response_json['status'] !== '000') {
 
-        $ret_array = array(
-            'va_number' => $va_number,
-            'trx_amount' => config('services.biaya_pameran'),
-            'datetime_expired' => $exp_payment_date,
-            'billing_type' => 'c',
-            'payment_ntb' => null,
-        );
+            $ret_array = [
+                'code' => 200,
+                'message' => $response_json['status'].' - '.$response_json['message'] ?? 'Gagal membuat VA baru',
+                'data' => [],
+            ];
+
+        } else {
+            $data_response = $this->BniEnc->decrypt($response_json['data'], config('services.bni.cid'), config('services.bni.secret_key'));
+            // $data_response will contains something like this:
+
+            dd($data_response);
+
+            $data = [
+                'va_number' => $va_number,
+                'trx_amount' => config('services.biaya_pameran'),
+                'datetime_expired' => $exp_payment_date,
+                'billing_type' => 'c',
+                'payment_ntb' => null,
+            ];
+
+            $ret_array = [
+                'code' => 200,
+                'message' => 'Berhasil membuat VA baru',
+                'data' => $data,
+            ];
+
+        }
 
         return $ret_array;
     }
 
-    private function get_content($url, $post = '') {
-        $usecookie = __DIR__ . "/cookie.txt";
+    private function get_content($url, $post = '')
+    {
+        $usecookie = __DIR__.'/cookie.txt';
         $header[] = 'Content-Type: application/json';
-        $header[] = "Accept-Encoding: gzip, deflate";
-        $header[] = "Cache-Control: max-age=0";
-        $header[] = "Connection: keep-alive";
-        $header[] = "Accept-Language: en-US,en;q=0.8,id;q=0.6";
+        $header[] = 'Accept-Encoding: gzip, deflate';
+        $header[] = 'Cache-Control: max-age=0';
+        $header[] = 'Connection: keep-alive';
+        $header[] = 'Accept-Language: en-US,en;q=0.8,id;q=0.6';
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -101,10 +121,9 @@ class BniVirtualAccountService
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
         curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
 
-        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36");
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36');
 
-        if ($post)
-        {
+        if ($post) {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
         }
@@ -119,12 +138,14 @@ class BniVirtualAccountService
 
         // dd($rawRequestHeaders, $post, $rs);
 
-        if(empty($rs)){
+        if (empty($rs)) {
             var_dump($rs, curl_error($ch));
             curl_close($ch);
+
             return false;
         }
         curl_close($ch);
+
         return $rs;
     }
 }

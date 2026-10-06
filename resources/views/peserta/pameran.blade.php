@@ -99,13 +99,16 @@
 
                 @if($pameran && $pameran->status_ajuan === '5')
                     <hr class="mt-4">
-                    <h5>Penjaga Stand</h5>
+                    <h5>Penjaga Stand &amp; Tanggal Loading</h5>
 
                     @if($pameran->nomor_stand)
                         <p class="text-muted" style="font-size: 12.5px;">
-                            Nomor stand sudah ditetapkan — hubungi admin untuk mengubah penjaga stand.
+                            Nomor stand sudah ditetapkan — hubungi admin untuk mengubah penjaga stand atau tanggal loading.
                         </p>
                     @else
+                        <p class="fw-bold text-danger" style="font-size: 12.5px;">
+                            Nomor stand tidak akan bisa diberikan sebelum minimal 1 penjaga stand sudah dipilih dan tanggal loading sudah ditentukan.
+                        </p>
                         <p class="text-muted" style="font-size: 12.5px;">
                             Maksimal 2 penjaga stand, dipilih dari peserta kontingen sendiri — PIC pameran juga boleh dipilih.
                         </p>
@@ -119,20 +122,34 @@
                                     @if($penjagaStand->get($slot))
                                         <span class="flex-grow-1">{{ $penjagaStand[$slot]->nama }}</span>
                                         @unless($pameran->nomor_stand)
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-hapus-penjaga" data-idpetugas-jaga="{{ $penjagaStand[$slot]->idpetugas_jaga }}">
+                                            <button type="button" class="btn btn-outline-danger btn-hapus-penjaga" data-idpetugas-jaga="{{ $penjagaStand[$slot]->idpetugas_jaga }}">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         @endunless
                                     @elseif($pameran->nomor_stand)
                                         <span class="flex-grow-1 text-muted">-</span>
                                     @else
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-pilih-penjaga flex-grow-1">
+                                        <button type="button" class="btn btn-outline-primary btn-pilih-penjaga flex-grow-1">
                                             Pilih Penjaga
                                         </button>
                                     @endif
                                 </div>
                             </div>
                         @endfor
+
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-bold" for="input-jadwal-loading">Tanggal Loading</label>
+                            @if($pameran->nomor_stand)
+                                <div class="border rounded p-2">{{ $pameran->jadwal_loading ? \Illuminate\Support\Carbon::parse($pameran->jadwal_loading)->format('d/m/Y') : '-' }}</div>
+                            @else
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="date" id="input-jadwal-loading" class="form-control" value="{{ $pameran->jadwal_loading ? \Illuminate\Support\Carbon::parse($pameran->jadwal_loading)->format('Y-m-d') : '' }}">
+                                    <button type="button" class="btn btn-outline-primary text-nowrap" id="btn-simpan-jadwal-loading">
+                                        <span class="btn-label">Simpan</span>
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 @endif
 
@@ -296,6 +313,7 @@
             var ajukanUrl = '{{ route('peserta.pameran.ajukan') }}';
             var tambahPenjagaUrl = '{{ route('peserta.pameran.penjaga.tambah') }}';
             var hapusPenjagaUrl = '{{ route('peserta.pameran.penjaga.hapus') }}';
+            var simpanJadwalLoadingUrl = '{{ route('peserta.pameran.jadwal-loading') }}';
             var sudahAdaTagihan = {{ $tagihan ? 'true' : 'false' }};
 
             @if($bisaEdit)
@@ -403,6 +421,37 @@
                         tampilkanError(xhr);
                         $btn.prop('disabled', false);
                     });
+                });
+            });
+
+            $('#btn-simpan-jadwal-loading').on('click', function () {
+                var $btn = $(this);
+                var tanggal = $('#input-jadwal-loading').val();
+
+                if (! tanggal) {
+                    $('.page-alert').removeClass('d-none').text('Tanggal loading tidak boleh kosong.');
+                    return;
+                }
+
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                $('.page-alert').addClass('d-none').text('');
+
+                $.ajax({
+                    url: simpanJadwalLoadingUrl,
+                    method: 'POST',
+                    data: { jadwal_loading: tanggal },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                        location.reload();
+                    });
+                })
+                .fail(function (xhr) {
+                    tampilkanError(xhr);
+                    $btn.prop('disabled', false).html(teksAwal);
                 });
             });
 

@@ -163,6 +163,9 @@ Umpan balik langsung ke pengguna itu penting, bukan hanya setelah submit:
 - Berikan indikator saat menunggu proses (loader, tombol disabled).
 - Bila form dinamis (field berubah menurut pilihan), field yang disembunyikan tidak boleh ikut divalidasi/dikirim tanpa sengaja, dan server tetap memvalidasi sesuai pilihan.
 
+### 6.6 Ukuran tombol
+Visibilitas lebih penting daripada menghemat ruang. **Hindari `btn-sm`** (atau ukuran kecil lain) kecuali ada urgensi nyata (mis. tombol ikon berulang di tiap baris tabel yang padat). Default-nya tombol berukuran normal, termasuk tombol aksi di samping input tunggal (bukan hanya tombol submit form penuh).
+
 ## 7. Keamanan dasar
 
 - CSRF: semua `POST` (termasuk AJAX) menyertakan token.

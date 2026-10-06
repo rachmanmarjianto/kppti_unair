@@ -220,8 +220,7 @@ class PameranController extends Controller
         $tagihanBaruDibuat = false;
 
         DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
-        
-        
+
             DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
             DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
@@ -241,9 +240,9 @@ class PameranController extends Controller
                 ], 'idtagihan');
 
                 $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
-                
+
                 $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
-                
+
             }
 
             $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
@@ -308,6 +307,38 @@ class PameranController extends Controller
         $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Menambahkan {$peserta->nama} sebagai penjaga stand pameran.");
 
         return $this->jsonResponse(200, 'Penjaga stand berhasil ditambahkan.');
+    }
+
+    /**
+     * Simpan tanggal loading barang — hanya setelah Diterima, dan terkunci
+     * (sama seperti penjaga stand) begitu admin menetapkan nomor stand.
+     */
+    public function simpanJadwalLoading(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $validated = $request->validate([
+            'jadwal_loading' => ['required', 'date'],
+        ]);
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $pameran || $pameran->status_ajuan !== '5') {
+            return $this->jsonResponse(422, 'Pengajuan harus sudah Diterima.');
+        }
+
+        if ($pameran->nomor_stand) {
+            return $this->jsonResponse(422, 'Nomor stand sudah ditetapkan. Hubungi admin untuk mengubah tanggal loading.');
+        }
+
+        DB::table('pameran')->where('idpameran', $pameran->idpameran)->update([
+            'jadwal_loading' => $validated['jadwal_loading'],
+        ]);
+
+        $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Menyimpan tanggal loading pameran: {$validated['jadwal_loading']}");
+
+        return $this->jsonResponse(200, 'Tanggal loading berhasil disimpan.');
     }
 
     /**

@@ -60,6 +60,7 @@
                                 <th>PIC</th>
                                 <th>No. WA</th>
                                 <th>Jumlah Penjaga</th>
+                                <th>Tanggal Loading</th>
                                 <th>Nomor Stand</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -73,17 +74,20 @@
                                     <td>{{ $baris->nama_pic }}</td>
                                     <td>{{ $baris->no_wa_pic }}</td>
                                     <td>{{ $baris->jumlah_penjaga }}</td>
+                                    <td>{{ $baris->jadwal_loading ? \Illuminate\Support\Carbon::parse($baris->jadwal_loading)->format('d/m/Y') : '-' }}</td>
                                     <td>{{ $baris->nomor_stand ?? '-' }}</td>
                                     <td class="text-center">
-                                        @if($baris->jumlah_penjaga > 0)
+                                        @if($baris->jumlah_penjaga > 0 && $baris->jadwal_loading)
                                             <button type="button" class="btn btn-sm btn-outline-primary btn-nomor-stand"
                                                     data-idpameran="{{ $baris->idpameran }}"
                                                     data-nama-institusi="{{ $baris->nama_institusi }}"
                                                     data-nomor-stand="{{ $baris->nomor_stand }}">
                                                 {{ $baris->nomor_stand ? 'Ubah' : 'Beri Nomor Stand' }}
                                             </button>
-                                        @else
+                                        @elseif($baris->jumlah_penjaga == 0)
                                             <span style="font-size: 12.5px; color:red;">Belum ada penjaga</span>
+                                        @else
+                                            <span style="font-size: 12.5px; color:red;">Belum ada tanggal loading</span>
                                         @endif
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-penjaga-{{ $baris->idpameran }}">
                                             Kelola Penjaga
