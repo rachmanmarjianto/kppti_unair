@@ -68,7 +68,7 @@ class BniVirtualAccountService
         if ($response_json['status'] !== '000') {
 
             $ret_array = [
-                'code' => 200,
+                'code' => 500,
                 'message' => $response_json['status'].' - '.$response_json['message'] ?? 'Gagal membuat VA baru',
                 'data' => [],
             ];

@@ -243,6 +243,8 @@ class PameranController extends Controller
 
                 $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
 
+                dd($va_arr);
+
             }
 
             $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
