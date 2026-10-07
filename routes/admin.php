@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\JadwalPentingController;
+use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
 use App\Http\Controllers\PesertaAdminController;
 use App\Http\Controllers\TagihanPameranController;
@@ -30,7 +31,9 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');
     Route::post('/admin-peserta/acara/daftar', [PesertaAdminController::class, 'daftarAcara'])->name('admin.peserta.acara.daftar');
     Route::post('/admin-peserta/acara/batal', [PesertaAdminController::class, 'batalAcara'])->name('admin.peserta.acara.batal');
-    Route::get('/nara-sumber', [AdminController::class, 'narasumber'])->name('admin.nara-sumber');
+    Route::get('/admin-narasumber', [NarasumberAdminController::class, 'index'])->name('admin.narasumber');
+    Route::get('/admin-narasumber/detail', [NarasumberAdminController::class, 'detail'])->name('admin.narasumber.detail');
+    Route::get('/admin-narasumber/berkas', [NarasumberAdminController::class, 'tampilBerkas'])->name('admin.narasumber.berkas');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');

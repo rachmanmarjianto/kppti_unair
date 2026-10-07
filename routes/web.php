@@ -19,6 +19,9 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::get('/lupa-password', [PenggunaController::class, 'lupaPassword'])->name('lupa-password');
+Route::post('/lupa-password', [PenggunaController::class, 'lupaPasswordReset'])->name('lupa-password.reset')->middleware('throttle:5,1');
+
 Route::middleware(['jadwalPenting:1'])->group(function () {
     Route::get('/registrasi', [PenggunaController::class, 'registrasi'])->name('registrasi_kppti');
     Route::post('/registrasi/kirim-otp', [PenggunaController::class, 'kirimOtp'])->name('registrasi_kppti.kirim_otp');

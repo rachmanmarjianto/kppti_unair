@@ -561,8 +561,8 @@
                             
                             
                         </div>
-                        @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}">Lupa kata sandi?</a>
+                        @if (Route::has('lupa-password'))
+                            <a href="{{ route('lupa-password') }}">Lupa kata sandi?</a>
                         @endif
                     </div>
 

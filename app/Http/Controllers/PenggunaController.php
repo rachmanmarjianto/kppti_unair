@@ -26,6 +26,56 @@ class PenggunaController extends Controller
         return view('registrasikppti', compact('jenisInstitusi', 'lldikti', 'jabatanPerJenis'));
     }
 
+    public function lupaPassword()
+    {
+        return view('lupa-password');
+    }
+
+    /**
+     * Reset password lewat email ATAU no. WA yang dikenali, dikirim ke WA
+     * (sama seperti reset password admin — tidak ada link reset email).
+     * Respons ke pengguna **selalu identik** terlepas dari apakah
+     * email/no. WA itu dikenali atau tidak, dan terlepas dari hasil kirim
+     * WA — ini sengaja (dikonfirmasi developer) supaya endpoint ini tidak
+     * bisa dipakai untuk mencari tahu email/no. WA mana yang valid
+     * (user enumeration). Kegagalan kirim WA tetap di-`report()` untuk
+     * visibilitas developer, hanya tidak dibocorkan ke pengguna.
+     */
+    public function lupaPasswordReset(Request $request)
+    {
+        $validated = $request->validate([
+            'metode' => ['required', 'in:email,wa'],
+            'nilai' => ['required', 'string', 'max:255'],
+        ]);
+
+        $kolom = $validated['metode'] === 'email' ? 'email' : 'no_wa';
+
+        $pengguna = DB::table('pengguna')
+            ->where('is_deleted', false)
+            ->where($kolom, trim($validated['nilai']))
+            ->first();
+
+        if ($pengguna && $pengguna->no_wa) {
+            $password = $this->generateRandomPassword(8);
+
+            DB::table('pengguna')->where('idpengguna', $pengguna->idpengguna)->update([
+                'password' => Hash::make($password),
+            ]);
+
+            $pesan_1 = 'Ada permintaan reset password untuk akun KPPTI 2026 Anda. Berikut informasi login baru Anda:';
+            $pesan_2 = "Email: {$pengguna->email} ### Password: {$password}";
+            $pesan_3 = 'Akun Aktif';
+
+            try {
+                $this->kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $pengguna->no_wa);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return $this->jsonResponse(200, 'Password baru dikirim ke WA.');
+    }
+
     public function profile()
     {
         $menu = 'profile';
