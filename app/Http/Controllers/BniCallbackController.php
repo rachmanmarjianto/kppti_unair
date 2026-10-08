@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class BniCallbackController extends Controller
 {
@@ -18,6 +19,7 @@ class BniCallbackController extends Controller
     public function handle(Request $request): JsonResponse
     {
         // TODO: verifikasi callback BNI, insert ke `pembayaran`, update `tagihan`.
+        Log::info('BNI callback request', $request->all());
 
         return response()->json(['received' => true]);
     }
