@@ -218,6 +218,7 @@ class PameranController extends Controller
         }
 
         $tagihanBaruDibuat = false;
+        $var_number = null;
 
         DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
 

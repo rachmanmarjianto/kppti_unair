@@ -77,7 +77,11 @@ class BniVirtualAccountService
             $data_response = $this->BniEnc->decrypt($response_json['data'], config('services.bni.cid'), config('services.bni.secret_key'));
             // $data_response will contains something like this:
 
-            dd($data_response);
+            $va_number = $data_response['virtual_account'];
+
+            $inquiry_data = $this->inquiryBilling($idtagihan);
+
+            dd($inquiry_data);
 
             $data = [
                 'va_number' => $va_number,
@@ -93,6 +97,52 @@ class BniVirtualAccountService
                 'data' => $data,
             ];
 
+        }
+
+        return $ret_array;
+    }
+
+    public function inquiryBilling($trx_id): ?array
+    {
+        $data_asli = [
+            'type' => 'inquiryBilling',
+            'client_id' => config('services.bni.cid'),
+            'trx_id' => $trx_id,
+        ];
+
+        $hashed_string = $this->BniEnc->encrypt(
+            $data_asli,
+            config('services.bni.cid'),
+            config('services.bni.secret_key')
+        );
+
+        $data_va = [
+            'client_id' => config('services.bni.cid'),
+            'prefix' => config('services.bni.prefix'),
+            'data' => $hashed_string,
+        ];
+
+        $response = $this->get_content(config('services.bni.url'), json_encode($data_va));
+        $response_json = json_decode($response, true);
+
+        if ($response_json['status'] !== '000') {
+
+            $ret_array = [
+                'code' => 500,
+                'message' => $response_json['status'].' - '.$response_json['message'] ?? 'Gagal melakukan inquiry billing',
+                'data' => [],
+            ];
+
+        } else {
+            $data_response = $this->BniEnc->decrypt($response_json['data'], config('services.bni.cid'), config('services.bni.secret_key'));
+
+            dd($data_response);
+
+            $ret_array = [
+                'code' => 200,
+                'message' => 'Berhasil melakukan inquiry billing',
+                'data' => $data_response,
+            ];
         }
 
         return $ret_array;
