@@ -66,6 +66,15 @@
                                 <span class="badge {{ $labelTagihan[$tagihan->status][1] ?? 'bg-secondary' }}">
                                     {{ $labelTagihan[$tagihan->status][0] ?? '-' }}
                                 </span>
+                                @if($tagihan->status === 5)
+                                    <p class="text-muted mt-2 mb-0" style="font-size: 12.5px;">
+                                        Tagihan ini telah kedaluwarsa. Silahkan buat Tagihan baru
+                                    </p>
+                                @elseif($tagihan->status === 1)
+                                    <p class="text-muted mt-2 mb-0" style="font-size: 12.5px;">
+                                        Tagihan ini belum dibayar. Silahkan lakukan pembayaran untuk dapat direview oleh SC.
+                                    </p>
+                                @endif
                             </div>
                         </div>
 
