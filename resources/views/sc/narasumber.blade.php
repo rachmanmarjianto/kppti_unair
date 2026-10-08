@@ -53,6 +53,7 @@
                         <thead>
                             <tr>
                                 <th>Nama Pengaju</th>
+                                <th>Institusi Asal</th>
                                 <th>Status</th>
                                 <th class="text-center">Jumlah Riwayat Ajuan</th>
                                 <th>Reviewer Terakhir</th>
@@ -63,6 +64,7 @@
                             @foreach($antrean as $baris)
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
+                                    <td>{{ $baris->nama_institusi ?? '-' }}</td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
@@ -97,6 +99,7 @@
                         <thead>
                             <tr>
                                 <th>Nama Pengaju</th>
+                                <th>Institusi Asal</th>
                                 <th>Status</th>
                                 <th>Reviewer Terakhir</th>
                                 <th class="text-center">Aksi</th>
@@ -106,6 +109,7 @@
                             @foreach($diproses as $baris)
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
+                                    <td>{{ $baris->nama_institusi ?? '-' }}</td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}

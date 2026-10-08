@@ -32,8 +32,9 @@
             height: 30px;
             max-width: none;
         }
+
     </style>
-    
+
 </head>
 <body class="layout-boxed">
 

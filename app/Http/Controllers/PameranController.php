@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PameranController extends Controller
 {
-    
+    private const TAGIHAN_STATUS_EXPIRED = 5;
+
     /**
      * Show the kontingen's pameran submission — one per institusi. Shows an
      * editable form when there's no submission yet, or the current one is
@@ -35,9 +36,9 @@ class PameranController extends Controller
 
         $tagihan = $pameran ? DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first() : null;
 
-        $pembayaran = $tagihan
-            ? DB::table('pembayaran')->where('idtagihan', $tagihan->idtagihan)->orderBy('datetime_payment')->get()
-            : collect();
+        if ($tagihan) {
+            $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
+        }
 
         $penjagaStand = ($pameran && $pameran->status_ajuan === '5')
             ? DB::table('petugas_jaga as pj')
@@ -88,7 +89,7 @@ class PameranController extends Controller
         $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
 
         return view('peserta.pameran', compact(
-            'menu', 'submenu', 'pameran', 'tagihan', 'pembayaran', 'pesertaOptions', 'riwayat',
+            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'riwayat',
             'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand'
         ));
     }
@@ -269,6 +270,100 @@ class PameranController extends Controller
     }
 
     /**
+     * Halaman detail tagihan + riwayat pembayaran — dipisah dari halaman
+     * utama Pengajuan Pameran. Cek kadaluwarsa VA dijalankan lagi di sini
+     * (sama seperti index()) sesuai arahan developer.
+     */
+    public function tagihan(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $pameran) {
+            abort(404);
+        }
+
+        $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+
+        if (! $tagihan) {
+            abort(404);
+        }
+
+        $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
+
+        $pembayaran = DB::table('pembayaran')->where('idtagihan', $tagihan->idtagihan)->orderBy('datetime_payment')->get();
+
+        $menu = 'pameran';
+        $submenu = '';
+
+        return view('peserta.pameran-tagihan', compact('menu', 'submenu', 'pameran', 'tagihan', 'pembayaran'));
+    }
+
+    /**
+     * Minta nomor VA baru untuk tagihan yang sudah expired — satu-satunya
+     * cara tagihan bisa dibayar lagi setelah VA lamanya kadaluwarsa.
+     */
+    public function requestVaBaru(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $pameran) {
+            return $this->jsonResponse(404, 'Pengajuan pameran tidak ditemukan.');
+        }
+
+        $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+
+        if (! $tagihan) {
+            return $this->jsonResponse(404, 'Tagihan tidak ditemukan.');
+        }
+
+        $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
+
+        if ((int) $tagihan->status !== self::TAGIHAN_STATUS_EXPIRED) {
+            return $this->jsonResponse(422, 'Tagihan ini belum expired, tidak perlu membuat VA baru.');
+        }
+
+        try {
+            DB::transaction(function () use ($tagihan, $userdata) {
+                $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
+
+                if ($va_arr['code'] !== 200) {
+                    throw new \RuntimeException('Gagal membuat nomor Virtual Account baru: '.$va_arr['message']);
+                }
+
+                $statusBaru = $tagihan->sisa_tagihan < $tagihan->tagihan ? 2 : 1;
+
+                DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                    'va' => $va_arr['data']['va_number'],
+                    'expired_date' => $va_arr['data']['datetime_expired'],
+                    'status' => $statusBaru,
+                ]);
+
+                DB::table('log_ubah_status_by_pengguna')->insert([
+                    'done_at' => now(),
+                    'done_by' => $userdata['idpengguna'],
+                    'idtagihan' => $tagihan->idtagihan,
+                ]);
+
+                $this->logInstitusi($tagihan->idinstitusi_asal, $userdata['idpengguna'], 'Membuat nomor Virtual Account baru untuk tagihan pameran yang expired.');
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(422, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal membuat nomor Virtual Account baru.');
+        }
+
+        return $this->jsonResponse(200, 'Nomor Virtual Account baru berhasil dibuat.');
+    }
+
+    /**
      * Tambah satu penjaga stand — maksimal 2 orang per pameran, dari
      * kontingen sendiri (PIC boleh ikut dipilih), cuma setelah Diterima.
      */
@@ -415,6 +510,37 @@ class PameranController extends Controller
         }
 
         return Storage::disk('local')->response($review->file_path);
+    }
+
+    /**
+     * Tandai tagihan expired kalau waktunya sudah lewat dan status masih
+     * tertagih/terbayar sebagian — dipanggil setiap halaman pameran/detail
+     * tagihan dibuka (bukan cuma sekali), jadi dijaga idempotent: status
+     * lunas/batal/sudah-expired tidak diproses ulang.
+     */
+    private function cekKadaluwarsaTagihan(object $tagihan, int $idpengguna): object
+    {
+        if (in_array((int) $tagihan->status, [3, 4, self::TAGIHAN_STATUS_EXPIRED], true)) {
+            return $tagihan;
+        }
+
+        if (! $tagihan->expired_date || now()->lessThanOrEqualTo($tagihan->expired_date)) {
+            return $tagihan;
+        }
+
+        DB::transaction(function () use ($tagihan, $idpengguna) {
+            DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                'status' => self::TAGIHAN_STATUS_EXPIRED,
+            ]);
+
+            DB::table('log_ubah_status_by_pengguna')->insert([
+                'done_at' => now(),
+                'done_by' => $idpengguna,
+                'idtagihan' => $tagihan->idtagihan,
+            ]);
+        });
+
+        return DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->first();
     }
 
     /**

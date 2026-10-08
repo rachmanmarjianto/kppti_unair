@@ -42,6 +42,7 @@
         2 => ['Terbayar Sebagian', 'bg-info'],
         3 => ['Lunas', 'bg-success'],
         4 => ['Batal', 'bg-danger'],
+        5 => ['Expired', 'bg-dark'],
     ];
 @endphp
 
