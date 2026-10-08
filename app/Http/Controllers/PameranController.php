@@ -244,7 +244,7 @@ class PameranController extends Controller
 
                 $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
 
-                dd($tagihan->idtagihan, $va_arr);
+                dd($va_arr);
 
             }
 

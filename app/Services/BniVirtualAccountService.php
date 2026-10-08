@@ -79,10 +79,6 @@ class BniVirtualAccountService
 
             $va_number = $data_response['virtual_account'];
 
-            $inquiry_data = $this->inquiryBilling($idtagihan);
-
-            dd($inquiry_data);
-
             $data = [
                 'va_number' => $va_number,
                 'trx_amount' => config('services.biaya_pameran'),
@@ -135,8 +131,6 @@ class BniVirtualAccountService
 
         } else {
             $data_response = $this->BniEnc->decrypt($response_json['data'], config('services.bni.cid'), config('services.bni.secret_key'));
-
-            dd($data_response);
 
             $ret_array = [
                 'code' => 200,
