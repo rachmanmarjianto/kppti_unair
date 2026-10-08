@@ -29,7 +29,7 @@ class BniVirtualAccountService
     public function requestVa($idtagihan, $nama, $email, $hp): ?array
     {
         date_default_timezone_set('Asia/Jakarta');
-        $exp_payment_date = date('c', time() + 6 * 3600);
+        $exp_payment_date = date('c', time() + config('services.bni.va_expiry') * 3600);
 
         Log::info("KPPTI: Requesting VA for tagihan {$idtagihan} with exp_payment_date {$exp_payment_date}");
 

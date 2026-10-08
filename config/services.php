@@ -45,6 +45,7 @@ return [
         'prefix' => env('BNI_PREFIX'),
         'cid' => env('BNI_CID'),
         'secret_key' => env('BNI_SECRET_KEY'),
+        'va_expiry' => env('BNI_VA_EXPIRY'),
     ],
 
     'biaya_pameran' => env('BIAYA_PAMERAN'),

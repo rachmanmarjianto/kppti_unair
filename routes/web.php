@@ -43,3 +43,4 @@ Route::middleware(['akses:All'])->group(function () {
 
 // Webhook publik dari BNI — tidak ada sesi, tidak digerbangi middleware akses.
 Route::post('/callback/bni-va', [BniCallbackController::class, 'handle'])->name('callback.bni-va');
+Route::get('/callback/bni-va', [BniCallbackController::class, 'handle_forbidden'])->name('callback.bni-va.get');
