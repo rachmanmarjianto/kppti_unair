@@ -41,6 +41,10 @@ class PameranController extends Controller
 
         $tagihan = $pameran ? DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first() : null;
 
+        $pembayaran = $tagihan
+            ? DB::table('pembayaran')->where('idtagihan', $tagihan->idtagihan)->orderBy('datetime_payment')->get()
+            : collect();
+
         $penjagaStand = ($pameran && $pameran->status_ajuan === '5')
             ? DB::table('petugas_jaga as pj')
                 ->join('peserta as pe', 'pe.idpeserta', '=', 'pj.idpeserta')
@@ -90,7 +94,7 @@ class PameranController extends Controller
         $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
 
         return view('peserta.pameran', compact(
-            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'riwayat',
+            'menu', 'submenu', 'pameran', 'tagihan', 'pembayaran', 'pesertaOptions', 'riwayat',
             'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand'
         ));
     }
@@ -218,38 +222,50 @@ class PameranController extends Controller
         }
 
         $tagihanBaruDibuat = false;
-        $var_number = null;
 
-        DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
+        try {
+            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
+                DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
+                DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
-            DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
-            DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
+                $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
 
-            $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+                if (! $tagihan) {
+                    $tagihanBaruDibuat = true;
 
-            if (! $tagihan) {
-                $tagihanBaruDibuat = true;
+                    $idtagihan = DB::table('tagihan')->insertGetId([
+                        'idinstitusi_asal' => $idInstitusiAsal,
+                        'idpameran' => $pameran->idpameran,
+                        'created_at' => now(),
+                        'created_by' => $userdata['idpengguna'],
+                        'status' => 1,
+                        'tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
+                        'sisa_tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
+                    ], 'idtagihan');
 
-                $idtagihan = DB::table('tagihan')->insertGetId([
-                    'idinstitusi_asal' => $idInstitusiAsal,
-                    'idpameran' => $pameran->idpameran,
-                    'created_at' => now(),
-                    'created_by' => $userdata['idpengguna'],
-                    'status' => 1,
-                    'tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
-                    'sisa_tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
-                ], 'idtagihan');
+                    $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
 
-                $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
+                    $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
 
-                $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
+                    if ($va_arr['code'] !== 200) {
+                        throw new \RuntimeException('Gagal membuat nomor Virtual Account baru: '.$va_arr['message']);
+                    }
 
-                dd($va_arr);
+                    DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                        'va' => $va_arr['data']['va_number'],
+                        'expired_date' => $va_arr['data']['datetime_expired'],
+                    ]);
+                }
 
-            }
+                $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(422, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
 
-            $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
-        });
+            return $this->jsonResponse(500, 'Gagal mengajukan pameran.');
+        }
 
         $pesan = $tagihanBaruDibuat
             ? 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.'

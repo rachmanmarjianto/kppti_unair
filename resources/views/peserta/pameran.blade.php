@@ -67,6 +67,55 @@
                                 </span>
                             </div>
                         </div>
+
+                        @if($tagihan->va)
+                            <div class="row mb-2">
+                                <div class="col-12 col-sm-2 fw-bold">Bank</div>
+                                <div class="col-12 col-sm-10">BNI</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12 col-sm-2 fw-bold">Nomor Virtual Account</div>
+                                <div class="col-12 col-sm-10">{{ $tagihan->va }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12 col-sm-2 fw-bold">Jumlah yang Harus Dibayar</div>
+                                <div class="col-12 col-sm-10">Rp {{ number_format($tagihan->sisa_tagihan ?? 0, 0, ',', '.') }}</div>
+                            </div>
+                            @if($tagihan->expired_date)
+                                <div class="row mb-2">
+                                    <div class="col-12 col-sm-2 fw-bold">Berlaku Hingga</div>
+                                    <div class="col-12 col-sm-10">{{ \Illuminate\Support\Carbon::parse($tagihan->expired_date)->format('d/m/Y') }}</div>
+                                </div>
+                            @endif
+                        @endif
+
+                        @if($pembayaran->isNotEmpty())
+                            <div class="row mb-2">
+                                <div class="col-12 col-sm-2 fw-bold">Riwayat Pembayaran</div>
+                                <div class="col-12 col-sm-10">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tanggal</th>
+                                                <th>Jumlah Dibayar</th>
+                                                <th>Akumulasi Dibayar</th>
+                                                <th>No. Referensi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($pembayaran as $bayar)
+                                                <tr>
+                                                    <td>{{ $bayar->datetime_payment ? \Illuminate\Support\Carbon::parse($bayar->datetime_payment)->format('d/m/Y H:i') : '-' }}</td>
+                                                    <td>Rp {{ number_format($bayar->trx_amount ?? 0, 0, ',', '.') }}</td>
+                                                    <td>Rp {{ number_format($bayar->cumulative_payment_amount ?? 0, 0, ',', '.') }}</td>
+                                                    <td>{{ $bayar->payment_ntb ?? '-' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        @endif
                     @endif
                 @endif
 
