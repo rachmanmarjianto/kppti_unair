@@ -3,9 +3,15 @@
 @section('title', 'Detail Tagihan Pameran')
 
 @section('page-css')
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
+    <style>
+        #modal-riwayat-pembayaran .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-riwayat-pembayaran .form-label, #modal-riwayat-pembayaran .form-check-label, #modal-riwayat-pembayaran .text-muted { color: #0e1726 !important; }
+        #modal-riwayat-pembayaran .form-control { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -28,8 +34,13 @@
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
                 <div class="row align-items-center">
-                    <div class="col-12">
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12">
                         <h4>Detail Tagihan</h4>
+                    </div>
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12 text-md-end mt-2 mt-md-0">
+                        <a href="{{ route('peserta.pameran') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Kembali
+                        </a>
                     </div>
                 </div>
             </div>
@@ -70,9 +81,6 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-riwayat-pembayaran">
                         Lihat Detail Pembayaran
                     </button>
-                    <a href="{{ route('peserta.pameran') }}" class="btn btn-outline-secondary">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Kembali
-                    </a>
                 </div>
 
                 @if((int) $tagihan->status !== 5)
@@ -101,7 +109,6 @@
                                 <tr>
                                     <th>Tanggal</th>
                                     <th>Jumlah Dibayar</th>
-                                    <th>Akumulasi Dibayar</th>
                                     <th>No. Referensi</th>
                                 </tr>
                             </thead>
@@ -110,7 +117,6 @@
                                     <tr>
                                         <td>{{ $bayar->datetime_payment ? \Illuminate\Support\Carbon::parse($bayar->datetime_payment)->format('d/m/Y H:i') : '-' }}</td>
                                         <td>Rp {{ number_format($bayar->trx_amount ?? 0, 0, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($bayar->cumulative_payment_amount ?? 0, 0, ',', '.') }}</td>
                                         <td>{{ $bayar->payment_ntb ?? '-' }}</td>
                                     </tr>
                                 @endforeach
