@@ -10,13 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PameranController extends Controller
 {
-    /**
-     * Placeholder nominal tagihan pameran — belum ditentukan panitia
-     * (lihat docs/features/007-pengajuan-pameran.md §10). Tidak menghambat
-     * kerangka tagihan, tinggal diubah kapan saja setelah nominal pasti.
-     */
-    private const NOMINAL_TAGIHAN_PAMERAN = 0;
-
+    
     /**
      * Show the kontingen's pameran submission — one per institusi. Shows an
      * editable form when there's no submission yet, or the current one is
@@ -239,8 +233,8 @@ class PameranController extends Controller
                         'created_at' => now(),
                         'created_by' => $userdata['idpengguna'],
                         'status' => 1,
-                        'tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
-                        'sisa_tagihan' => self::NOMINAL_TAGIHAN_PAMERAN,
+                        'tagihan' => config('services.biaya_pameran'),
+                        'sisa_tagihan' => config('services.biaya_pameran'),
                     ], 'idtagihan');
 
                     $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
