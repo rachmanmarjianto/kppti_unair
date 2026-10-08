@@ -48,6 +48,9 @@
                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}" data-token="{{ $user->token }}">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
+                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-danger" title="Hapus Role" data-action="hapus-{{ $boxId }}" data-idpengguna="{{ $user->idpengguna }}" data-nama="{{ $user->nama }}">
+                                        <i class="fa-solid fa-user-minus"></i>
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

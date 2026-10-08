@@ -39,6 +39,7 @@ class Controller extends BaseController
         1 => 'admin.home',
         2 => 'peserta.home',
         4 => 'sc.pameran',
+        5 => 'petugas-kit.home',
     ];
 
     /**
@@ -300,6 +301,85 @@ class Controller extends BaseController
         }
 
         return $query;
+    }
+
+    /**
+     * Every institusi_asal + jenis_institusi, with `jumlahPeserta` (active
+     * peserta count) and `jumlahLengkap` (how many of those have
+     * `kit_lengkap = true`) — the per-kontingen seminar kit progress
+     * summary. Shared by SeminarKitController (admin, read-only) and
+     * PetugasKitController (same list, interactive detail page).
+     *
+     * @return Collection<int, object>
+     */
+    protected function kontingenKitProgress(): Collection
+    {
+        $pesertaPerInstitusi = $this->pesertaAktifQuery()
+            ->select('p.idinstitusi_asal', 'pe.kit_lengkap')
+            ->get()
+            ->groupBy('idinstitusi_asal');
+
+        return DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->orderBy('i.nama_institusi')
+            ->get()
+            ->map(function ($institusi) use ($pesertaPerInstitusi) {
+                $peserta = $pesertaPerInstitusi->get($institusi->idinstitusi_asal, collect());
+                $institusi->jumlahPeserta = $peserta->count();
+                $institusi->jumlahLengkap = $peserta->where('kit_lengkap', true)->count();
+                $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
+
+                return $institusi;
+            });
+    }
+
+    /**
+     * Full seminar-kit progress detail for one institusi_asal: the active
+     * seminar_kit list (table columns) and the institusi's active peserta,
+     * each carrying a `kitMap` keyed by idseminar_kit with that kit's
+     * check/created_at/nama_petugas (or nulls if no kit_peserta row yet
+     * for that pair). Shared by SeminarKitController::progressDetail()
+     * (admin, read-only) and PetugasKitController::detail() (Petugas Kit,
+     * interactive checkboxes).
+     *
+     * @return array{kitAktif: Collection<int, object>, pesertaList: Collection<int, object>}
+     */
+    protected function kitProgressDetail(int $idInstitusiAsal): array
+    {
+        $kitAktif = DB::table('seminar_kit')->where('status', true)->orderBy('idseminar_kit')->get();
+
+        $pesertaList = $this->pesertaAktifQuery($idInstitusiAsal)
+            ->select('pe.idpeserta', 'p.nama', 'pe.kit_lengkap')
+            ->orderBy('p.nama')
+            ->get();
+
+        $kitPesertaRows = $pesertaList->isEmpty()
+            ? collect()
+            : DB::table('kit_peserta as kp')
+                ->leftJoin('pengguna as petugas', 'petugas.idpengguna', '=', 'kp.created_by')
+                ->whereIn('kp.idpeserta', $pesertaList->pluck('idpeserta'))
+                ->select('kp.idpeserta', 'kp.idseminar_kit', 'kp.check', 'kp.created_at', 'petugas.nama as nama_petugas')
+                ->get()
+                ->groupBy('idpeserta');
+
+        $pesertaList = $pesertaList->map(function ($peserta) use ($kitPesertaRows, $kitAktif) {
+            $rowsUntukPeserta = $kitPesertaRows->get($peserta->idpeserta, collect())->keyBy('idseminar_kit');
+
+            $peserta->kitMap = $kitAktif->mapWithKeys(function ($kit) use ($rowsUntukPeserta) {
+                $row = $rowsUntukPeserta->get($kit->idseminar_kit);
+
+                return [$kit->idseminar_kit => [
+                    'check' => $row ? (bool) $row->check : false,
+                    'created_at' => $row->created_at ?? null,
+                    'nama_petugas' => $row->nama_petugas ?? null,
+                ]];
+            });
+
+            return $peserta;
+        });
+
+        return ['kitAktif' => $kitAktif, 'pesertaList' => $pesertaList];
     }
 
     /**

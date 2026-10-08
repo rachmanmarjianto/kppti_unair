@@ -6,6 +6,7 @@ use App\Http\Controllers\JadwalPentingController;
 use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
 use App\Http\Controllers\PesertaAdminController;
+use App\Http\Controllers\SeminarKitController;
 use App\Http\Controllers\TagihanPameranController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-users/ubah-role-aktif', [AdminController::class, 'ubahRoleAktif'])->name('admin.admin-users.ubah-role-aktif');
     Route::post('/admin-users/update', [AdminController::class, 'updatePengguna'])->name('admin.admin-users.update');
     Route::post('/admin-users/reset-password', [AdminController::class, 'resetPassword'])->name('admin.admin-users.reset-password');
+    Route::post('/admin-users/hapus-role', [AdminController::class, 'hapusRole'])->name('admin.admin-users.hapus-role');
     Route::get('/admin-peserta', [PesertaAdminController::class, 'index'])->name('admin.peserta');
     Route::get('/admin-peserta/detail', [PesertaAdminController::class, 'detailPeserta'])->name('admin.peserta.detail');
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
@@ -45,4 +47,10 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-pameran/nomor-stand/update', [PameranAdminController::class, 'updateNomorStand'])->name('admin.pameran.nomor-stand.update');
     Route::post('/admin-pameran/penjaga/tambah', [PameranAdminController::class, 'tambahPenjaga'])->name('admin.pameran.penjaga.tambah');
     Route::post('/admin-pameran/penjaga/hapus', [PameranAdminController::class, 'hapusPenjaga'])->name('admin.pameran.penjaga.hapus');
+    Route::get('/admin-seminar-kit/master', [SeminarKitController::class, 'index'])->name('admin.seminar-kit.master');
+    Route::post('/admin-seminar-kit/master/tambah', [SeminarKitController::class, 'store'])->name('admin.seminar-kit.master.tambah');
+    Route::post('/admin-seminar-kit/master/update', [SeminarKitController::class, 'update'])->name('admin.seminar-kit.master.update');
+    Route::post('/admin-seminar-kit/master/toggle-status', [SeminarKitController::class, 'toggleStatus'])->name('admin.seminar-kit.master.toggle-status');
+    Route::get('/admin-seminar-kit/progress', [SeminarKitController::class, 'progress'])->name('admin.seminar-kit.progress');
+    Route::get('/admin-seminar-kit/progress/detail', [SeminarKitController::class, 'progressDetail'])->name('admin.seminar-kit.progress.detail');
 });

@@ -16,6 +16,19 @@ class AdminController extends Controller
 
     private const ROLE_SC = 4;
 
+    private const ROLE_PETUGAS_KIT = 5;
+
+    /**
+     * Maps the "box" slug used throughout this page/view to its role ID.
+     *
+     * @var array<string, int>
+     */
+    private const IDROLE_BY_BOX = [
+        'admin' => self::ROLE_ADMIN,
+        'sc' => self::ROLE_SC,
+        'petugas-kit' => self::ROLE_PETUGAS_KIT,
+    ];
+
     public function index()
     {
         $menu = 'home';
@@ -31,8 +44,9 @@ class AdminController extends Controller
 
         $adminUsers = $this->getUsersByRole(self::ROLE_ADMIN);
         $scUsers = $this->getUsersByRole(self::ROLE_SC);
+        $petugasKitUsers = $this->getUsersByRole(self::ROLE_PETUGAS_KIT);
 
-        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers'));
+        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers', 'petugasKitUsers'));
     }
 
     /**
@@ -59,12 +73,12 @@ class AdminController extends Controller
 
     /**
      * Create a brand-new pengguna (not yet in the `pengguna` table) and grant them
-     * the role tied to the given box ("admin" -> role admin, "sc" -> role SC).
+     * the role tied to the given box (see IDROLE_BY_BOX).
      */
     public function tambahPenggunaBaru(Request $request)
     {
         $validated = $request->validate([
-            'boxId' => ['required', 'string', 'in:admin,sc'],
+            'boxId' => ['required', 'string', 'in:'.implode(',', array_keys(self::IDROLE_BY_BOX))],
             'nama' => ['required', 'string', 'max:1000'],
             'email' => ['required', 'email', 'max:500'],
             'no_wa' => ['required', 'string', 'max:30'],
@@ -72,7 +86,7 @@ class AdminController extends Controller
 
         $validated['nama'] = mb_strtoupper($validated['nama']);
 
-        $idrole = $validated['boxId'] === 'admin' ? self::ROLE_ADMIN : self::ROLE_SC;
+        $idrole = self::IDROLE_BY_BOX[$validated['boxId']];
 
         $sudahTerdaftar = DB::table('pengguna')
             ->where('is_deleted', false)
@@ -127,18 +141,18 @@ class AdminController extends Controller
     }
 
     /**
-     * Grant an existing pengguna the role tied to the given box ("admin" -> role admin,
-     * "sc" -> role SC). All of the pengguna's other active roles are deactivated so only
-     * the newly granted one remains active.
+     * Grant an existing pengguna the role tied to the given box (see
+     * IDROLE_BY_BOX). All of the pengguna's other active roles are
+     * deactivated so only the newly granted one remains active.
      */
     public function tambahPenggunaLama(Request $request)
     {
         $validated = $request->validate([
-            'boxId' => ['required', 'string', 'in:admin,sc'],
+            'boxId' => ['required', 'string', 'in:'.implode(',', array_keys(self::IDROLE_BY_BOX))],
             'idpengguna' => ['required', 'integer'],
         ]);
 
-        $idrole = $validated['boxId'] === 'admin' ? self::ROLE_ADMIN : self::ROLE_SC;
+        $idrole = self::IDROLE_BY_BOX[$validated['boxId']];
 
         $pengguna = DB::table('pengguna')
             ->where('idpengguna', $validated['idpengguna'])
@@ -170,6 +184,63 @@ class AdminController extends Controller
         }
 
         return $this->jsonResponse(200, 'Role pengguna berhasil ditambahkan.', ['idpengguna' => $pengguna->idpengguna, 'token' => $this->encryptRouteValue($pengguna->idpengguna)]);
+    }
+
+    /**
+     * Remove a pengguna's membership in the role tied to the given box (see
+     * IDROLE_BY_BOX) entirely — deletes the `role_pengguna` row, so they
+     * disappear from that box's list (unlike toggling `status`, which only
+     * changes which role is active). If that was their only active role,
+     * the first remaining role (if any) is activated so they aren't left
+     * without one. Removing the last remaining Admin is blocked, since
+     * that would lock everyone out of user management.
+     */
+    public function hapusRole(Request $request)
+    {
+        $validated = $request->validate([
+            'boxId' => ['required', 'string', 'in:'.implode(',', array_keys(self::IDROLE_BY_BOX))],
+            'idpengguna' => ['required', 'integer'],
+        ]);
+
+        $idrole = self::IDROLE_BY_BOX[$validated['boxId']];
+
+        $rolePengguna = DB::table('role_pengguna')
+            ->where('idpengguna', $validated['idpengguna'])
+            ->where('idrole', $idrole)
+            ->first();
+
+        if (! $rolePengguna) {
+            return $this->jsonResponse(404, 'Pengguna tidak memiliki role tersebut.');
+        }
+
+        if ($idrole === self::ROLE_ADMIN) {
+            $jumlahAdminLain = DB::table('role_pengguna as rp')
+                ->join('pengguna as p', 'p.idpengguna', '=', 'rp.idpengguna')
+                ->where('rp.idrole', self::ROLE_ADMIN)
+                ->where('rp.idpengguna', '!=', $validated['idpengguna'])
+                ->where('p.is_deleted', false)
+                ->count();
+
+            if ($jumlahAdminLain === 0) {
+                return $this->jsonResponse(422, 'Tidak bisa menghapus role Admin terakhir yang tersisa.');
+            }
+        }
+
+        DB::transaction(function () use ($validated, $rolePengguna) {
+            DB::table('role_pengguna')->where('idrole_pengguna', $rolePengguna->idrole_pengguna)->delete();
+
+            $masihAdaAktif = DB::table('role_pengguna')->where('idpengguna', $validated['idpengguna'])->where('status', true)->exists();
+
+            if (! $masihAdaAktif) {
+                $roleLain = DB::table('role_pengguna')->where('idpengguna', $validated['idpengguna'])->first();
+
+                if ($roleLain) {
+                    DB::table('role_pengguna')->where('idrole_pengguna', $roleLain->idrole_pengguna)->update(['status' => true]);
+                }
+            }
+        });
+
+        return $this->jsonResponse(200, 'Role pengguna berhasil dihapus.');
     }
 
     /**

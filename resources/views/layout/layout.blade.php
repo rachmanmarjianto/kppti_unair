@@ -239,6 +239,8 @@
             @include('layout.menu_peserta')
         @elseif(session('userdata')['idrole_aktif'] == 4)
             @include('layout.menu_sc')
+        @elseif(session('userdata')['idrole_aktif'] == 5)
+            @include('layout.menu_petugas_kit')
         @endif
         
         <!--  BEGIN CONTENT AREA  -->

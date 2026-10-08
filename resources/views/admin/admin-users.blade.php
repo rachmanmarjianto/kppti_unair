@@ -1,6 +1,6 @@
 @extends('layout.layout')
 
-@section('title', 'Admin / SC Users')
+@section('title', 'Admin / SC / Petugas Kit Users')
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
@@ -19,6 +19,8 @@
         #modal-user-lama-admin .modal-content,
         #modal-user-baru-sc .modal-content,
         #modal-user-lama-sc .modal-content,
+        #modal-user-baru-petugas-kit .modal-content,
+        #modal-user-lama-petugas-kit .modal-content,
         #modal-detail-pengguna .modal-content,
         #modal-edit-pengguna .modal-content {
             background: #fff;
@@ -26,6 +28,7 @@
 
         #modal-user-lama-admin .form-control[readonly],
         #modal-user-lama-sc .form-control[readonly],
+        #modal-user-lama-petugas-kit .form-control[readonly],
         #modal-detail-pengguna .form-control[readonly],
         #modal-edit-pengguna .form-control[readonly] {
             color: #000;
@@ -35,7 +38,7 @@
 
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="#">Users</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Admin / SC</li>
+    <li class="breadcrumb-item active" aria-current="page">Admin / SC / Petugas Kit</li>
 @endsection
 
 @section('content')
@@ -49,6 +52,12 @@
         'boxId' => 'sc',
         'boxTitle' => 'SC Users',
         'users' => $scUsers,
+    ])
+
+    @include('admin.partials.user-role-box', [
+        'boxId' => 'petugas-kit',
+        'boxTitle' => 'Petugas Kit Users',
+        'users' => $petugasKitUsers,
     ])
 
     <div class="modal fade" id="modal-detail-pengguna" tabindex="-1" aria-hidden="true">
@@ -178,8 +187,9 @@
             var ubahRoleAktifUrl = '{{ route('admin.admin-users.ubah-role-aktif') }}';
             var updatePenggunaUrl = '{{ route('admin.admin-users.update') }}';
             var resetPasswordUrl = '{{ route('admin.admin-users.reset-password') }}';
+            var hapusRoleUrl = '{{ route('admin.admin-users.hapus-role') }}';
             var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            var boxIds = ['admin', 'sc'];
+            var boxIds = ['admin', 'sc', 'petugas-kit'];
             var dataTables = {};
 
             boxIds.forEach(function (boxId) {
@@ -188,6 +198,7 @@
 
             initModalDetailPengguna();
             initModalEditPengguna();
+            initHapusRole();
 
             function updatePenggunaRowEverywhere(idpengguna, nama, noWa) {
                 boxIds.forEach(function (boxId) {
@@ -255,6 +266,70 @@
 
                 alertEl.className = 'modal-alert alert d-none mb-3';
                 alertEl.textContent = '';
+            }
+
+            function initHapusRole() {
+                document.addEventListener('click', function (e) {
+                    var trigger = e.target.closest('[data-action^="hapus-"]');
+
+                    if (!trigger) {
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    var boxId = trigger.getAttribute('data-action').replace('hapus-', '');
+                    var idpengguna = trigger.getAttribute('data-idpengguna');
+                    var nama = trigger.getAttribute('data-nama');
+                    var row = trigger.closest('tr');
+
+                    Swal.fire({
+                        title: 'Hapus Role?',
+                        text: 'Hapus role ini dari ' + nama + '? Pengguna tidak akan hilang, hanya role ini yang dicabut.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, hapus',
+                        cancelButtonText: 'Batal',
+                    }).then(function (result) {
+                        if (!result.isConfirmed) {
+                            return;
+                        }
+
+                        trigger.classList.add('disabled');
+
+                        fetch(hapusRoleUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({ boxId: boxId, idpengguna: idpengguna }),
+                        })
+                            .then(function (response) {
+                                return response.json().then(function (body) {
+                                    return { ok: response.ok, body: body };
+                                });
+                            })
+                            .then(function (result) {
+                                if (result.ok) {
+                                    var table = dataTables[boxId];
+
+                                    if (table && row) {
+                                        table.row(row).remove().draw(false);
+                                    }
+
+                                    showPageAlert('success', result.body.message);
+                                } else {
+                                    showPageAlert('danger', result.body.message || 'Gagal menghapus role pengguna.');
+                                    trigger.classList.remove('disabled');
+                                }
+                            })
+                            .catch(function () {
+                                showPageAlert('danger', 'Gagal menghapus role pengguna. Silakan coba lagi.');
+                                trigger.classList.remove('disabled');
+                            });
+                    });
+                });
             }
 
             function initModalDetailPengguna() {
@@ -728,7 +803,8 @@
                                     escapeHtml(payload.email),
                                     escapeHtml(payload.no_wa),
                                     '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-eye"></i></a> ' +
-                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a>',
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a> ' +
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-danger" title="Hapus Role" data-action="hapus-' + boxId + '" data-idpengguna="' + idpengguna + '" data-nama="' + escapeHtml(payload.nama.toUpperCase()) + '"><i class="fa-solid fa-user-minus"></i></a>',
                                 ]).draw(false);
 
                                 var modalInstance = bootstrap.Modal.getInstance(modalEl);
@@ -856,7 +932,8 @@
                                     escapeHtml(email),
                                     escapeHtml(noWa),
                                     '<a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Lihat Detail" data-action="detail-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-eye"></i></a> ' +
-                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a>',
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-warning" title="Edit" data-action="edit-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-token="' + token + '"><i class="fa-solid fa-pen"></i></a> ' +
+                                        '<a href="javascript:void(0);" class="btn btn-sm btn-outline-danger" title="Hapus Role" data-action="hapus-' + boxId + '" data-idpengguna="' + payload.idpengguna + '" data-nama="' + escapeHtml(nama) + '"><i class="fa-solid fa-user-minus"></i></a>',
                                 ]).draw(false);
 
                                 var modalInstance = bootstrap.Modal.getInstance(modalEl);

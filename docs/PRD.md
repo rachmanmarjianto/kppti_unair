@@ -28,6 +28,7 @@ Event ini tidak bisa ditangani dengan Google Form karena:
 | **SC** (Steering Committee) | Reviewer | Mereview pengajuan narasumber dan pameran, memberi catatan dan keputusan |
 | **Peserta** | Perwakilan institusi/individu | Registrasi, isi data logistik, pilih acara, ajukan pameran, bayar tagihan |
 | **Narasumber** | Pembicara pada acara | Mengajukan diri sebagai narasumber (abstrak, berkas), mengikuti alur review |
+| **Petugas Kit** (`idrole` 5) | Panitia penyiap seminar kit | Setelah masa registrasi online ditutup, menyiapkan & mengelompokkan seminar kit sesuai jumlah peserta per kontingen (F18) |
 
 - **Narasumber adalah role tersendiri**, terpisah dari Peserta. **Registrasi peserta dan registrasi narasumber memiliki alur yang berbeda** (dijelaskan per fitur).
 - Satu pengguna dapat **memiliki** lebih dari satu role (tabel `role_pengguna`), misalnya Peserta sekaligus Narasumber, tetapi **hanya satu role yang aktif pada satu waktu** (kolom `status`). Pengecekan akses dilakukan oleh middleware `akses:{idrole}` terhadap role yang sedang aktif. Pengguna berpindah antar role dengan mengganti role aktif.
@@ -54,8 +55,8 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F02 | Verifikasi OTP WhatsApp saat registrasi | P0 | Selesai (tercakup di F01) |
 | F03 | Manajemen institusi asal dan kode kontingen | P0 | Selesai |
 | F04 | Tagihan dan pembayaran VA BNI (pembuatan VA, callback, status, pembayaran sebagian) | P0 | Belum |
-| F05 | Pengajuan narasumber (draft, pengajuan, review, revisi, diterima/ditolak) | P0 | Belum |
-| F06 | Review narasumber oleh SC (unggah berkas, catatan, keputusan) | P0 | Belum |
+| F05 | Pengajuan narasumber (draft, pengajuan, review, revisi, diterima/ditolak) | P0 | Selesai |
+| F06 | Review narasumber oleh SC (unggah berkas, catatan, keputusan) | P0 | Selesai |
 | F07 | Pengajuan pameran (alur status yang sama) dan penetapan nomor stand | P0 | Selesai |
 | F08 | Review pameran oleh SC | P0 | Selesai |
 | F09 | Manajemen acara/sesi (bertingkat, per hari dan jam) oleh admin | P1 | Selesai |
@@ -67,6 +68,8 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F15 | Ekspor data (Excel/PDF) | P2 | Belum |
 | F16 | Manajemen peserta oleh admin (lihat semua data peserta, dikelompokkan per institusi asal) dan dashboard ringkasan peserta | P1 | Selesai |
 | F17 | Portal registrasi peserta (gerbang buka/tutup sesi registrasi berbasis jadwal master `jadwal_penting`) | P0 | Selesai |
+| F18 | Persiapan seminar kit per kontingen oleh Petugas Kit, setelah masa registrasi online ditutup (lihat §6.3) | P1 | Belum |
+| F19 | Registrasi kontingen di lokasi acara pada hari kedatangan, dengan sistem antrian — **ID dipesan lebih dulu**, detail alur/sistem antrian menyusul `[TBD]` (lihat §6.3) | P1 | Belum |
 
 > Urutan pengerjaan yang disarankan: **F01 → F03 → F04 → F05/F06 → F07/F08 → sisanya**.
 > Ini mengikuti kebutuhan minimum agar pendaftaran bisa dibuka.
@@ -89,6 +92,16 @@ Status pengajuan (dipakai sama pada narasumber dan pameran):
 - SC mereview, memberi catatan, dan memutuskan.
 - Pada status revisi, peserta memperbarui dan mengirim ulang.
 - `[TBD: apakah pameran berbayar dan tagihan terbit setelah diterima? Skema tagihan memuat idpameran.]`
+
+### 6.3 Seminar kit dan registrasi kontingen di lokasi
+
+**Seminar kit**: satu paket (tas) berisi alat tulis (notebook, ballpoint), kartu peserta, dan kelengkapan lain. **Satu seminar kit = satu peserta.**
+
+Alur (F18 sudah dirancang di bawah; F19 baru dipesan ID-nya, detail menyusul):
+
+1. Setelah masa registrasi online ditutup, **Petugas Kit** (role baru, `idrole` 5) menyiapkan seminar kit dan **mengelompokkannya per kontingen** — jumlah kit per kontingen mengikuti jumlah peserta terdaftar di kontingen tersebut. (**F18**)
+2. Pada hari kedatangan, ada sesi **registrasi kontingen di lokasi acara**. Satu kontingen cukup diwakili **satu peserta**; perwakilan ini menerima sekaligus seluruh seminar kit untuk kontingennya (sejumlah peserta di kontingen itu). Sesi ini akan memakai **sistem antrian** — alur dan desain antrian ini **dibahas menyusul**, untuk sekarang hanya ID fitur (F19) yang dipesan agar tidak bertabrakan dengan fitur lain. (**F19**, `[TBD]`)
+3. Tujuan pengelompokan di langkah 1: begitu perwakilan kontingen registrasi di lokasi (langkah 2), seminar kit kontingen itu sudah siap sejumlah pas, sehingga proses registrasi lokasi berjalan lebih lancar/cepat.
 
 ## 7. Integrasi eksternal
 
@@ -125,3 +138,4 @@ Status pengajuan (dipakai sama pada narasumber dan pameran):
 3. Apakah check-in di lokasi masuk cakupan?
 4. Tanggal dan lokasi pasti event?
 5. Apakah SC juga bisa memiliki role narasumber?
+6. F19 (registrasi kontingen di lokasi + sistem antrian): bagaimana alur antriannya persis (nomor antrian, display, dsb)? Menyusul dari developer.
