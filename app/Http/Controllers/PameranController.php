@@ -413,7 +413,39 @@ class PameranController extends Controller
             // tagihan, dst) — diisi developer sendiri.
             $resp_inquiry = app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
 
-            dd($resp_inquiry); // TODO: hapus ini setelah logic diisi developer sendiri
+            //Jika sudah transfer
+            if(!empty($resp_inquiry['data']['payment_ntb'])){
+                $trx_amount = $resp_inquiry['data']['payment_amount'] ?? null;
+                $payment_ntb = $resp_inquiry['data']['payment_ntb'] ?? null;
+                $datetime_payment = $resp_inquiry['data']['datetime_payment'] ?? null;
+
+                //cek apakah sudah ada pembayaran dengan payment_ntb yang sama
+                $existingPayment = DB::table('pembayaran')
+                    ->where('payment_ntb', $payment_ntb)
+                    ->first();
+
+                if (!$existingPayment) {
+                    //ambil sisa tagihan saat ini
+                    $sisa_tagihan = $tagihan->sisa_tagihan - $trx_amount;
+
+                    DB::transaction(function () use ($tagihan, $sisa_tagihan, $payment_ntb, $trx_amount, $datetime_payment) {
+                        //update sisa tagihan
+                        DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                            'sisa_tagihan' => $sisa_tagihan,
+                            'status' => $sisa_tagihan <= 0 ? 3 : 2, // 3 = Lunas, 2 = Terbayar sebagian
+                        ]);
+
+                        // Simpan pembayaran baru
+                        DB::table('pembayaran')->insert([
+                            'idtagihan' => $tagihan->idtagihan,
+                            'payment_ntb' => $payment_ntb,
+                            'payment_amount' => $trx_amount,
+                            'datetime_payment' => $datetime_payment
+                        ]);
+                    });
+                }
+            }
+            
         } catch (\Throwable $e) {
             report($e);
 
