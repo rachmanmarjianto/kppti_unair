@@ -451,7 +451,7 @@ class PameranController extends Controller
 
             return redirect()->route('peserta.pameran.tagihan')->with('status', [
                 'status' => 'danger',
-                'message' => 'Gagal mengecek status pembayaran ke BNI. Silakan coba lagi.',
+                'message' => 'Gagal mengecek status pembayaran ke BNI. Silakan coba lagi: '.$e->getMessage(),
             ]);
         }
 
