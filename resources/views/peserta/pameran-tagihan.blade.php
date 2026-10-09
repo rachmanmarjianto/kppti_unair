@@ -78,6 +78,13 @@
                     <button type="button" class="btn btn-primary" id="btn-request-va-baru" @disabled((int) $tagihan->status !== 5)>
                         <span class="btn-label">Request VA Baru</span>
                     </button>
+                    <form action="{{ route('peserta.pameran.tagihan.cek-status') }}" method="POST" id="form-cek-status" class="d-inline">
+                        @csrf
+                        <input type="hidden" name="idtagihan" value="{{ $tagihan->idtagihan }}">
+                        <button type="submit" class="btn btn-outline-primary" id="btn-cek-status">
+                            <span class="btn-label">Check Status Pembayaran</span>
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-riwayat-pembayaran">
                         Lihat Detail Pembayaran
                     </button>
@@ -151,6 +158,11 @@
                 }
                 $('.page-alert').removeClass('d-none').text(pesan);
             }
+
+            $('#form-cek-status').on('submit', function () {
+                var $btn = $('#btn-cek-status');
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+            });
 
             $('#btn-request-va-baru').on('click', function () {
                 Swal.fire({

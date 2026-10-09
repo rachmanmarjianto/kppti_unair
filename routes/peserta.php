@@ -13,6 +13,7 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
     Route::get('/pameran/tagihan', [PameranController::class, 'tagihan'])->name('peserta.pameran.tagihan');
     Route::post('/pameran/tagihan/request-va-baru', [PameranController::class, 'requestVaBaru'])->name('peserta.pameran.tagihan.request-va-baru');
+    Route::post('/pameran/tagihan/cek-status', [PameranController::class, 'cekStatusPembayaran'])->name('peserta.pameran.tagihan.cek-status');
     Route::post('/pameran/penjaga/tambah', [PameranController::class, 'tambahPenjaga'])->name('peserta.pameran.penjaga.tambah');
     Route::post('/pameran/penjaga/hapus', [PameranController::class, 'hapusPenjaga'])->name('peserta.pameran.penjaga.hapus');
     Route::post('/pameran/jadwal-loading', [PameranController::class, 'simpanJadwalLoading'])->name('peserta.pameran.jadwal-loading');

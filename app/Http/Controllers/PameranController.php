@@ -383,6 +383,51 @@ class PameranController extends Controller
     }
 
     /**
+     * Cek manual status pembayaran lewat inquiry billing ke BNI — untuk
+     * kasus notifikasi callback BNI gagal terkirim ke server kita. Submit
+     * form biasa (bukan AJAX), balik ke halaman yang sama dengan flash
+     * status. Hasil inquiry-nya sengaja belum diproses di sini (dikosongkan
+     * sesuai arahan developer) — developer sendiri yang akan mengisi logic
+     * membaca hasil & memperbarui tagihan.
+     */
+    public function cekStatusPembayaran(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $validated = $request->validate([
+            'idtagihan' => ['required', 'integer'],
+        ]);
+
+        $tagihan = DB::table('tagihan')
+            ->where('idtagihan', $validated['idtagihan'])
+            ->where('idinstitusi_asal', $idInstitusiAsal)
+            ->first();
+
+        if (! $tagihan) {
+            abort(404);
+        }
+
+        try {
+            // TODO: proses hasil inquiry (update status/sisa_tagihan/va_status
+            // tagihan, dst) — diisi developer sendiri.
+            app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('peserta.pameran.tagihan')->with('status', [
+                'status' => 'danger',
+                'message' => 'Gagal mengecek status pembayaran ke BNI. Silakan coba lagi.',
+            ]);
+        }
+
+        return redirect()->route('peserta.pameran.tagihan')->with('status', [
+            'status' => 'success',
+            'message' => 'Pengecekan status pembayaran telah dikirim ke BNI.',
+        ]);
+    }
+
+    /**
      * Tambah satu penjaga stand — maksimal 2 orang per pameran, dari
      * kontingen sendiri (PIC boleh ikut dipilih), cuma setelah Diterima.
      */
