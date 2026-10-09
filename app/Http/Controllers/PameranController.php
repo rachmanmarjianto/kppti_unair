@@ -439,7 +439,7 @@ class PameranController extends Controller
                         DB::table('pembayaran')->insert([
                             'idtagihan' => $tagihan->idtagihan,
                             'payment_ntb' => $payment_ntb,
-                            'payment_amount' => $trx_amount,
+                            'trx_amount' => $trx_amount,
                             'datetime_payment' => $datetime_payment
                         ]);
                     });
@@ -451,7 +451,7 @@ class PameranController extends Controller
 
             return redirect()->route('peserta.pameran.tagihan')->with('status', [
                 'status' => 'danger',
-                'message' => 'Gagal mengecek status pembayaran ke BNI. Silakan coba lagi: '.$e->getMessage(),
+                'message' => 'Gagal mengecek status pembayaran ke BNI. Silakan coba lagi.',
             ]);
         }
 
