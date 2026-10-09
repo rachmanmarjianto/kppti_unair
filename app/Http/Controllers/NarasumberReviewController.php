@@ -30,8 +30,10 @@ class NarasumberReviewController extends Controller
         $antrean = DB::table('narasumber as n')
             ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
             ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'a.idparent_acara')
             ->where('n.status_ajuan', '2')
-            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan')
+            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.subtema', 'a.tema as acara_tema', 'a.hari_ke as acara_hari_ke', 'a.jam_mulai as acara_jam_mulai', 'a.jam_akhir as acara_jam_akhir', 'a.ruang as acara_ruang', 'parent.tema as acara_parent_tema')
             ->selectSub(
                 DB::table('review_narasumber')->whereColumn('idnarasumber', 'n.idnarasumber')->selectRaw('count(*)'),
                 'jumlah_riwayat'
@@ -48,8 +50,10 @@ class NarasumberReviewController extends Controller
         $diproses = DB::table('narasumber as n')
             ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
             ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'a.idparent_acara')
             ->whereIn('n.status_ajuan', ['3', '4', '5', '6'])
-            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan')
+            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.subtema', 'a.tema as acara_tema', 'a.hari_ke as acara_hari_ke', 'a.jam_mulai as acara_jam_mulai', 'a.jam_akhir as acara_jam_akhir', 'a.ruang as acara_ruang', 'parent.tema as acara_parent_tema')
             ->selectSub($this->reviewerTerakhirSubquery(), 'reviewer_terakhir')
             ->orderBy('n.idnarasumber')
             ->get()

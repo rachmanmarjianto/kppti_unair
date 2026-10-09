@@ -67,11 +67,11 @@
                                     {{ $labelTagihan[$tagihan->status][0] ?? '-' }}
                                 </span>
                                 @if($tagihan->status === 5)
-                                    <p class="mt-2 mb-0" style="font-size: 12.5px;" style="color:red">
+                                    <p class="mt-2 mb-0" style="font-size: 12.5px; color:red">
                                         Tagihan ini telah kedaluwarsa. Silahkan buat Tagihan baru
                                     </p>
                                 @elseif($tagihan->status === 1)
-                                    <p class="mt-2 mb-0" style="font-size: 12.5px;" style="color:red">
+                                    <p class="mt-2 mb-0" style="font-size: 12.5px; color:red">
                                         Tagihan ini belum dibayar. Silahkan lakukan pembayaran untuk dapat direview oleh SC.
                                     </p>
                                 @endif

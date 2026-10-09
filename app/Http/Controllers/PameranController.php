@@ -34,7 +34,7 @@ class PameranController extends Controller
             ->select('p.*', 'pic.nama as nama_pic')
             ->first();
 
-        $tagihan = $pameran ? DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first() : null;
+        $tagihan = $pameran ? $this->tagihanTerbaru($pameran->idpameran) : null;
 
         if ($tagihan) {
             $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
@@ -219,11 +219,13 @@ class PameranController extends Controller
         $tagihanBaruDibuat = false;
 
         try {
-            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, &$tagihanBaruDibuat) {
+            $pic = $this->dataPicPameran($pameran);
+
+            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, $pic, &$tagihanBaruDibuat) {
                 DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
                 DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
-                $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+                $tagihan = $this->tagihanTerbaru($pameran->idpameran);
 
                 if (! $tagihan) {
                     $tagihanBaruDibuat = true;
@@ -240,7 +242,7 @@ class PameranController extends Controller
 
                     $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
 
-                    $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
+                    $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $pic->nama, $pic->email, $pic->no_wa);
 
                     if ($va_arr['code'] !== 200) {
                         throw new \RuntimeException('Gagal membuat nomor Virtual Account baru: '.$va_arr['message']);
@@ -285,7 +287,7 @@ class PameranController extends Controller
             abort(404);
         }
 
-        $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+        $tagihan = $this->tagihanTerbaru($pameran->idpameran);
 
         if (! $tagihan) {
             abort(404);
@@ -293,7 +295,16 @@ class PameranController extends Controller
 
         $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
 
-        $pembayaran = DB::table('pembayaran')->where('idtagihan', $tagihan->idtagihan)->orderBy('datetime_payment')->get();
+        // Gabungkan riwayat pembayaran dari semua baris tagihan milik pameran
+        // ini (bukan cuma baris tagihan yang aktif sekarang) — begitu VA lama
+        // expired dan diganti baris baru (requestVaBaru()), pembayaran yang
+        // sudah pernah masuk lewat VA lama tidak boleh hilang dari riwayat.
+        $pembayaran = DB::table('pembayaran as pb')
+            ->join('tagihan as t', 't.idtagihan', '=', 'pb.idtagihan')
+            ->where('t.idpameran', $pameran->idpameran)
+            ->orderBy('pb.datetime_payment')
+            ->select('pb.*')
+            ->get();
 
         $menu = 'pameran';
         $submenu = '';
@@ -316,41 +327,49 @@ class PameranController extends Controller
             return $this->jsonResponse(404, 'Pengajuan pameran tidak ditemukan.');
         }
 
-        $tagihan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->first();
+        $tagihanLama = $this->tagihanTerbaru($pameran->idpameran);
 
-        if (! $tagihan) {
+        if (! $tagihanLama) {
             return $this->jsonResponse(404, 'Tagihan tidak ditemukan.');
         }
 
-        $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
+        $tagihanLama = $this->cekKadaluwarsaTagihan($tagihanLama, $userdata['idpengguna']);
 
-        if ((int) $tagihan->status !== self::TAGIHAN_STATUS_EXPIRED) {
+        if ((int) $tagihanLama->status !== self::TAGIHAN_STATUS_EXPIRED) {
             return $this->jsonResponse(422, 'Tagihan ini belum expired, tidak perlu membuat VA baru.');
         }
 
         try {
-            DB::transaction(function () use ($tagihan, $userdata) {
-                $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $userdata['nama'], $userdata['email'], $userdata['no_wa']);
+            $pic = $this->dataPicPameran($pameran);
+
+            DB::transaction(function () use ($tagihanLama, $idInstitusiAsal, $userdata, $pic) {
+                // Baris tagihan baru dulu (bukan update baris lama) — bank BNI
+                // menolak permintaan VA baru dengan trx_id (idtagihan) yang
+                // sama. Relasi pameran→tagihan sudah one-to-many; sisa_tagihan
+                // baris lama (jumlah yang masih belum terbayar) dibawa jadi
+                // nilai tagihan baris baru ini.
+                $idtagihanBaru = DB::table('tagihan')->insertGetId([
+                    'idinstitusi_asal' => $idInstitusiAsal,
+                    'idpameran' => $tagihanLama->idpameran,
+                    'created_at' => now(),
+                    'created_by' => $userdata['idpengguna'],
+                    'status' => 1,
+                    'tagihan' => $tagihanLama->sisa_tagihan,
+                    'sisa_tagihan' => $tagihanLama->sisa_tagihan,
+                ], 'idtagihan');
+
+                $va_arr = app(BniVirtualAccountService::class)->requestVa($idtagihanBaru, $pic->nama, $pic->email, $pic->no_wa);
 
                 if ($va_arr['code'] !== 200) {
                     throw new \RuntimeException('Gagal membuat nomor Virtual Account baru: '.$va_arr['message']);
                 }
 
-                $statusBaru = $tagihan->sisa_tagihan < $tagihan->tagihan ? 2 : 1;
-
-                DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                DB::table('tagihan')->where('idtagihan', $idtagihanBaru)->update([
                     'va' => $va_arr['data']['va_number'],
                     'expired_date' => $va_arr['data']['datetime_expired'],
-                    'status' => $statusBaru,
                 ]);
 
-                DB::table('log_ubah_status_by_pengguna')->insert([
-                    'done_at' => now(),
-                    'done_by' => $userdata['idpengguna'],
-                    'idtagihan' => $tagihan->idtagihan,
-                ]);
-
-                $this->logInstitusi($tagihan->idinstitusi_asal, $userdata['idpengguna'], 'Membuat nomor Virtual Account baru untuk tagihan pameran yang expired.');
+                $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Membuat tagihan dan nomor Virtual Account baru menggantikan tagihan pameran yang expired.');
             });
         } catch (\RuntimeException $e) {
             return $this->jsonResponse(422, $e->getMessage());
@@ -510,6 +529,38 @@ class PameranController extends Controller
         }
 
         return Storage::disk('local')->response($review->file_path);
+    }
+
+    /**
+     * Baris tagihan paling baru milik satu pameran — relasi pameran→tagihan
+     * one-to-many (satu pameran bisa punya beberapa baris tagihan berturutan
+     * kalau VA sebelumnya expired dan diganti lewat requestVaBaru()), jadi
+     * baris yang relevan selalu yang idtagihan-nya terbesar.
+     */
+    private function tagihanTerbaru(int $idpameran): ?object
+    {
+        return DB::table('tagihan')->where('idpameran', $idpameran)->orderByDesc('idtagihan')->first();
+    }
+
+    /**
+     * Data kontak PIC pameran (nama/email/no_wa) — dikirim ke BNI saat
+     * request VA, bukan data pengguna yang sedang login, karena PIC yang
+     * jadi penanggung jawab pembayaran, bukan sembarang anggota kontingen
+     * yang mungkin mengeklik tombol.
+     */
+    private function dataPicPameran(object $pameran): object
+    {
+        $pic = DB::table('peserta as pe')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
+            ->where('pe.idpeserta', $pameran->idpeserta_PIC)
+            ->select('p.nama', 'p.email', 'p.no_wa')
+            ->first();
+
+        if (! $pic) {
+            throw new \RuntimeException('Data PIC pameran tidak ditemukan.');
+        }
+
+        return $pic;
     }
 
     /**

@@ -54,6 +54,7 @@
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
+                                <th>Sesi yang Dipilih</th>
                                 <th>Status</th>
                                 <th class="text-center">Jumlah Riwayat Ajuan</th>
                                 <th>Reviewer Terakhir</th>
@@ -65,6 +66,18 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
+                                    <td>
+                                        @if($baris->acara_parent_tema)
+                                            {{ $baris->acara_parent_tema }} <br>&mdash;
+                                        @endif
+                                        {{ $baris->acara_tema ?? '-' }}
+                                        @if($baris->acara_hari_ke)
+                                           <br>&mdash; (Hari {{ $baris->acara_hari_ke }}, {{ substr($baris->acara_jam_mulai, 0, 5) }}–{{ substr($baris->acara_jam_akhir, 0, 5) }}, {{ $baris->acara_ruang ?? '-' }})
+                                        @endif
+                                        @if($baris->subtema)
+                                            <br><span class="text-muted" style="font-size: 12.5px;">Subtema: {{ $baris->subtema }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
@@ -100,6 +113,7 @@
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
+                                <th>Sesi yang Dipilih</th>
                                 <th>Status</th>
                                 <th>Reviewer Terakhir</th>
                                 <th class="text-center">Aksi</th>
@@ -110,6 +124,18 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
+                                    <td>
+                                        @if($baris->acara_parent_tema)
+                                            {{ $baris->acara_parent_tema }} <br>&mdash;
+                                        @endif                                        
+                                        {{ $baris->acara_tema ?? '-' }}
+                                        @if($baris->acara_hari_ke)
+                                            <br>&mdash; (Hari {{ $baris->acara_hari_ke }}, {{ substr($baris->acara_jam_mulai, 0, 5) }}–{{ substr($baris->acara_jam_akhir, 0, 5) }}, {{ $baris->acara_ruang ?? '-' }})
+                                        @endif
+                                        @if($baris->subtema)
+                                            <br><span class="text-muted" style="font-size: 12.5px;">Subtema: {{ $baris->subtema }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
