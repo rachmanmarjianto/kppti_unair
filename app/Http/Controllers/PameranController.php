@@ -411,7 +411,9 @@ class PameranController extends Controller
         try {
             // TODO: proses hasil inquiry (update status/sisa_tagihan/va_status
             // tagihan, dst) — diisi developer sendiri.
-            app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
+            $resp_inquiry = app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
+
+            dd($resp_inquiry); // TODO: hapus ini setelah logic diisi developer sendiri
         } catch (\Throwable $e) {
             report($e);
 
