@@ -638,36 +638,6 @@
                     </div>
 
                     <div class="kppti-input-group">
-                        <label for="nomor_wa">Nomor WhatsApp</label>
-                        <div style="display: flex; gap: 10px; align-items: flex-start;">
-                            <div class="kppti-input-wrap" style="flex: 1;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                                <input id="nomor_wa" type="text" name="nomor_wa" inputmode="numeric" class="@error('nomor_wa') is-invalid @enderror"
-                                       value="{{ old('nomor_wa') }}" placeholder="08xxxxxxxxxx"
-                                       required autocomplete="tel">
-                            </div>
-                            <button type="button" id="btnKirimOtp" class="btn btn-kppti-login" style="width: auto; white-space: nowrap; padding: 13px 18px;">Kirim OTP</button>
-                        </div>
-                        <div id="waHint" class="kppti-field-hint"></div>
-                        @error('nomor_wa')
-                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="kppti-input-group">
-                        <label for="otp">Kode OTP</label>
-                        <div class="kppti-input-wrap">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                            <input id="otp" type="text" name="otp" inputmode="numeric" maxlength="6" class="@error('otp') is-invalid @enderror"
-                                   placeholder="Masukkan kode OTP" required>
-                        </div>
-                        <div class="kppti-field-hint"></div>
-                        @error('otp')
-                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="kppti-input-group">
                         <label for="email">Email</label>
                         <div class="kppti-input-wrap">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6 12 13 2 6"></path><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
@@ -718,6 +688,36 @@
                             </button>
                         </div>
                         <div id="passwordMatchHint" class="kppti-field-hint"></div>
+                    </div>
+
+                    <div class="kppti-input-group">
+                        <label for="nomor_wa">Nomor WhatsApp</label>
+                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                            <div class="kppti-input-wrap" style="flex: 1;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                <input id="nomor_wa" type="text" name="nomor_wa" inputmode="numeric" class="@error('nomor_wa') is-invalid @enderror"
+                                       value="{{ old('nomor_wa') }}" placeholder="08xxxxxxxxxx"
+                                       required autocomplete="tel">
+                            </div>
+                            <button type="button" id="btnKirimOtp" class="btn btn-kppti-login" style="width: auto; white-space: nowrap; padding: 13px 18px;">Kirim OTP</button>
+                        </div>
+                        <div id="waHint" class="kppti-field-hint"></div>
+                        @error('nomor_wa')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="kppti-input-group">
+                        <label for="otp">Kode OTP</label>
+                        <div class="kppti-input-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            <input id="otp" type="text" name="otp" inputmode="numeric" maxlength="6" class="@error('otp') is-invalid @enderror"
+                                   placeholder="Masukkan kode OTP" required>
+                        </div>
+                        <div class="kppti-field-hint"></div>
+                        @error('otp')
+                            <div class="invalid-feedback" style="font-size: 12.5px;">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     <button type="submit" id="btnRegistrasi" class="btn btn-kppti-login" disabled>
