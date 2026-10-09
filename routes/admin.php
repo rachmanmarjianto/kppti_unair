@@ -40,6 +40,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');
     Route::post('/admin-tagihan-pameran/tandai-lunas', [TagihanPameranController::class, 'tandaiLunas'])->name('admin.tagihan-pameran.tandai-lunas');
+    Route::post('/admin-tagihan-pameran/cek-status-bayar', [TagihanPameranController::class, 'cekStatusBayar'])->name('admin.tagihan-pameran.cek-status-bayar');
     Route::get('/admin-pameran/ajuan', [PameranAdminController::class, 'index'])->name('admin.pameran.ajuan');
     Route::get('/admin-pameran/ajuan/detail', [PameranAdminController::class, 'detail'])->name('admin.pameran.ajuan.detail');
     Route::get('/admin-pameran/ajuan/portofolio', [PameranAdminController::class, 'tampilPortofolio'])->name('admin.pameran.ajuan.portofolio');

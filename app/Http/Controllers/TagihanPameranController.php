@@ -64,4 +64,39 @@ class TagihanPameranController extends Controller
 
         return $this->jsonResponse(200, 'Tagihan berhasil ditandai lunas.');
     }
+
+    /**
+     * Cek status pembayaran lewat inquiry billing ke BNI — sama persis
+     * mekanismenya dengan sisi peserta (lihat
+     * Controller::prosesInquiryBillingTagihan(), dipakai bersama dengan
+     * PameranController::cekStatusPembayaran()), tapi di sini sebagai AJAX
+     * karena hasil mentah dari BNI ditampilkan ke admin lewat modal.
+     */
+    public function cekStatusBayar(Request $request)
+    {
+        $validated = $request->validate([
+            'idtagihan' => ['required', 'integer'],
+        ]);
+
+        $tagihan = DB::table('tagihan')->where('idtagihan', $validated['idtagihan'])->whereNotNull('idpameran')->first();
+
+        if (! $tagihan) {
+            return $this->jsonResponse(404, 'Tagihan tidak ditemukan.');
+        }
+
+        try {
+            $resp_inquiry = $this->prosesInquiryBillingTagihan($tagihan);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengecek status pembayaran ke BNI.');
+        }
+
+        $tagihanTerbaru = DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->first();
+
+        return $this->jsonResponse(200, $resp_inquiry['message'] ?? 'Pengecekan status pembayaran selesai.', [
+            'inquiry' => $resp_inquiry['data'] ?? [],
+            'status_berubah' => (int) $tagihan->status !== (int) $tagihanTerbaru->status,
+        ]);
+    }
 }

@@ -29,6 +29,9 @@
             width: 95% !important;
             margin: 0 auto;
         }
+
+        #modal-status-bayar .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-status-bayar .text-muted { color: #0e1726 !important; }
     </style>
 @endsection
 
@@ -88,6 +91,9 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-status-bayar" data-idtagihan="{{ $baris->idtagihan }}">
+                                            Status Bayar
+                                        </button>
                                         @if((int) $baris->status !== 3)
                                             <button type="button" class="btn btn-sm btn-outline-success btn-tandai-lunas" data-idtagihan="{{ $baris->idtagihan }}">
                                                 Tandai Lunas
@@ -98,6 +104,27 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: hasil inquiry billing BNI --}}
+    <div class="modal fade" id="modal-status-bayar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Hasil Pengecekan Status Pembayaran</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="status-bayar-pesan mb-3"></p>
+                    <table class="table table-sm table-bordered mb-0">
+                        <tbody class="status-bayar-data"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -113,6 +140,62 @@
         $(function () {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var tandaiLunasUrl = '{{ route('admin.tagihan-pameran.tandai-lunas') }}';
+            var cekStatusBayarUrl = '{{ route('admin.tagihan-pameran.cek-status-bayar') }}';
+            var statusBerubah = false;
+            var $modalStatusBayar = $('#modal-status-bayar');
+
+            $modalStatusBayar.on('hidden.bs.modal', function () {
+                if (statusBerubah) {
+                    location.reload();
+                }
+            });
+
+            $('.btn-status-bayar').on('click', function () {
+                var $btn = $(this);
+                var idtagihan = $btn.data('idtagihan');
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                $('.page-alert').addClass('d-none').text('');
+
+                $.ajax({
+                    url: cekStatusBayarUrl,
+                    method: 'POST',
+                    data: { idtagihan: idtagihan },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    statusBerubah = !!(res.data && res.data.status_berubah);
+
+                    var inquiry = (res.data && res.data.inquiry) || {};
+                    var $tbody = $modalStatusBayar.find('.status-bayar-data').empty();
+
+                    if ($.isEmptyObject(inquiry)) {
+                        $tbody.append('<tr><td class="text-muted">Tidak ada data yang dikembalikan BNI.</td></tr>');
+                    } else {
+                        $.each(inquiry, function (key, value) {
+                            $('<tr>')
+                                .append($('<th>').css('width', '220px').text(key))
+                                .append($('<td>').text(value === null || value === '' ? '-' : value))
+                                .appendTo($tbody);
+                        });
+                    }
+
+                    $modalStatusBayar.find('.status-bayar-pesan').text(res.message);
+                    $modalStatusBayar.modal('show');
+                })
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    }
+                    $('.page-alert').removeClass('d-none').text(pesan);
+                })
+                .always(function () {
+                    $btn.prop('disabled', false).html(teksAwal);
+                });
+            });
 
             $('#table-tagihan-pameran').DataTable({
                 dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BniVirtualAccountService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
@@ -719,6 +720,59 @@ class Controller extends BaseController
         }
 
         return true;
+    }
+
+    /**
+     * Inquiry billing ke BNI untuk satu baris tagihan, lalu proses hasilnya:
+     * kalau BNI melapor sudah ada pembayaran (`payment_ntb` terisi) dan
+     * pembayaran itu belum pernah tercatat (`payment_ntb` belum ada di
+     * `pembayaran`), kurangi `sisa_tagihan`, set status (`3` lunas kalau
+     * sisa <= 0, `2` terbayar sebagian kalau masih ada sisa), dan simpan
+     * baris `pembayaran` baru. Dipakai dari sisi peserta (tombol "Check
+     * Status Pembayaran") maupun admin (tombol "Status Bayar") supaya
+     * logikanya persis sama di kedua tempat — lihat
+     * PameranController::cekStatusPembayaran() dan
+     * TagihanPameranController::cekStatusBayar().
+     *
+     * Mengembalikan respons mentah dari BniVirtualAccountService::inquiryBilling()
+     * (`code`, `message`, `data`) supaya pemanggil bisa menampilkan detail
+     * apa pun yang dikembalikan BNI, tanpa helper ini perlu tahu soal itu.
+     *
+     * @return array{code: int, message: string, data: array}
+     */
+    protected function prosesInquiryBillingTagihan(object $tagihan): array
+    {
+        $resp_inquiry = app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
+
+        if (empty($resp_inquiry['data']['payment_ntb'])) {
+            return $resp_inquiry;
+        }
+
+        $trx_amount = $resp_inquiry['data']['payment_amount'] ?? null;
+        $payment_ntb = $resp_inquiry['data']['payment_ntb'] ?? null;
+        $datetime_payment = $resp_inquiry['data']['datetime_payment'] ?? null;
+
+        $existingPayment = DB::table('pembayaran')->where('payment_ntb', $payment_ntb)->first();
+
+        if (! $existingPayment) {
+            $sisa_tagihan = $tagihan->sisa_tagihan - $trx_amount;
+
+            DB::transaction(function () use ($tagihan, $sisa_tagihan, $payment_ntb, $trx_amount, $datetime_payment) {
+                DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                    'sisa_tagihan' => $sisa_tagihan,
+                    'status' => $sisa_tagihan <= 0 ? 3 : 2,
+                ]);
+
+                DB::table('pembayaran')->insert([
+                    'idtagihan' => $tagihan->idtagihan,
+                    'payment_ntb' => $payment_ntb,
+                    'trx_amount' => $trx_amount,
+                    'datetime_payment' => $datetime_payment,
+                ]);
+            });
+        }
+
+        return $resp_inquiry;
     }
 
     /**
