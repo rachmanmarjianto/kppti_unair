@@ -348,14 +348,22 @@ class PameranController extends Controller
                 // sama. Relasi pameran→tagihan sudah one-to-many; sisa_tagihan
                 // baris lama (jumlah yang masih belum terbayar) dibawa jadi
                 // nilai tagihan baris baru ini.
+
+                if($tagihanLama->sisa_tagihan == $tagihanLama->tagihan) {
+                    $sisa_tagihan = config('services.biaya_pameran');
+                }
+                else{
+                    $sisa_tagihan = $tagihanLama->sisa_tagihan;
+                }
+
                 $idtagihanBaru = DB::table('tagihan')->insertGetId([
                     'idinstitusi_asal' => $idInstitusiAsal,
                     'idpameran' => $tagihanLama->idpameran,
                     'created_at' => now(),
                     'created_by' => $userdata['idpengguna'],
                     'status' => 1,
-                    'tagihan' => $tagihanLama->sisa_tagihan,
-                    'sisa_tagihan' => $tagihanLama->sisa_tagihan,
+                    'tagihan' => $sisa_tagihan,
+                    'sisa_tagihan' => $sisa_tagihan,
                 ], 'idtagihan');
 
                 $va_arr = app(BniVirtualAccountService::class)->requestVa($idtagihanBaru, $pic->nama, $pic->email, $pic->no_wa);
@@ -631,6 +639,8 @@ class PameranController extends Controller
                 'done_at' => now(),
                 'done_by' => $idpengguna,
                 'idtagihan' => $tagihan->idtagihan,
+                'status_awal' => $tagihan->status,
+                'status_akhir' => self::TAGIHAN_STATUS_EXPIRED,
             ]);
         });
 

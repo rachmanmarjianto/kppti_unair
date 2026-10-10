@@ -55,10 +55,20 @@ class TagihanPameranController extends Controller
             return $this->jsonResponse(422, 'Tagihan ini sudah lunas.');
         }
 
-        DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
-            'status' => 3,
-            'sisa_tagihan' => 0,
-        ]);
+        DB::transaction(function () use ($tagihan, $userdata) {
+            DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                'status' => 3,
+                'sisa_tagihan' => 0,
+            ]);
+
+            DB::table('log_ubah_status_by_pengguna')->insert([
+                'done_at' => now(),
+                'done_by' => $userdata['idpengguna'],
+                'idtagihan' => $tagihan->idtagihan,
+                'status_awal' => $tagihan->status,
+                'status_akhir' => 3,
+            ]);
+        });
 
         $this->logInstitusi($tagihan->idinstitusi_asal, $userdata['idpengguna'], 'Menandai lunas tagihan pameran (manual, menunggu integrasi VA BNI).');
 
