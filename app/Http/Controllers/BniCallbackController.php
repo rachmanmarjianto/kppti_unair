@@ -74,37 +74,45 @@ class BniCallbackController extends Controller
 
                 $status_tagihan = $sisa_tagihan <= 0 ? 3 : 2;
 
-                try {
-                    DB::transaction(function () use ($data_asli, $sisa_tagihan, $status_tagihan) {
-                        DB::table('pembayaran')->insert([
-                            'idtagihan' => $data_asli['trx_id'],
-                            'trx_amount' => $data_asli['trx_amount'],
-                            'datetime_payment' => date('Y-m-d H:i:s', strtotime($data_asli['datetime_payment'])),
-                            'payment_ntb' => $data_asli['payment_ntb']
-                        ]);
+                $cek_pembayaran = DB::table('pembayaran')->where('payment_ntb', $data_asli['payment_ntb'])->first();
 
-                        DB::table('tagihan')->where('idtagihan', $data_asli['trx_id'])->update([
-                            'sisa_tagihan' => $sisa_tagihan,
-                            'status' => $status_tagihan
-                        ]);
-                    });
-                } catch (\Throwable $e) {
-                    Log::error('KPPTI: Failed to persist BNI callback payment', [
-                        'trx_id' => $data_asli['trx_id'],
-                        'exception' => $e->getMessage()
-                    ]);
-
-                    return response()->json(['status' => '999', 'message' => 'Gagal menyimpan pembayaran.'], 500);
+                if ($cek_pembayaran) {
+                    return response()->json(['status' => '000']);
                 }
+                else{
+                    try {
+                        DB::transaction(function () use ($data_asli, $sisa_tagihan, $status_tagihan) {
+                            DB::table('pembayaran')->insert([
+                                'idtagihan' => $data_asli['trx_id'],
+                                'trx_amount' => $data_asli['trx_amount'],
+                                'datetime_payment' => date('Y-m-d H:i:s', strtotime($data_asli['datetime_payment'])),
+                                'payment_ntb' => $data_asli['payment_ntb']
+                            ]);
 
-                Log::info("KPPTI: Received BNI callback data: ".json_encode($data_asli));
+                            DB::table('tagihan')->where('idtagihan', $data_asli['trx_id'])->update([
+                                'sisa_tagihan' => $sisa_tagihan,
+                                'status' => $status_tagihan
+                            ]);
+                        });
+                    } catch (\Throwable $e) {
+                        Log::error('KPPTI: Failed to persist BNI callback payment', [
+                            'trx_id' => $data_asli['trx_id'],
+                            'exception' => $e->getMessage()
+                        ]);
+
+                        return response()->json(['status' => '999', 'message' => 'Gagal menyimpan pembayaran.'], 500);
+                    }
+
+                    Log::info("KPPTI: Received BNI callback data: ".json_encode($data_asli));
+
+                    return response()->json(['status' => '000']);
+
+                }                
             }
             else {
                 return response()->json(['status' => '999', 'message' => 'client_id tidak sesuai.'], 400);
             }
         }
-
-        return response()->json(['received' => true]);
     }
 
     public function handle_forbidden(Request $request): JsonResponse
