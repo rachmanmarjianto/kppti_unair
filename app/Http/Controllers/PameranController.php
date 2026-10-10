@@ -429,7 +429,7 @@ class PameranController extends Controller
 
         return redirect()->route('peserta.pameran.tagihan')->with('status', [
             'status' => 'success',
-            'message' => 'Pengecekan status pembayaran telah dikirim ke BNI.',
+            'message' => 'Status pembayaran berhasil diperbarui, silahkan Cek Status Pembayaran terbaru!',
         ]);
     }
 
