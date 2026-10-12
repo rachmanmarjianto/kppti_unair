@@ -26,7 +26,7 @@ class FaceRecognitionIpMiddleware
         ));
 
         if (! in_array($request->ip(), $allowedIps, true)) {
-            abort(403, 'IP address tidak diizinkan mengakses API ini.');
+            abort(403, 'IP address tidak diizinkan mengakses API ini: '.$request->ip());
         }
 
         return $next($request);
