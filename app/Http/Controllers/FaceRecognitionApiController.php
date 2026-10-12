@@ -67,11 +67,14 @@ class FaceRecognitionApiController extends Controller
     }
 
     /**
-     * Serve satu foto peserta berdasarkan `idpengguna` (segmen URL, bukan
-     * token terenkripsi — kontrak API ini dengan server MinMoe memakai
-     * idpengguna mentah, sama seperti `nim_nidn`/`nama_file` di
-     * pesertaList()). Endpoint publik, dibatasi middleware whitelist IP
-     * yang sama (`face-recognition.ip`).
+     * Serve satu foto peserta berdasarkan `idpengguna` (segmen URL
+     * `.../{idpengguna}.jpg`, bukan token terenkripsi — kontrak API ini
+     * dengan server MinMoe memakai idpengguna mentah, sama seperti
+     * `nim_nidn`/`nama_file` di pesertaList(); `.jpg` di URL murni kosmetik
+     * agar namanya mirip nama file, isi gambar tetap diambil dari
+     * `path_foto` tersimpan — tidak dipakai untuk menebak ekstensi asli).
+     * Endpoint publik, dibatasi middleware whitelist IP yang sama
+     * (`face-recognition.ip`).
      */
     public function foto(int $idpengguna): StreamedResponse
     {
