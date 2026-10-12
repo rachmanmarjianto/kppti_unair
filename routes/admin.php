@@ -27,6 +27,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-users/hapus-role', [AdminController::class, 'hapusRole'])->name('admin.admin-users.hapus-role');
     Route::get('/admin-peserta', [PesertaAdminController::class, 'index'])->name('admin.peserta');
     Route::get('/admin-peserta/detail', [PesertaAdminController::class, 'detailPeserta'])->name('admin.peserta.detail');
+    Route::get('/admin-peserta/foto', [PesertaAdminController::class, 'tampilFoto'])->name('admin.peserta.foto');
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
     Route::get('/admin-peserta/acara', [PesertaAdminController::class, 'acara'])->name('admin.peserta.acara');

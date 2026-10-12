@@ -82,6 +82,10 @@
             color: #888ea8;
         }
 
+        #modal-detail-peserta .modal-dialog {
+            max-width: 95%;
+        }
+
         #modal-detail-peserta .modal-content {
             background-color: #fff;
             color: #3b3f5c;
@@ -351,7 +355,15 @@
 
                     <div class="detail-content d-none">
                         <div class="row mb-1">
-                            <div class="col-md-6">
+                            <div class="col-md-3">
+                                <div class="seksi-detail seksi-data-diri h-100 text-center">
+                                    <h6 class="mb-2">Foto</h6>
+                                    <img src="" alt="Foto peserta" class="sel-foto-img img-fluid rounded d-none" style="max-width: 100%;">
+                                    <p class="sel-foto-kosong text-muted mb-0 d-none">Belum ada foto.</p>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5">
                                 <div class="seksi-detail seksi-data-diri h-100">
                                     <h6 class="mb-2">Data Diri</h6>
                                     <table class="table table-sm table-borderless mb-0">
@@ -366,7 +378,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="seksi-detail seksi-logistik h-100">
                                     <h6 class="mb-2">Logistik</h6>
                                     <table class="table table-sm table-borderless mb-0">
@@ -407,6 +419,7 @@
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var resetPasswordUrl = '{{ route('admin.peserta.reset-password') }}';
             var detailUrl = '{{ route('admin.peserta.detail') }}';
+            var fotoUrl = '{{ route('admin.peserta.foto') }}';
 
             $('[data-bs-toggle="collapse"]').on('click', function () {
                 $(this).toggleClass('expanded');
@@ -444,6 +457,15 @@
                 })
                 .done(function (res) {
                     var data = res.data;
+
+                    if (data.fotoLengkap) {
+                        $modalDetail.find('.sel-foto-img').attr('src', fotoUrl + '?token=' + encodeURIComponent(token)).removeClass('d-none');
+                        $modalDetail.find('.sel-foto-kosong').addClass('d-none');
+                    } else {
+                        $modalDetail.find('.sel-foto-img').addClass('d-none').attr('src', '');
+                        $modalDetail.find('.sel-foto-kosong').removeClass('d-none');
+                    }
+
                     $modalDetail.find('.sel-nama').text(': ' + data.nama);
                     $modalDetail.find('.sel-email').text(': ' + data.email);
                     $modalDetail.find('.sel-no-wa').text(': ' + (data.no_wa || '-'));

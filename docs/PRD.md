@@ -61,7 +61,7 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F08 | Review pameran oleh SC | P0 | Selesai |
 | F09 | Manajemen acara/sesi (bertingkat, per hari dan jam) oleh admin | P1 | Selesai |
 | F10 | Peserta memilih acara yang diikuti | P1 | Selesai |
-| F11 | Data logistik peserta (transportasi, hotel, city tour), kartu registrasi kontingen (PDF), dan foto peserta untuk face recognition | P1 | Selesai |
+| F11 | Data logistik peserta (transportasi, hotel, city tour), kartu registrasi kontingen (PDF), foto peserta untuk face recognition, dan API sinkronisasi data peserta ke server manajemen perangkat Face Recognition (lihat §7) | P1 | Selesai |
 | F12 | Petugas jaga stand pameran | P1 | Selesai |
 | F13 | Dashboard dan rekap admin (jumlah peserta, pembayaran, pengajuan) | P1 | Belum |
 | F14 | Log aktivitas institusi | P2 | **Parsial** (pencatatan `log_institusi`/`log_peserta` sudah berjalan sebagai bagian dari F03/F11, belum ada halaman khusus untuk menampilkan riwayatnya) |
@@ -109,6 +109,7 @@ Alur (F18 sudah dirancang di bawah; F19 baru dipesan ID-nya, detail menyusul):
 |---|---|---|
 | **WA Gateway** | OTP registrasi, reset password | Sudah berfungsi (curl dan key tersedia) |
 | **VA BNI** | Penerbitan VA dan notifikasi pembayaran | Belum; `[TBD: dokumentasi API dan kredensial sandbox]` |
+| **Hikvision MinMoe (Face Recognition)** | API `GET /api/face-recognition/peserta` — server manajemen perangkat MinMoe menarik data peserta (nama, NIM/NIDN dari `idpengguna`, info perguruan tinggi/LLDikti) untuk didaftarkan ke perangkat face recognition di lokasi acara. Endpoint publik tanpa sesi, dibatasi whitelist IP (`FACE_RECOGNITION_ALLOWED_IPS` di `.env`) | Sudah berfungsi |
 
 ## 8. Kebutuhan non-fungsional
 

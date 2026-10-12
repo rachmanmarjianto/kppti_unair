@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AksesMiddleware;
+use App\Http\Middleware\FaceRecognitionIpMiddleware;
 use App\Http\Middleware\JadwalPentingMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'akses' => AksesMiddleware::class,
             'jadwalPenting' => JadwalPentingMiddleware::class,
+            'face-recognition.ip' => FaceRecognitionIpMiddleware::class,
         ]);
 
         // Webhook publik dari BNI — tidak membawa CSRF token Laravel.

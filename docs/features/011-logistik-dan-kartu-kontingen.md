@@ -95,9 +95,11 @@ Dicek langsung ke dokumentasi Hikvision ("Import Data" / face photo import requi
 - Ukuran berkas: **antara 40 KB dan 200 KB**.
 - Foto harus tampak wajah penuh (full-face), menghadap langsung ke kamera, **tanpa penutup kepala**.
 
-Dokumentasi resmi tidak menyebut rasio aspek pasti, tapi sesuai instruksi developer ("template kepala dan badan setengah badan") dan praktik umum foto untuk perangkat sejenis, dipakai **rasio potret 3:4** (lebih tinggi daripada lebar, meliputi kepala + bahu/setengah badan atas). Target output konkret: **600×800 piksel** (rasio 3:4, total piksel 480.000 — aman di antara batas 307.200–8.294.400 piksel dari dokumentasi), JPEG, dikompres otomatis di server supaya ukuran berkas masuk ke rentang 40–200 KB.
+Dokumentasi resmi tidak menyebut rasio aspek pasti, tapi sesuai instruksi developer ("template kepala dan badan setengah badan") dan praktik umum foto untuk perangkat sejenis, dipakai **rasio potret 3:4** (lebih tinggi daripada lebar, meliputi kepala + bahu/setengah badan atas).
 
 `[Sumber: Hikvision "Import Data" — enpinfo.hikvision.com, dicek 2026-10-01]`
+
+**Update 2026-10-12 (dikonfirmasi tim perangkat, lalu dikembalikan)**: tim yang menghandle perangkat face recognition **Hikvision MinMoe** di lokasi (bukan model `DS-K1T673DWX` yang dicek dari dokumentasi umum di atas) sempat minta output foto tepat 300×400 piksel — lebih kecil dari batas minimum "640×480" di dokumentasi umum §5.2. Perubahan itu sempat diterapkan, lalu developer meminta dikembalikan lagi. Target output yang **sekarang dipakai di kode**: **600×800 piksel** (rasio 3:4, sesuai batas resolusi dokumentasi umum di atas), JPEG, dikompres otomatis di server supaya ukuran berkas tidak melebihi 200 KB.
 
 ### 5.3 Alur pengguna
 
@@ -107,7 +109,7 @@ Dokumentasi resmi tidak menyebut rasio aspek pasti, tapi sesuai instruksi develo
    - Tombol "Pilih Foto Baru" (file input, hanya menerima gambar).
 3. Setelah peserta memilih berkas gambar, muncul **area crop interaktif** (pakai Cropper.js — lihat §5.4) dengan **template overlay kepala + bahu** (garis panduan transparan) supaya peserta tahu ke mana memposisikan wajah. Peserta bisa **drag** (geser) dan **zoom in/out** (scroll/pinch/slider) gambar sampai pas dengan template.
 4. Tombol "Simpan Foto" → **SweetAlert2 konfirmasi** ("Simpan foto ini?") — **bukan** modal verifikasi teks (konsisten dengan penyederhanaan yang sama seperti data logistik, karena ini bukan data identitas sensitif seperti email/password).
-5. Hasil crop (canvas) diekspor jadi gambar lalu dikirim ke server. Server memproses ulang (resize tepat ke 600×800, re-encode JPEG, kompres sampai masuk rentang 40–200 KB) — **tidak percaya ukuran/format hasil crop dari browser begitu saja**, sesuai prinsip "validasi server" di `CONVENTIONS.md`.
+5. Hasil crop (canvas) diekspor jadi gambar lalu dikirim ke server. Server memproses ulang (resize tepat ke 600×800, re-encode JPEG, kompres sampai di bawah 200 KB) — **tidak percaya ukuran/format hasil crop dari browser begitu saja**, sesuai prinsip "validasi server" di `CONVENTIONS.md`.
 6. Foto lama (kalau ada) **dihapus** dan diganti yang baru (satu peserta = satu foto aktif, selalu yang terbaru).
 7. Dicatat ke `log_peserta`: `"Foto diperbarui"`.
 

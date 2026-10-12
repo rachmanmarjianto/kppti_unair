@@ -50,4 +50,8 @@ return [
 
     'biaya_pameran' => env('BIAYA_PAMERAN'),
 
+    'face_recognition' => [
+        'allowed_ips' => env('FACE_RECOGNITION_ALLOWED_IPS'),
+    ],
+
 ];

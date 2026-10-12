@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BniCallbackController;
+use App\Http\Controllers\FaceRecognitionApiController;
 use App\Http\Controllers\PenggunaController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,3 +45,13 @@ Route::middleware(['akses:All'])->group(function () {
 // Webhook publik dari BNI — tidak ada sesi, tidak digerbangi middleware akses.
 Route::post('/callback/bni-va', [BniCallbackController::class, 'handle'])->name('callback.bni-va');
 Route::get('/callback/bni-va', [BniCallbackController::class, 'handle_forbidden'])->name('callback.bni-va.get');
+
+// API publik untuk server manajemen peserta Face Recognition — tidak ada sesi,
+// digerbangi whitelist IP (bukan middleware akses role biasa).
+Route::get('/api/face-recognition/peserta', [FaceRecognitionApiController::class, 'pesertaList'])
+    ->middleware('face-recognition.ip')
+    ->name('api.face-recognition.peserta');
+Route::get('/api/face-recognition/foto/{idpengguna}', [FaceRecognitionApiController::class, 'foto'])
+    ->middleware('face-recognition.ip')
+    ->whereNumber('idpengguna')
+    ->name('api.face-recognition.foto');

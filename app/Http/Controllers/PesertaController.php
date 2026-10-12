@@ -497,9 +497,9 @@ class PesertaController extends Controller
     /**
      * Save a peserta's cropped photo. The browser already crops to the 3:4
      * guide, but the server never trusts that — it always re-encodes to an
-     * exact 600×800 JPEG compressed into Hikvision's documented 40–200 KB
-     * range (see docs/features/011-logistik-dan-kartu-kontingen.md §5.2),
-     * regardless of what was uploaded.
+     * exact 600×800 JPEG, compressed to fit under 200 KB (see
+     * docs/features/011-logistik-dan-kartu-kontingen.md §5.2), regardless
+     * of what was uploaded.
      */
     public function updateFoto(Request $request)
     {
@@ -1024,9 +1024,8 @@ class PesertaController extends Controller
 
     /**
      * Re-encode an uploaded photo into exactly 600×800 JPEG (3:4 portrait),
-     * compressed to fit Hikvision's documented 40–200 KB range, and store it
-     * on the private `local` disk under `foto-peserta/`. Returns the stored
-     * relative path.
+     * compressed to stay under 200 KB, and store it on the private `local`
+     * disk under `foto-peserta/`. Returns the stored relative path.
      */
     private function simpanFotoPeserta(int $idpeserta, string $binaryImage): string
     {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class PesertaAdminController extends Controller
 {
@@ -97,6 +98,30 @@ class PesertaAdminController extends Controller
         unset($peserta->path_foto, $peserta->idjenis_transportasi_kedatangan, $peserta->idjenis_transportasi_kepulangan);
 
         return $this->jsonResponse(200, 'Detail peserta berhasil diambil.', $peserta);
+    }
+
+    /**
+     * Serve a peserta's stored photo for the admin "Detail Peserta" modal —
+     * never exposed as a static public URL (CONVENTIONS.md §7). Cross-
+     * institusi (an Admin may view any peserta's photo), unlike
+     * PesertaController::tampilFoto() which is scoped to the peserta's own
+     * kontingen. The idpeserta travels as an encrypted `token` query value.
+     */
+    public function tampilFoto(Request $request)
+    {
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $pathFoto = DB::table('peserta')->where('idpeserta', (int) $idpeserta)->value('path_foto');
+
+        if (! $pathFoto || ! Storage::disk('local')->exists($pathFoto)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($pathFoto);
     }
 
     /**
