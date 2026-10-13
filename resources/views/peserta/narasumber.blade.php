@@ -19,7 +19,7 @@
 @endsection
 
 @section('breadcrumb')
-    <li class="breadcrumb-item active" aria-current="page">Pengajuan Narasumber</li>
+    <li class="breadcrumb-item active" aria-current="page">Pengajuan Menjadi Narasumber</li>
 @endsection
 
 @php
@@ -39,7 +39,7 @@
             <div class="widget-header">
                 <div class="row align-items-center">
                     <div class="col-12">
-                        <h4>Pengajuan Narasumber</h4>
+                        <h4>Pengajuan Menjadi Narasumber</h4>
                     </div>
                 </div>
             </div>
