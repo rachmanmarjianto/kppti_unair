@@ -220,7 +220,7 @@
                                             </td>
                                             <td>
                                                 @if($opsi->parent_tema)
-                                                    {{ $opsi->parent_tema }} &mdash;
+                                                    {{ $opsi->parent_tema }} <br>&mdash;
                                                 @endif
                                                 {{ $opsi->tema }}
                                             </td>
