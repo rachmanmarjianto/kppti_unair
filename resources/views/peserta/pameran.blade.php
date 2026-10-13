@@ -99,6 +99,16 @@
                         <div class="col-12 col-sm-10">{{ $pameran->nama_pic }}</div>
                     </div>
                     <div class="row mb-2">
+                        <div class="col-12 col-sm-2 fw-bold">Kluster Pameran</div>
+                        <div class="col-12 col-sm-10">
+                            @if($pameran->nomor_kluster)
+                                Kluster {{ $pameran->nomor_kluster }} — {{ $pameran->tema_kluster }}
+                            @else
+                                -
+                            @endif
+                        </div>
+                    </div>
+                    <div class="row mb-2">
                         <div class="col-12 col-sm-2 fw-bold">Tema</div>
                         <div class="col-12 col-sm-10">{{ $pameran->tema }}</div>
                     </div>
@@ -173,9 +183,23 @@
                 @if($bisaEdit)
                     <form id="form-pameran">
                         <div class="mb-3">
+                            <label class="form-label" for="input-idkluster-pameran">Kluster Pameran</label>
+                            <select name="idkluster_pameran" id="input-idkluster-pameran" class="form-control" required>
+                                <option value="">-- Pilih Kluster --</option>
+                                @foreach($klusterOptions as $opsi)
+                                    <option value="{{ $opsi->idkluster_pameran }}" @selected(($pameran->idkluster_pameran ?? null) == $opsi->idkluster_pameran)>
+                                        Kluster {{ $opsi->nomor_kluster }} — {{ $opsi->tema_kluster }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label" for="input-tema">Tema</label>
                             <input type="text" name="tema" id="input-tema" class="form-control" maxlength="255" value="{{ $pameran->tema ?? '' }}" required>
                         </div>
+
+                        
 
                         <div class="mb-3">
                             <label class="form-label" for="input-idpeserta-pic">PIC (Person in Charge)</label>
@@ -194,7 +218,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label" for="input-portofolio">Portofolio (PDF/DOC/DOCX, maks. 5 MB)</label>
+                            <label class="form-label" for="input-portofolio">Form Keikutsertaan (PDF/DOC/DOCX, maks. 5 MB)</label>
                             <input type="file" name="portofolio" id="input-portofolio" class="form-control" accept=".pdf,.doc,.docx">
                             @if($draftSaatIni && $draftSaatIni->file_path)
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">
@@ -204,7 +228,7 @@
                                 </div>
                             @else
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">
-                                    Portofolio wajib diunggah sebelum pengajuan dapat disimpan.
+                                    Form Keikutsertaan wajib diunggah sebelum pengajuan dapat disimpan.
                                 </div>
                             @endif
                         </div>
@@ -238,7 +262,7 @@
                                         @if($baris->file_path)
                                             <p>
                                                 <a href="{{ route('peserta.pameran.portofolio') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Portofolio
+                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
                                                 </a>
                                             </p>
                                         @endif
@@ -523,7 +547,7 @@
 
             $('#btn-ajukan').on('click', function () {
                 var teksKonfirmasi = sudahAdaTagihan
-                    ? 'Extended Abstrak dan portofolio akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
+                    ? 'Extended Abstrak dan Form Keikutsertaan akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
                     : 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?';
 
                 Swal.fire({

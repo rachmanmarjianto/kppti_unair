@@ -30,8 +30,9 @@ class PameranController extends Controller
         $pameran = DB::table('pameran as p')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->leftJoin('kluster_pameran as kp', 'kp.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('p.idinstitusi_asal', $idInstitusiAsal)
-            ->select('p.*', 'pic.nama as nama_pic')
+            ->select('p.*', 'pic.nama as nama_pic', 'kp.nomor_kluster', 'kp.tema_kluster')
             ->first();
 
         $tagihan = $pameran ? $this->tagihanTerbaru($pameran->idpameran) : null;
@@ -53,6 +54,11 @@ class PameranController extends Controller
         $pesertaOptions = $this->pesertaAktifQuery($idInstitusiAsal)
             ->select('pe.idpeserta', 'p.nama')
             ->orderBy('p.nama')
+            ->get();
+
+        $klusterOptions = DB::table('kluster_pameran')
+            ->where('status', true)
+            ->orderBy('nomor_kluster')
             ->get();
 
         $riwayat = collect();
@@ -89,7 +95,7 @@ class PameranController extends Controller
         $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
 
         return view('peserta.pameran', compact(
-            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'riwayat',
+            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'klusterOptions', 'riwayat',
             'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand'
         ));
     }
@@ -107,6 +113,7 @@ class PameranController extends Controller
 
         $validated = $request->validate([
             'idpeserta_PIC' => ['required', 'integer'],
+            'idkluster_pameran' => ['required', 'integer'],
             'tema' => ['required', 'string', 'max:255'],
             'abstract' => ['required', 'string'],
             'portofolio' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
@@ -120,6 +127,15 @@ class PameranController extends Controller
             return $this->jsonResponse(422, 'PIC harus peserta dari kontingen Anda sendiri.');
         }
 
+        $klusterAktif = DB::table('kluster_pameran')
+            ->where('idkluster_pameran', $validated['idkluster_pameran'])
+            ->where('status', true)
+            ->exists();
+
+        if (! $klusterAktif) {
+            return $this->jsonResponse(422, 'Kluster pameran yang dipilih tidak valid.');
+        }
+
         $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
 
         try {
@@ -130,6 +146,7 @@ class PameranController extends Controller
                         'tema' => $validated['tema'],
                         'abstract' => $validated['abstract'],
                         'idpeserta_PIC' => $validated['idpeserta_PIC'],
+                        'idkluster_pameran' => $validated['idkluster_pameran'],
                         'status_ajuan' => '1',
                     ], 'idpameran');
 
@@ -139,6 +156,7 @@ class PameranController extends Controller
                         'tema' => $validated['tema'],
                         'abstract' => $validated['abstract'],
                         'idpeserta_PIC' => $validated['idpeserta_PIC'],
+                        'idkluster_pameran' => $validated['idkluster_pameran'],
                         'status_ajuan' => '1',
                     ]);
                 }
@@ -206,8 +224,8 @@ class PameranController extends Controller
             return $this->jsonResponse(422, 'Tidak ada draf yang bisa diajukan saat ini.');
         }
 
-        if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $draft->file_path) {
-            return $this->jsonResponse(422, 'Lengkapi tema, extended abstrak, PIC, dan portofolio sebelum mengajukan.');
+        if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $pameran->idkluster_pameran || ! $draft->file_path) {
+            return $this->jsonResponse(422, 'Lengkapi tema, extended abstrak, kluster, PIC, dan portofolio sebelum mengajukan.');
         }
 
         $sudahPernahDiajukan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->exists();

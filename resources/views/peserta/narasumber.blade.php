@@ -7,8 +7,6 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/editors/quill/quill.snow.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/editors/quill/quill.snow.css') }}">
 
     <style>
         #modal-pilih-sesi .modal-dialog { max-width: 95%; }
@@ -66,11 +64,6 @@
 
                 @if($narasumber && ! $bisaEdit)
                     <div class="row mb-2">
-                        <div class="col-12 col-sm-2 fw-bold">Abstrak</div>
-                        <div class="col-12 col-sm-10">{!! $narasumber->abstract !!}</div>
-                    </div>
-
-                    <div class="row mb-2">
                         <div class="col-12 col-sm-2 fw-bold">Sesi</div>
                         <div class="col-12 col-sm-10">
                             @if($narasumber->acara_parent_tema)
@@ -117,13 +110,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Abstrak</label>
-                            <div id="editor-abstract" style="height: 220px; background-color: #fff;">{!! $narasumber->abstract ?? '' !!}</div>
-                            <input type="hidden" name="abstract" id="input-abstract">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label" for="input-berkas">Berkas (PDF/DOC/DOCX, maks. 5 MB)</label>
+                            <label class="form-label" for="input-berkas">Extended Abstract (PDF/DOC/DOCX, maks. 5 MB)</label>
                             <input type="file" name="berkas" id="input-berkas" class="form-control" accept=".pdf,.doc,.docx">
                             @if($draftSaatIni && $draftSaatIni->file_path)
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">
@@ -133,7 +120,7 @@
                                 </div>
                             @else
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">
-                                    Berkas wajib diunggah sebelum pengajuan dapat disimpan.
+                                    Extended Abstract wajib diunggah sebelum pengajuan dapat disimpan.
                                 </div>
                             @endif
                         </div>
@@ -167,7 +154,7 @@
                                         @if($baris->file_path)
                                             <p>
                                                 <a href="{{ route('peserta.narasumber.berkas') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Berkas
+                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Extended Abstract
                                                 </a>
                                             </p>
                                         @endif
@@ -246,31 +233,12 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
-    @if($bisaEdit)
-        <script src="{{ asset('src/plugins/src/editors/quill/quill.js') }}"></script>
-    @endif
 
     <script>
         $(function () {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var simpanDraftUrl = '{{ route('peserta.narasumber.simpan-draft') }}';
             var ajukanUrl = '{{ route('peserta.narasumber.ajukan') }}';
-
-            @if($bisaEdit)
-                var quillAbstract = new Quill('#editor-abstract', {
-                    modules: {
-                        toolbar: [
-                            [{ header: [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ list: 'ordered' }, { list: 'bullet' }],
-                            ['blockquote', 'link'],
-                            ['clean'],
-                        ],
-                    },
-                    placeholder: 'Tuliskan abstrak pengajuan narasumber...',
-                    theme: 'snow',
-                });
-            @endif
 
             function tampilkanError(xhr) {
                 var res = xhr.responseJSON || {};
@@ -281,14 +249,6 @@
                     pesan = Object.values(res.errors).flat().join('\n');
                 }
                 $('.page-alert').removeClass('d-none').text(pesan);
-            }
-
-            function abstrakKosong() {
-                if (quillAbstract.getText().trim() === '') {
-                    $('.page-alert').removeClass('d-none').text('Abstrak tidak boleh kosong.');
-                    return true;
-                }
-                return false;
             }
 
             function sesiBelumDipilih() {
@@ -320,8 +280,6 @@
             });
 
             function simpanDraft() {
-                $('#input-abstract').val(quillAbstract.root.innerHTML);
-
                 var formData = new FormData(document.getElementById('form-narasumber'));
 
                 return $.ajax({
@@ -340,7 +298,7 @@
 
                 $('.page-alert').addClass('d-none').text('');
 
-                if (sesiBelumDipilih() || subtemaKosong() || abstrakKosong()) {
+                if (sesiBelumDipilih() || subtemaKosong()) {
                     return;
                 }
 
@@ -375,7 +333,7 @@
 
                     $('.page-alert').addClass('d-none').text('');
 
-                    if (sesiBelumDipilih() || subtemaKosong() || abstrakKosong()) {
+                    if (sesiBelumDipilih() || subtemaKosong()) {
                         return;
                     }
 

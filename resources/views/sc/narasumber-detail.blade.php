@@ -82,7 +82,7 @@
                     <div class="col-12 col-sm-9">{{ $narasumber->subtema ?? '-' }}</div>
                 </div>
                 <div class="row mb-2">
-                    <div class="col-12 col-sm-3 fw-bold">Abstrak</div>
+                    <div class="col-12 col-sm-3 fw-bold">Extended Abstrak</div>
                     <div class="col-12 col-sm-9">{!! $narasumber->abstract !!}</div>
                 </div>
             </div>
@@ -128,7 +128,7 @@
                                         @if($baris->file_path)
                                             <p>
                                                 <a href="{{ route('sc.narasumber.berkas') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Berkas
+                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Extended Abstract
                                                 </a>
                                             </p>
                                         @endif

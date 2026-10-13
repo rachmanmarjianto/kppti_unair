@@ -54,7 +54,7 @@
                             <td>{{ $narasumber->no_wa ?? '-' }}</td>
                         </tr>
                         <tr>
-                            <th>Abstrak</th>
+                            <th>Extended Abstrak</th>
                             <td>{!! $narasumber->abstract !!}</td>
                         </tr>
                         <tr>
@@ -117,7 +117,7 @@
                                         @if($baris->file_path)
                                             <p>
                                                 <a href="{{ route('admin.narasumber.berkas') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Berkas
+                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Extended Abstract
                                                 </a>
                                             </p>
                                         @endif

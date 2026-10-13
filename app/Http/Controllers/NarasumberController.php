@@ -83,13 +83,10 @@ class NarasumberController extends Controller
         $userdata = session('userdata');
 
         $validated = $request->validate([
-            'abstract' => ['required', 'string'],
             'idacara' => ['required', 'integer'],
             'subtema' => ['required', 'string', 'max:255'],
             'berkas' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
         ]);
-
-        $validated['abstract'] = $this->sanitizeRichText($validated['abstract']);
 
         $acaraValid = $this->acaraAktifQuery()
             ->where('idacara', $validated['idacara'])
@@ -107,7 +104,6 @@ class NarasumberController extends Controller
                 if (! $narasumber) {
                     $idnarasumber = DB::table('narasumber')->insertGetId([
                         'idpengguna' => $userdata['idpengguna'],
-                        'abstract' => $validated['abstract'],
                         'idacara' => $validated['idacara'],
                         'subtema' => $validated['subtema'],
                         'status_ajuan' => '1',
@@ -116,7 +112,6 @@ class NarasumberController extends Controller
                     $narasumber = DB::table('narasumber')->where('idnarasumber', $idnarasumber)->first();
                 } else {
                     DB::table('narasumber')->where('idnarasumber', $narasumber->idnarasumber)->update([
-                        'abstract' => $validated['abstract'],
                         'idacara' => $validated['idacara'],
                         'subtema' => $validated['subtema'],
                         'status_ajuan' => '1',
@@ -145,7 +140,7 @@ class NarasumberController extends Controller
                     $path = $this->simpanBerkasNarasumber($narasumber->idnarasumber, $idreview, $request->file('berkas'));
                     DB::table('review_narasumber')->where('idreview_narasumber', $idreview)->update(['file_path' => $path]);
                 } elseif (! $terakhir || $terakhir->status_ajuan !== '1' || ! $terakhir->file_path) {
-                    throw new \RuntimeException('Berkas (PDF/DOC/DOCX) wajib diunggah.');
+                    throw new \RuntimeException('Extended Abstract (PDF/DOC/DOCX) wajib diunggah.');
                 }
 
                 $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
@@ -191,8 +186,8 @@ class NarasumberController extends Controller
             return $this->jsonResponse(422, 'Tidak ada draf yang bisa diajukan saat ini.');
         }
 
-        if (! $narasumber->abstract || ! $narasumber->idacara || ! $narasumber->subtema || ! $draft->file_path) {
-            return $this->jsonResponse(422, 'Lengkapi sesi, subtema, abstrak, dan berkas sebelum mengajukan.');
+        if (! $narasumber->idacara || ! $narasumber->subtema || ! $draft->file_path) {
+            return $this->jsonResponse(422, 'Lengkapi sesi, subtema, dan Extended Abstract sebelum mengajukan.');
         }
 
         $sudahPernahDiajukan = DB::table('review_narasumber')->where('idnarasumber', $narasumber->idnarasumber)->count() > 1;

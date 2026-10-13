@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             AdminPenggunaSeeder::class,
             JadwalPentingSeeder::class,
             TopikReviewSeeder::class,
+            KlusterPameranSeeder::class,
         ]);
     }
 }

@@ -57,7 +57,7 @@
                 @if($review->file_path)
                     <p>
                         <a href="{{ route('sc.pameran.portofolio') }}?token={{ $token }}" target="_blank">
-                            <i class="fa-solid fa-file-arrow-down"></i> Lihat Portofolio
+                            <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
                         </a>
                     </p>
                 @endif
