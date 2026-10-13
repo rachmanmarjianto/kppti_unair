@@ -282,9 +282,19 @@ class Controller extends BaseController
     }
 
     /**
-     * Base query for peserta rows with an active Peserta role and a non-deleted
-     * pengguna row. Pass $idInstitusiAsal to scope to one kontingen (peserta
-     * side); omit it (null) to query across every institusi (admin side).
+     * Base query for peserta rows that hold the Peserta role and have a
+     * non-deleted pengguna row. Pass $idInstitusiAsal to scope to one
+     * kontingen (peserta side); omit it (null) to query across every
+     * institusi (admin side).
+     *
+     * Deliberately does NOT require `rp.status = true` (the Peserta role
+     * being the currently *active* role) — a pengguna is still a member of
+     * their kontingen regardless of which role is active right now (e.g.
+     * an Admin who also happens to be registered as a peserta). Only
+     * `role_pengguna` row existing for idrole=Peserta matters here, not its
+     * active/inactive flag. See docs/features for the "satu role aktif"
+     * design — that only governs which role's *menu/akses* applies to the
+     * current session, not kontingen membership.
      */
     protected function pesertaAktifQuery(?int $idInstitusiAsal = null)
     {
@@ -294,8 +304,7 @@ class Controller extends BaseController
             ->join('role_pengguna as rp', function ($join) {
                 $join->on('rp.idpengguna', '=', 'p.idpengguna')->where('rp.idrole', self::ROLE_PESERTA);
             })
-            ->where('p.is_deleted', false)
-            ->where('rp.status', true);
+            ->where('p.is_deleted', false);
 
         if ($idInstitusiAsal !== null) {
             $query->where('p.idinstitusi_asal', $idInstitusiAsal);
