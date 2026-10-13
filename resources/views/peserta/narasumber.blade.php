@@ -83,7 +83,7 @@
                     </div>
 
                     <div class="row mb-2">
-                        <div class="col-12 col-sm-2 fw-bold">Subtema</div>
+                        <div class="col-12 col-sm-2 fw-bold">Subtema yang Diusulkan</div>
                         <div class="col-12 col-sm-10">{{ $narasumber->subtema ?? '-' }}</div>
                     </div>
                 @endif
