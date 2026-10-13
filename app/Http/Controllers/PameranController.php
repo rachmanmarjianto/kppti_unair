@@ -207,7 +207,7 @@ class PameranController extends Controller
         }
 
         if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $draft->file_path) {
-            return $this->jsonResponse(422, 'Lengkapi tema, abstrak, PIC, dan portofolio sebelum mengajukan.');
+            return $this->jsonResponse(422, 'Lengkapi tema, extended abstrak, PIC, dan portofolio sebelum mengajukan.');
         }
 
         $sudahPernahDiajukan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->exists();
@@ -349,10 +349,9 @@ class PameranController extends Controller
                 // baris lama (jumlah yang masih belum terbayar) dibawa jadi
                 // nilai tagihan baris baru ini.
 
-                if($tagihanLama->sisa_tagihan == $tagihanLama->tagihan) {
+                if ($tagihanLama->sisa_tagihan == $tagihanLama->tagihan) {
                     $sisa_tagihan = config('services.biaya_pameran');
-                }
-                else{
+                } else {
                     $sisa_tagihan = $tagihanLama->sisa_tagihan;
                 }
 

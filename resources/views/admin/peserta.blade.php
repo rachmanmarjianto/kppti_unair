@@ -86,6 +86,10 @@
             max-width: 95%;
         }
 
+        #modal-edit-email .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-edit-email .form-label, #modal-edit-email .text-muted { color: #0e1726 !important; }
+        #modal-edit-email .form-control { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+
         #modal-detail-peserta .modal-content {
             background-color: #fff;
             color: #3b3f5c;
@@ -314,6 +318,9 @@
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Detail Peserta">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </a>
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-primary btn-edit-email-peserta" title="Edit Email" data-idpeserta="{{ $peserta->idpeserta }}" data-email="{{ $peserta->email }}">
+                                                        <i class="fa-solid fa-pen"></i>
+                                                    </a>
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-danger btn-reset-password-peserta" title="Reset Password" data-idpeserta="{{ $peserta->idpeserta }}" data-no-wa="{{ $peserta->no_wa }}">
                                                         <i class="fa-solid fa-key"></i>
                                                     </a>
@@ -408,6 +415,36 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: edit email peserta --}}
+    <div class="modal fade" id="modal-edit-email" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-edit-email">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Email Peserta</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                        <input type="hidden" name="idpeserta" id="input-edit-email-idpeserta">
+
+                        <div class="mb-3">
+                            <label class="form-label" for="input-edit-email-baru">Email Baru</label>
+                            <input type="email" name="email" id="input-edit-email-baru" class="form-control" maxlength="500" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-edit-email">
+                            <span class="btn-label">Simpan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page-js')
@@ -420,6 +457,7 @@
             var resetPasswordUrl = '{{ route('admin.peserta.reset-password') }}';
             var detailUrl = '{{ route('admin.peserta.detail') }}';
             var fotoUrl = '{{ route('admin.peserta.foto') }}';
+            var updateEmailUrl = '{{ route('admin.peserta.email.update') }}';
 
             $('[data-bs-toggle="collapse"]').on('click', function () {
                 $(this).toggleClass('expanded');
@@ -438,7 +476,7 @@
             }
 
             $('.baris-peserta').on('click', function (e) {
-                if ($(e.target).closest('.btn-reset-password-peserta').length) {
+                if ($(e.target).closest('.btn-reset-password-peserta, .btn-edit-email-peserta').length) {
                     return;
                 }
 
@@ -560,6 +598,67 @@
                             pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
                         }
                         Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                    });
+                });
+            });
+
+            // ------- Edit email peserta -------
+            var $modalEditEmail = $('#modal-edit-email');
+
+            $('.btn-edit-email-peserta').on('click', function () {
+                var $btn = $(this);
+
+                $modalEditEmail.find('.modal-alert').addClass('d-none').text('');
+                $('#input-edit-email-idpeserta').val($btn.data('idpeserta'));
+                $('#input-edit-email-baru').val($btn.data('email'));
+                $modalEditEmail.modal('show');
+            });
+
+            $('#form-edit-email').on('submit', function (e) {
+                e.preventDefault();
+
+                var idpeserta = $('#input-edit-email-idpeserta').val();
+                var emailBaru = $('#input-edit-email-baru').val();
+
+                Swal.fire({
+                    title: 'Ubah Email Peserta?',
+                    text: 'Email peserta akan diubah menjadi ' + emailBaru + '. Email ini juga akan dipakai peserta untuk login. Lanjutkan?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, ubah',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var $btn = $('#btn-submit-edit-email');
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                    $modalEditEmail.find('.modal-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: updateEmailUrl,
+                        method: 'POST',
+                        data: { idpeserta: idpeserta, email: emailBaru },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        } else if (res.errors) {
+                            pesan = Object.values(res.errors).flat().join('\n');
+                        }
+                        $modalEditEmail.find('.modal-alert').removeClass('d-none').text(pesan);
+                        $btn.prop('disabled', false).html(teksAwal);
                     });
                 });
             });

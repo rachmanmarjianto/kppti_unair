@@ -103,7 +103,7 @@
                         <div class="col-12 col-sm-10">{{ $pameran->tema }}</div>
                     </div>
                     <div class="row mb-2">
-                        <div class="col-12 col-sm-2 fw-bold">Abstrak</div>
+                        <div class="col-12 col-sm-2 fw-bold">Extended Abstrak</div>
                         <div class="col-12 col-sm-10">{!! $pameran->abstract !!}</div>
                     </div>
                     <div class="row mb-2">
@@ -188,7 +188,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Abstrak</label>
+                            <label class="form-label">Extended Abstrak</label>
                             <div id="editor-abstract" style="height: 220px; background-color: #fff;">{!! $pameran->abstract ?? '' !!}</div>
                             <input type="hidden" name="abstract" id="input-abstract">
                         </div>
@@ -344,7 +344,7 @@
                             ['clean'],
                         ],
                     },
-                    placeholder: 'Tuliskan abstrak pengajuan pameran...',
+                    placeholder: 'Tuliskan extended abstrak pengajuan pameran...',
                     theme: 'snow',
                 });
             @endif
@@ -474,7 +474,7 @@
 
             function abstrakKosong() {
                 if (quillAbstract.getText().trim() === '') {
-                    $('.page-alert').removeClass('d-none').text('Abstrak tidak boleh kosong.');
+                    $('.page-alert').removeClass('d-none').text('Extended Abstrak tidak boleh kosong.');
                     return true;
                 }
                 return false;
@@ -523,7 +523,7 @@
 
             $('#btn-ajukan').on('click', function () {
                 var teksKonfirmasi = sudahAdaTagihan
-                    ? 'Abstrak dan portofolio akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
+                    ? 'Extended Abstrak dan portofolio akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
                     : 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?';
 
                 Swal.fire({

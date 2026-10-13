@@ -56,7 +56,7 @@
                             <td>{{ $pameran->tema }}</td>
                         </tr>
                         <tr>
-                            <th>Abstrak</th>
+                            <th>Extended Abstrak</th>
                             <td>{!! $pameran->abstract !!}</td>
                         </tr>
                         <tr>

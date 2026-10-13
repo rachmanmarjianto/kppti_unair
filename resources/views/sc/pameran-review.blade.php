@@ -50,7 +50,7 @@
                 <div class="page-alert alert alert-danger d-none mb-3" role="alert"></div>
 
                 <div class="mb-3">
-                    <strong>Abstrak:</strong>
+                    <strong>Extended Abstrak:</strong>
                     <div class="mt-1">{!! $pameran->abstract !!}</div>
                 </div>
 

@@ -175,6 +175,50 @@ class PesertaAdminController extends Controller
     }
 
     /**
+     * Ubah email peserta — email dipakai sebagai kredensial login, jadi
+     * wajib unik lintas seluruh `pengguna` (bukan cuma lintas peserta),
+     * dicek manual (bukan rule `unique:`) konsisten dengan pola
+     * `PenggunaController::storeRegistrasi()`.
+     */
+    public function updateEmail(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'email' => ['required', 'email', 'max:500'],
+        ]);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $emailBaru = $validated['email'];
+
+        if ($emailBaru === $peserta->email) {
+            return $this->jsonResponse(422, 'Email baru sama dengan email saat ini.');
+        }
+
+        $sudahDipakai = DB::table('pengguna')
+            ->where('is_deleted', false)
+            ->where('idpengguna', '!=', $peserta->idpengguna)
+            ->where('email', $emailBaru)
+            ->exists();
+
+        if ($sudahDipakai) {
+            return $this->jsonResponse(422, 'Email ini sudah digunakan oleh pengguna lain.');
+        }
+
+        DB::table('pengguna')->where('idpengguna', $peserta->idpengguna)->update(['email' => $emailBaru]);
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Email diubah oleh admin dari {$peserta->email} menjadi {$emailBaru}");
+
+        return $this->jsonResponse(200, 'Email peserta berhasil diperbarui.');
+    }
+
+    /**
      * Download a kontingen's registration card — same completeness gate as
      * PesertaController::kartuKontingen(), just scoped to the institusi chosen
      * by the Admin (via an encrypted token) instead of the logged-in session's
