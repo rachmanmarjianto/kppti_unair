@@ -95,7 +95,7 @@
                                     </td>
                                     <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
                                     <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>                                    
-                                    <td>
+                                    <td style="white-space: pre-line;">
                                         @if(! $acara->perlu_narsum)
                                             {{ $acara->speaker ?? '-' }}
                                         @elseif($acara->narasumberList->isNotEmpty())
@@ -137,7 +137,7 @@
                                             </td>
                                             <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
                                             <td>{{ $anak->ruang ?? '-' }}</td>                                            
-                                            <td>
+                                            <td style="white-space: pre-line;">
                                                 @if(! $anak->perlu_narsum)
                                                     {{ $anak->speaker ?? '-' }}
                                                 @elseif($anak->narasumberList->isNotEmpty())

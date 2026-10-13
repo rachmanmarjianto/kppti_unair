@@ -108,7 +108,7 @@
                                     <td>{{ $acara->children->isNotEmpty() ? '-' : ($acara->jam_mulai ? substr($acara->jam_mulai, 0, 5).' - '.substr($acara->jam_akhir, 0, 5) : '-') }}</td>
                                     <td class="sel-tema" style="white-space: pre-line;">{{ $acara->tema ?? '-' }}</td>
                                     <td>{{ $acara->children->isEmpty() ? ($acara->ruang ?? '-') : '-' }}</td>
-                                    <td>
+                                    <td style="white-space: pre-line;">
                                         @if(! $acara->perlu_narsum)
                                             {{ $acara->speaker ?? '-' }}
                                         @elseif($acara->narasumberList->isNotEmpty())
@@ -147,7 +147,7 @@
                                             <td>{{ $anak->jam_mulai ? substr($anak->jam_mulai, 0, 5).' - '.substr($anak->jam_akhir, 0, 5) : '-' }}</td>
                                             <td class="sel-tema" style="white-space: pre-line;">↳ {{ $anak->tema ?? '-' }}</td>
                                             <td>{{ $anak->ruang ?? '-' }}</td>
-                                            <td>
+                                            <td style="white-space: pre-line;">
                                                 @if(! $anak->perlu_narsum)
                                                     {{ $anak->speaker ?? '-' }}
                                                 @elseif($anak->narasumberList->isNotEmpty())

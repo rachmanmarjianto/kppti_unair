@@ -87,7 +87,7 @@
                                     <td>@include('admin.partials.opsi-pilih-badge', ['opsi' => $acara->opsi_pilih])</td>
                                     <td>{{ $acara->hari_ke ?? '-' }}</td>
                                     <td>{{ $acara->children->isNotEmpty() ? '-' : ($acara->jam_mulai ? substr($acara->jam_mulai, 0, 5).' - '.substr($acara->jam_akhir, 0, 5) : '-') }}</td>
-                                    <td>
+                                    <td style="white-space: pre-line;">
                                         @if(! $acara->perlu_narsum)
                                             {{ $acara->speaker ?? '-' }}
                                         @elseif($acara->narasumberList->isNotEmpty())
@@ -112,7 +112,7 @@
                                             <td>@include('admin.partials.opsi-pilih-badge', ['opsi' => $anak->opsi_pilih])</td>
                                             <td>{{ $anak->hari_ke ?? '-' }}</td>
                                             <td>{{ $anak->jam_mulai ? substr($anak->jam_mulai, 0, 5).' - '.substr($anak->jam_akhir, 0, 5) : '-' }}</td>
-                                            <td>
+                                            <td style="white-space: pre-line;">
                                                 @if(! $anak->perlu_narsum)
                                                     {{ $anak->speaker ?? '-' }}
                                                 @elseif($anak->narasumberList->isNotEmpty())

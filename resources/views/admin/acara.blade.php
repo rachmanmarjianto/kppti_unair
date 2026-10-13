@@ -100,7 +100,7 @@
                                     <td>@include('admin.partials.opsi-pilih-badge', ['opsi' => $acara->opsi_pilih])</td>
                                     <td>{{ $acara->hari_ke ?? '-' }}</td>
                                     <td>{{ $acara->children->isNotEmpty() ? '-' : ($acara->jam_mulai ? substr($acara->jam_mulai, 0, 5).' - '.substr($acara->jam_akhir, 0, 5) : '-') }}</td>
-                                    <td>
+                                    <td style="white-space: pre-line;">
                                         @if(! $acara->perlu_narsum)
                                             {{ $acara->speaker ?? '-' }}
                                         @elseif($acara->narasumberList->isNotEmpty())
@@ -136,7 +136,7 @@
                                             <td>@include('admin.partials.opsi-pilih-badge', ['opsi' => $anak->opsi_pilih])</td>
                                             <td>{{ $anak->hari_ke ?? '-' }}</td>
                                             <td>{{ $anak->jam_mulai ? substr($anak->jam_mulai, 0, 5).' - '.substr($anak->jam_akhir, 0, 5) : '-' }}</td>
-                                            <td>
+                                            <td style="white-space: pre-line;">
                                                 @if(! $anak->perlu_narsum)
                                                     {{ $anak->speaker ?? '-' }}
                                                 @elseif($anak->narasumberList->isNotEmpty())
@@ -176,7 +176,7 @@
 
     {{-- Modal: tambah/edit acara --}}
     <div class="modal fade" id="modal-acara" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-acara">
                     <input type="hidden" name="idacara" id="input-idacara">
@@ -252,7 +252,7 @@
 
                         <div class="mb-3" id="group-speaker">
                             <label class="form-label">Nama Pembicara</label>
-                            <input type="text" name="speaker" id="input-speaker" class="form-control" maxlength="255">
+                            <textarea name="speaker" id="input-speaker" class="form-control" rows="4"></textarea>
                         </div>
 
                         <div class="mb-3 d-none" id="group-narasumber-readonly">
