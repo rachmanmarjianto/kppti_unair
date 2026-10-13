@@ -33,6 +33,20 @@
         #modal-edit-pengguna .form-control[readonly] {
             color: #000;
         }
+
+        /* dt-global_style.css mematok .page-link ke kotak 33x33px untuk tombol
+           ikon — di halaman ini labelnya berupa teks ("Sebelumnya"/"Berikutnya"),
+           jadi tombol sebelum/berikutnya perlu lebar otomatis supaya teksnya
+           tidak tumpang tindih (paling kentara saat tabel kosong, karena saat
+           itu cuma dua tombol ini yang berdampingan tanpa tombol halaman lain). */
+        .dataTables_wrapper .page-item.previous .page-link,
+        .dataTables_wrapper .page-item.next .page-link,
+        .dataTables_wrapper .page-item.first .page-link,
+        .dataTables_wrapper .page-item.last .page-link {
+            width: auto;
+            white-space: nowrap;
+            padding: 0 12px;
+        }
     </style>
 @endsection
 
