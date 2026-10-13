@@ -17,9 +17,7 @@ include_once 'petugas-kit.php';
 
 Auth::routes();
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+Route::get('/', [LoginController::class, 'root']);
 
 Route::get('/lupa-password', [PenggunaController::class, 'lupaPassword'])->name('lupa-password');
 Route::post('/lupa-password', [PenggunaController::class, 'lupaPasswordReset'])->name('lupa-password.reset')->middleware('throttle:5,1');

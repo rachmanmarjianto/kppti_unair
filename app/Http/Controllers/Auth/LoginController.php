@@ -39,13 +39,33 @@ class LoginController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('guest')->except('logout');
+        $this->middleware('guest')->except(['logout', 'root']);
         $this->middleware('auth')->only('logout');
     }
 
     public function showLoginForm()
     {
         return view('login_kppti');
+    }
+
+    /**
+     * Entry point `/` — redirect ke home sesuai role aktif kalau sudah
+     * login, atau ke halaman login kalau belum. Sebelumnya `/` redirect
+     * tak bersyarat ke `/login`, yang dikombinasikan dengan middleware
+     * `guest` (redirect balik ke `/` begitu Auth::check() true, karena
+     * tidak ada route bernama `home`/`dashboard`) menyebabkan redirect
+     * loop tanpa akhir untuk siapa pun yang sesinya masih dianggap valid
+     * saat membuka `/login` langsung.
+     */
+    public function root()
+    {
+        $idRoleAktif = session('userdata')['idrole_aktif'] ?? null;
+
+        if (Auth::check() && $idRoleAktif !== null && array_key_exists($idRoleAktif, self::HOME_BY_ROLE)) {
+            return redirect()->route(self::HOME_BY_ROLE[$idRoleAktif]);
+        }
+
+        return redirect()->route('login');
     }
 
     public function login(Request $request)
