@@ -111,7 +111,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label" for="input-subtema">Subtema</label>
+                            <label class="form-label" for="input-subtema">Subtema yang Diusulkan</label>
                             <input type="text" name="subtema" id="input-subtema" class="form-control" maxlength="255" value="{{ $narasumber->subtema ?? '' }}" required>
                         </div>
 
