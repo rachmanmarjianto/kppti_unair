@@ -11,6 +11,7 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/editors/quill/quill.snow.css') }}">
 
     <style>
+        #modal-pilih-sesi .modal-dialog { max-width: 95%; }
         #modal-pilih-sesi .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
         #modal-pilih-sesi .form-label, #modal-pilih-sesi .form-check-label, #modal-pilih-sesi .text-muted { color: #0e1726 !important; }
         #modal-pilih-sesi .form-control { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
