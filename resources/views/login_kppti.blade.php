@@ -398,7 +398,7 @@
             gap: 12px;
             margin: 26px 0;
             color: #2e3236;
-            font-size: 17px;
+            font-size: 19px;
         }
 
         .kppti-divider::before,
@@ -411,7 +411,7 @@
 
         .kppti-footnote {
             text-align: center;
-            font-size: 17px;
+            font-size: 19px;
             color: #6b7280;
         }
 
