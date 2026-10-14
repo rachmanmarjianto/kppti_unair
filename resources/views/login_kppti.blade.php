@@ -397,8 +397,8 @@
             align-items: center;
             gap: 12px;
             margin: 26px 0;
-            color: #9aa4b2;
-            font-size: 12.5px;
+            color: #2e3236;
+            font-size: 17px;
         }
 
         .kppti-divider::before,
@@ -411,7 +411,7 @@
 
         .kppti-footnote {
             text-align: center;
-            font-size: 13px;
+            font-size: 17px;
             color: #6b7280;
         }
 
@@ -571,7 +571,7 @@
                     </button>
                 </form>
 
-                <div class="kppti-divider">belum terdaftar</div>
+                <div class="kppti-divider" >belum terdaftar</div>
 
                 <p class="kppti-footnote">
                     <a href="{{ route('registrasi_kppti') }}">Daftar sebagai peserta</a>
