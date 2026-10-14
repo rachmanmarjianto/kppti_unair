@@ -113,7 +113,7 @@
                         <div class="col-12 col-sm-10">{{ $pameran->tema }}</div>
                     </div>
                     <div class="row mb-2">
-                        <div class="col-12 col-sm-2 fw-bold">Extended Abstrak</div>
+                        <div class="col-12 col-sm-2 fw-bold">Risalah Singkat Pameran</div>
                         <div class="col-12 col-sm-10">{!! $pameran->abstract !!}</div>
                     </div>
                     <div class="row mb-2">
@@ -199,7 +199,11 @@
                             <input type="text" name="tema" id="input-tema" class="form-control" maxlength="255" value="{{ $pameran->tema ?? '' }}" required>
                         </div>
 
-                        
+                        <div class="mb-3">
+                            <label class="form-label">Risalah Singkat Pameran</label>
+                            <div id="editor-abstract" style="height: 220px; background-color: #fff;">{!! $pameran->abstract ?? '' !!}</div>
+                            <input type="hidden" name="abstract" id="input-abstract">
+                        </div>
 
                         <div class="mb-3">
                             <label class="form-label" for="input-idpeserta-pic">PIC (Person in Charge)</label>
@@ -209,12 +213,6 @@
                                     <option value="{{ $opsi->idpeserta }}" @selected(($pameran->idpeserta_PIC ?? null) == $opsi->idpeserta)>{{ $opsi->nama }}</option>
                                 @endforeach
                             </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Extended Abstrak</label>
-                            <div id="editor-abstract" style="height: 220px; background-color: #fff;">{!! $pameran->abstract ?? '' !!}</div>
-                            <input type="hidden" name="abstract" id="input-abstract">
                         </div>
 
                         <div class="mb-3">
@@ -368,7 +366,7 @@
                             ['clean'],
                         ],
                     },
-                    placeholder: 'Tuliskan extended abstrak pengajuan pameran...',
+                    placeholder: 'Tuliskan risalah singkat pengajuan pameran...',
                     theme: 'snow',
                 });
             @endif
@@ -382,6 +380,14 @@
                     pesan = Object.values(res.errors).flat().join('\n');
                 }
                 $('.page-alert').removeClass('d-none').text(pesan);
+            }
+
+            function abstrakKosong() {
+                if (quillAbstract.getText().trim() === '') {
+                    $('.page-alert').removeClass('d-none').text('Risalah Singkat Pameran tidak boleh kosong.');
+                    return true;
+                }
+                return false;
             }
 
             var $modalPilihPenjaga = $('#modal-pilih-penjaga');
@@ -496,14 +502,6 @@
                 });
             });
 
-            function abstrakKosong() {
-                if (quillAbstract.getText().trim() === '') {
-                    $('.page-alert').removeClass('d-none').text('Extended Abstrak tidak boleh kosong.');
-                    return true;
-                }
-                return false;
-            }
-
             function simpanDraft() {
                 $('#input-abstract').val(quillAbstract.root.innerHTML);
 
@@ -547,7 +545,7 @@
 
             $('#btn-ajukan').on('click', function () {
                 var teksKonfirmasi = sudahAdaTagihan
-                    ? 'Extended Abstrak dan Form Keikutsertaan akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
+                    ? 'Risalah Singkat Pameran dan Form Keikutsertaan akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
                     : 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?';
 
                 Swal.fire({

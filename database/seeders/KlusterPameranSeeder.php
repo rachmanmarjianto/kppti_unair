@@ -41,6 +41,13 @@ class KlusterPameranSeeder extends Seeder
                 'subtema_kluster' => 'Teknologi akses disabilitas, digitalisasi warisan budaya, advokasi kelompok marginal',
                 'status' => true,
             ],
+            [
+                'idkluster_pameran' => 5,
+                'nomor_kluster' => 5,
+                'tema_kluster' => 'Industri/Mitra/Asosiasi/NGO',
+                'subtema_kluster' => null,
+                'status' => true,
+            ],
         ]);
 
         $this->syncSequence('kluster_pameran', 'idkluster_pameran');

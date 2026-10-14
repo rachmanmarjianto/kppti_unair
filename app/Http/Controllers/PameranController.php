@@ -12,6 +12,8 @@ class PameranController extends Controller
 {
     private const TAGIHAN_STATUS_EXPIRED = 5;
 
+    private const IDKLUSTER_BERBAYAR = 5;
+
     /**
      * Show the kontingen's pameran submission — one per institusi. Shows an
      * editable form when there's no submission yet, or the current one is
@@ -183,7 +185,7 @@ class PameranController extends Controller
                     $path = $this->simpanPortofolioPameran($pameran->idpameran, $idreview, $request->file('portofolio'));
                     DB::table('review_pameran')->where('idreview', $idreview)->update(['file_path' => $path]);
                 } elseif (! $terakhir || $terakhir->status_ajuan !== '1' || ! $terakhir->file_path) {
-                    throw new \RuntimeException('Portofolio (PDF/DOC/DOCX) wajib diunggah.');
+                    throw new \RuntimeException('Form Keikutsertaan (PDF/DOC/DOCX) wajib diunggah.');
                 }
 
                 $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Menyimpan draf pengajuan pameran: {$validated['tema']}");
@@ -225,7 +227,7 @@ class PameranController extends Controller
         }
 
         if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $pameran->idkluster_pameran || ! $draft->file_path) {
-            return $this->jsonResponse(422, 'Lengkapi tema, extended abstrak, kluster, PIC, dan portofolio sebelum mengajukan.');
+            return $this->jsonResponse(422, 'Lengkapi tema, kluster, PIC, Risalah Singkat Pameran, dan Form Keikutsertaan sebelum mengajukan.');
         }
 
         $sudahPernahDiajukan = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->exists();
@@ -235,19 +237,34 @@ class PameranController extends Controller
         }
 
         $tagihanBaruDibuat = false;
+        $perluBayar = false;
 
         try {
             $pic = $this->dataPicPameran($pameran);
 
-            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, $pic, &$tagihanBaruDibuat) {
+            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, $pic, &$tagihanBaruDibuat, &$perluBayar) {
                 DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
                 DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
                 $tagihan = $this->tagihanTerbaru($pameran->idpameran);
+                $klusterBerbayar = (int) $pameran->idkluster_pameran === self::IDKLUSTER_BERBAYAR;
 
                 if (! $tagihan) {
+                    // Belum pernah ada tagihan sama sekali — pengajuan pertama kali.
                     $tagihanBaruDibuat = true;
+                    $perluBayar = $klusterBerbayar;
+                } elseif ($klusterBerbayar && (int) $tagihan->status === 3 && ! $this->pernahDibayar($pameran->idpameran)) {
+                    // Kluster baru diganti jadi berbayar, padahal tagihan yang ada
+                    // sekarang cuma auto-lunas (kluster lama tidak berbayar) —
+                    // belum pernah ada pembayaran sungguhan. Terbitkan tagihan
+                    // baru yang sungguh perlu dibayar (bukan update baris lama,
+                    // sama seperti requestVaBaru() — satu pameran bisa punya
+                    // beberapa baris tagihan berturutan).
+                    $tagihanBaruDibuat = true;
+                    $perluBayar = true;
+                }
 
+                if ($tagihanBaruDibuat && $perluBayar) {
                     $idtagihan = DB::table('tagihan')->insertGetId([
                         'idinstitusi_asal' => $idInstitusiAsal,
                         'idpameran' => $pameran->idpameran,
@@ -270,6 +287,18 @@ class PameranController extends Controller
                         'va' => $va_arr['data']['va_number'],
                         'expired_date' => $va_arr['data']['datetime_expired'],
                     ]);
+                } elseif ($tagihanBaruDibuat) {
+                    // Kluster tidak dikenakan biaya — tagihan langsung lunas tanpa
+                    // VA, supaya pengajuan langsung bisa direview SC.
+                    DB::table('tagihan')->insertGetId([
+                        'idinstitusi_asal' => $idInstitusiAsal,
+                        'idpameran' => $pameran->idpameran,
+                        'created_at' => now(),
+                        'created_by' => $userdata['idpengguna'],
+                        'status' => 3,
+                        'tagihan' => 0,
+                        'sisa_tagihan' => 0,
+                    ], 'idtagihan');
                 }
 
                 $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
@@ -282,11 +311,29 @@ class PameranController extends Controller
             return $this->jsonResponse(500, 'Gagal mengajukan pameran.');
         }
 
-        $pesan = $tagihanBaruDibuat
-            ? 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.'
-            : 'Pengajuan pameran berhasil dikirim ulang untuk direview SC.';
+        if ($perluBayar) {
+            $pesan = 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.';
+        } elseif ($tagihanBaruDibuat) {
+            $pesan = 'Pengajuan pameran berhasil dikirim. Kluster ini tidak dikenakan biaya, pengajuan langsung dapat direview SC.';
+        } else {
+            $pesan = 'Pengajuan pameran berhasil dikirim ulang untuk direview SC.';
+        }
 
         return $this->jsonResponse(200, $pesan);
+    }
+
+    /**
+     * Apakah pameran ini pernah punya pembayaran sungguhan (lintas semua
+     * baris tagihan miliknya, bukan cuma yang terbaru) — dipakai untuk
+     * membedakan tagihan yang lunas karena kluster gratis (auto-lunas, tidak
+     * pernah ada baris `pembayaran`) dari yang benar-benar sudah dibayar.
+     */
+    private function pernahDibayar(int $idpameran): bool
+    {
+        return DB::table('pembayaran as pb')
+            ->join('tagihan as t', 't.idtagihan', '=', 'pb.idtagihan')
+            ->where('t.idpameran', $idpameran)
+            ->exists();
     }
 
     /**
@@ -597,17 +644,6 @@ class PameranController extends Controller
         }
 
         return Storage::disk('local')->response($review->file_path);
-    }
-
-    /**
-     * Baris tagihan paling baru milik satu pameran — relasi pameran→tagihan
-     * one-to-many (satu pameran bisa punya beberapa baris tagihan berturutan
-     * kalau VA sebelumnya expired dan diganti lewat requestVaBaru()), jadi
-     * baris yang relevan selalu yang idtagihan-nya terbesar.
-     */
-    private function tagihanTerbaru(int $idpameran): ?object
-    {
-        return DB::table('tagihan')->where('idpameran', $idpameran)->orderByDesc('idtagihan')->first();
     }
 
     /**

@@ -29,20 +29,20 @@ class PameranReviewController extends Controller
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->where('p.status_ajuan', '2')
             ->whereNull('p.direview_oleh')
-            ->whereExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('tagihan')
-                    ->whereColumn('tagihan.idpameran', 'p.idpameran')
-                    ->where('tagihan.status', 3);
-            })
             ->select('p.idpameran', 'p.tema', 'i.nama_institusi')
             ->orderBy('p.idpameran')
             ->get()
+            ->filter(function ($row) {
+                $tagihan = $this->tagihanTerbaru($row->idpameran);
+
+                return $tagihan && (int) $tagihan->status === 3;
+            })
             ->map(function ($row) {
                 $row->token = $this->encryptRouteValue($row->idpameran);
 
                 return $row;
-            });
+            })
+            ->values();
 
         $diproses = DB::table('pameran as p')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
@@ -82,9 +82,9 @@ class PameranReviewController extends Controller
             return $this->jsonResponse(404, 'Pengajuan tidak ditemukan.');
         }
 
-        $lunas = DB::table('tagihan')->where('idpameran', $pameran->idpameran)->where('status', 3)->exists();
+        $tagihan = $this->tagihanTerbaru($pameran->idpameran);
 
-        if (! $lunas) {
+        if (! $tagihan || (int) $tagihan->status !== 3) {
             return $this->jsonResponse(422, 'Tagihan pengajuan ini belum lunas.');
         }
 

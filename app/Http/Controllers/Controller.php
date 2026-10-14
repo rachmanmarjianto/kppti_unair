@@ -732,6 +732,23 @@ class Controller extends BaseController
     }
 
     /**
+     * Baris tagihan paling baru milik satu pameran — relasi pameran→tagihan
+     * one-to-many (satu pameran bisa punya beberapa baris tagihan berturutan,
+     * baik karena VA sebelumnya expired dan diganti lewat requestVaBaru(),
+     * maupun karena kluster pameran berganti dari yang gratis ke yang
+     * berbayar), jadi baris yang relevan selalu yang idtagihan-nya terbesar.
+     * Dipakai PameranController (peserta) dan PameranReviewController (SC) —
+     * gate SC harus selalu mengacu ke tagihan TERBARU, bukan "pernah ada
+     * yang lunas", supaya tagihan lama yang auto-lunas (kluster gratis)
+     * tidak membuat pengajuan lolos gate begitu kluster berganti jadi
+     * berbayar dan tagihan barunya belum lunas.
+     */
+    protected function tagihanTerbaru(int $idpameran): ?object
+    {
+        return DB::table('tagihan')->where('idpameran', $idpameran)->orderByDesc('idtagihan')->first();
+    }
+
+    /**
      * Inquiry billing ke BNI untuk satu baris tagihan, lalu proses hasilnya:
      * kalau BNI melapor sudah ada pembayaran (`payment_ntb` terisi) dan
      * pembayaran itu belum pernah tercatat (`payment_ntb` belum ada di
