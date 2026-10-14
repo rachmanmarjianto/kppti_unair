@@ -361,7 +361,7 @@
             var tambahPenjagaUrl = '{{ route('peserta.pameran.penjaga.tambah') }}';
             var hapusPenjagaUrl = '{{ route('peserta.pameran.penjaga.hapus') }}';
             var simpanJadwalLoadingUrl = '{{ route('peserta.pameran.jadwal-loading') }}';
-            var sudahAdaTagihan = {{ $tagihan ? 'true' : 'false' }};
+            var idKlusterBerbayar = {{ $idKlusterBerbayar }};
 
             @if($bisaEdit)
                 var quillAbstract = new Quill('#editor-abstract', {
@@ -552,9 +552,12 @@
             });
 
             $('#btn-ajukan').on('click', function () {
-                var teksKonfirmasi = sudahAdaTagihan
-                    ? 'Risalah Singkat Pameran dan Form Keikutsertaan akan disimpan, lalu pengajuan ini dikirim ulang untuk direview SC. Ajukan sekarang?'
-                    : 'Setelah diajukan, tagihan akan diterbitkan dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?';
+                var klusterTerpilih = parseInt($('#input-idkluster-pameran').val(), 10);
+                var perluBayar = klusterTerpilih === idKlusterBerbayar;
+
+                var teksKonfirmasi = perluBayar
+                    ? 'Kluster ini berbayar — tagihan akan diterbitkan (atau sudah ada tagihan yang menunggu dibayar) dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?'
+                    : 'Kluster ini tidak dikenakan biaya. Risalah Singkat Pameran dan Form Keikutsertaan akan disimpan, lalu pengajuan ini langsung dapat direview SC. Ajukan sekarang?';
 
                 Swal.fire({
                     title: 'Konfirmasi',

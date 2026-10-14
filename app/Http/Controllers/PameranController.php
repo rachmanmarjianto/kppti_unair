@@ -95,10 +95,11 @@ class PameranController extends Controller
         }
 
         $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
+        $idKlusterBerbayar = self::IDKLUSTER_BERBAYAR;
 
         return view('peserta.pameran', compact(
             'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'klusterOptions', 'riwayat',
-            'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand'
+            'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand', 'idKlusterBerbayar'
         ));
     }
 
