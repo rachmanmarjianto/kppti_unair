@@ -41,8 +41,16 @@
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
                 <div class="row align-items-center">
-                    <div class="col-12">
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12">
                         <h4>Pengajuan Pameran</h4>
+                    </div>
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12 text-md-end mt-2 mt-md-0">
+                        <a href="{{ route('peserta.pameran.template') }}?jenis=pt" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-download me-1"></i> Template PT
+                        </a>
+                        <a href="{{ route('peserta.pameran.template') }}?jenis=non-pt" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-download me-1"></i> Template Non PT
+                        </a>
                     </div>
                 </div>
             </div>

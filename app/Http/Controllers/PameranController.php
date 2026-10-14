@@ -647,6 +647,32 @@ class PameranController extends Controller
     }
 
     /**
+     * Unduh file template portofolio pameran (PT / Non PT) — berkas statis
+     * bersama untuk semua peserta, bukan data per-kontingen, disimpan di
+     * `storage/app/private/dokumen-template/`. `jenis` dibatasi whitelist
+     * supaya tidak bisa dipakai menebak path berkas lain di disk yang sama.
+     */
+    public function unduhTemplate(Request $request)
+    {
+        $validated = $request->validate([
+            'jenis' => ['required', 'in:pt,non-pt'],
+        ]);
+
+        $namaFile = [
+            'pt' => 'Template_Portofolio_Expo_PT.docx',
+            'non-pt' => 'Template_Portofolio_Expo_Non_PT.docx',
+        ][$validated['jenis']];
+
+        $path = "dokumen-template/{$namaFile}";
+
+        if (! Storage::disk('local')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download($path, $namaFile);
+    }
+
+    /**
      * Data kontak PIC pameran (nama/email/no_wa) — dikirim ke BNI saat
      * request VA, bukan data pengguna yang sedang login, karena PIC yang
      * jadi penanggung jawab pembayaran, bukan sembarang anggota kontingen
