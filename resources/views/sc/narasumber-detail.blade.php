@@ -209,7 +209,7 @@
                         <span class="btn-label">Ditolak</span>
                     </button>
                     <button type="button" class="btn btn-success btn-keputusan" id="btn-tidak-ada-revisi" disabled>
-                        <span class="btn-label">Proses Seleksi</span>
+                        <span class="btn-label">Lanjutkan Proses Seleksi</span>
                     </button>
                     <p id="peringatan-nilai-belum-lengkap" class="text-danger mt-2 mb-0" style="font-size: 12.5px;">
                         Mohon memberi nilai untuk semua komponen penilaian terlebih dahulu
