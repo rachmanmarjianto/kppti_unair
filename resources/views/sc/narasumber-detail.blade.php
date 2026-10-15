@@ -73,7 +73,7 @@
                         @if($narasumber->acara_parent_tema)
                             {{ $narasumber->acara_parent_tema }} <br>&mdash;
                         @endif
-                        {{ $narasumber->acara_tema ?? '-' }}
+                        {{ $narasumber->acara_tema ?? '-' }}<br>
                         @if($narasumber->acara_hari_ke)
                             (Hari {{ $narasumber->acara_hari_ke }}, {{ substr($narasumber->acara_jam_mulai, 0, 5) }}–{{ substr($narasumber->acara_jam_akhir, 0, 5) }}, {{ $narasumber->acara_ruang ?? '-' }})
                         @endif
