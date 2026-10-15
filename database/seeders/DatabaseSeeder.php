@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             JadwalPentingSeeder::class,
             TopikReviewSeeder::class,
             KlusterPameranSeeder::class,
+            TopikReviewNarsumSeeder::class,
         ]);
     }
 }

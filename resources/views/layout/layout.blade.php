@@ -242,6 +242,8 @@
             @include('layout.menu_sc')
         @elseif(session('userdata')['idrole_aktif'] == 5)
             @include('layout.menu_petugas_kit')
+        @elseif(session('userdata')['idrole_aktif'] == 6)
+            @include('layout.menu_master_sc')
         @endif
         
         <!--  BEGIN CONTENT AREA  -->

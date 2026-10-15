@@ -21,6 +21,8 @@
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
         '6' => ['Ditolak', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
     ];
 @endphp
 
@@ -137,6 +139,30 @@
                                             <p><strong>Catatan:</strong><br>{{ $baris->catatan }}</p>
                                         @endif
 
+                                        @if($baris->kriteria->isNotEmpty())
+                                            <table class="table table-sm table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Topik</th>
+                                                        <th>Komentar</th>
+                                                        <th class="text-center">Bobot</th>
+                                                        <th class="text-center">Nilai</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($baris->kriteria as $k)
+                                                        <tr>
+                                                            <td>{{ $k->nama_topik }}</td>
+                                                            <td>{{ $k->isi_review }}</td>
+                                                            <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
+                                                            <td class="text-center">{{ $k->nilai }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                            <p class="fw-bold mb-0">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
+                                        @endif
+
                                         @if($baris->nama_sc)
                                             <p class="text-muted mb-0" style="font-size: 12.5px;">
                                                 Direview oleh {{ $baris->nama_sc }}
@@ -156,6 +182,18 @@
                     <hr>
                     <h5>Beri Review</h5>
 
+                    @foreach($topikAktif as $topik)
+                        @php $skor = $skorSaatIni->get($topik->idtopik_review_narsum); @endphp
+                        <div class="mb-4 border rounded p-3">
+                            <label class="form-label fw-bold">{{ $topik->nama_topik }} <span class="text-muted">(bobot {{ $topik->bobot_dlm_persen }}%)</span></label>
+                            <textarea class="form-control input-komentar-topik" data-idtopik="{{ $topik->idtopik_review_narsum }}" rows="3" placeholder="Komentar untuk topik ini">{{ $skor->isi_review ?? '' }}</textarea>
+                            <div class="mt-2" style="max-width: 160px;">
+                                <label class="form-label" style="font-size: 12.5px;">Nilai (0-100)</label>
+                                <input type="number" class="form-control input-nilai-topik" data-idtopik="{{ $topik->idtopik_review_narsum }}" min="0" max="100" value="{{ $skor->nilai ?? '' }}">
+                            </div>
+                        </div>
+                    @endforeach
+
                     <div class="mb-3">
                         <label class="form-label" for="input-catatan">Catatan</label>
                         <textarea id="input-catatan" class="form-control" rows="4">{{ $reviewAktif->catatan }}</textarea>
@@ -164,15 +202,18 @@
                     <button type="button" class="btn btn-outline-secondary" id="btn-simpan-draft-review">
                         <span class="btn-label">Simpan Draft Review</span>
                     </button>
-                    <button type="button" class="btn btn-warning" id="btn-revisi">
+                    <button type="button" class="btn btn-warning btn-keputusan" id="btn-revisi" disabled>
                         <span class="btn-label">Revisi</span>
                     </button>
-                    <button type="button" class="btn btn-success" id="btn-diterima">
-                        <span class="btn-label">Diterima</span>
-                    </button>
-                    <button type="button" class="btn btn-danger" id="btn-ditolak">
+                    <button type="button" class="btn btn-danger btn-keputusan" id="btn-ditolak" disabled>
                         <span class="btn-label">Ditolak</span>
                     </button>
+                    <button type="button" class="btn btn-success btn-keputusan" id="btn-tidak-ada-revisi" disabled>
+                        <span class="btn-label">Proses Seleksi</span>
+                    </button>
+                    <p id="peringatan-nilai-belum-lengkap" class="text-danger mt-2 mb-0" style="font-size: 12.5px;">
+                        Mohon memberi nilai untuk semua komponen penilaian terlebih dahulu
+                    </p>
                 @endif
             </div>
         </div>
@@ -206,8 +247,48 @@
             }
 
             function setButtonsDisabled(disabled) {
-                $('#btn-simpan-draft-review, #btn-revisi, #btn-diterima, #btn-ditolak').prop('disabled', disabled);
+                $('#btn-simpan-draft-review').prop('disabled', disabled);
+                $('.btn-keputusan').prop('disabled', disabled || ! semuaTopikLengkap());
             }
+
+            function kumpulkanTopik() {
+                var topik = {};
+
+                $('.input-komentar-topik').each(function () {
+                    var idtopik = $(this).data('idtopik');
+                    topik[idtopik] = topik[idtopik] || {};
+                    topik[idtopik].isi_review = $(this).val();
+                });
+
+                $('.input-nilai-topik').each(function () {
+                    var idtopik = $(this).data('idtopik');
+                    topik[idtopik] = topik[idtopik] || {};
+                    topik[idtopik].nilai = $(this).val();
+                });
+
+                return topik;
+            }
+
+            function semuaTopikLengkap() {
+                var lengkap = true;
+
+                $('.input-nilai-topik').each(function () {
+                    if ($(this).val().trim() === '') {
+                        lengkap = false;
+                    }
+                });
+
+                return lengkap;
+            }
+
+            function perbaruiStatusTombolKeputusan() {
+                var lengkap = semuaTopikLengkap();
+                $('.btn-keputusan').prop('disabled', ! lengkap);
+                $('#peringatan-nilai-belum-lengkap').toggleClass('d-none', lengkap);
+            }
+
+            $('.input-komentar-topik, .input-nilai-topik').on('input', perbaruiStatusTombolKeputusan);
+            perbaruiStatusTombolKeputusan();
 
             $('#btn-simpan-draft-review').on('click', function () {
                 var $btn = $(this);
@@ -222,6 +303,7 @@
                     data: {
                         idreview_narasumber: idreviewNarasumber,
                         catatan: $('#input-catatan').val(),
+                        topik: kumpulkanTopik(),
                     },
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
@@ -241,7 +323,7 @@
             function kirimKeputusan(keputusan, labelKonfirmasi) {
                 Swal.fire({
                     title: 'Konfirmasi',
-                    text: 'Kirim keputusan ' + labelKonfirmasi + ' untuk pengajuan ini?',
+                    text: 'Kirim keputusan ' + labelKonfirmasi + ' untuk pengajuan ini? Pastikan ketujuh topik sudah diisi lengkap.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, kirim',
@@ -255,15 +337,28 @@
                     $('.page-alert').addClass('d-none').text('');
 
                     $.ajax({
-                        url: kirimKeputusanUrl,
+                        url: simpanReviewUrl,
                         method: 'POST',
                         data: {
                             idreview_narasumber: idreviewNarasumber,
-                            keputusan: keputusan,
                             catatan: $('#input-catatan').val(),
+                            topik: kumpulkanTopik(),
                         },
                         dataType: 'json',
                         headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .then(function () {
+                        return $.ajax({
+                            url: kirimKeputusanUrl,
+                            method: 'POST',
+                            data: {
+                                idreview_narasumber: idreviewNarasumber,
+                                keputusan: keputusan,
+                                catatan: $('#input-catatan').val(),
+                            },
+                            dataType: 'json',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                        });
                     })
                     .done(function (res) {
                         Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
@@ -278,8 +373,8 @@
             }
 
             $('#btn-revisi').on('click', function () { kirimKeputusan('4', 'Revisi'); });
-            $('#btn-diterima').on('click', function () { kirimKeputusan('5', 'Diterima'); });
             $('#btn-ditolak').on('click', function () { kirimKeputusan('6', 'Ditolak'); });
+            $('#btn-tidak-ada-revisi').on('click', function () { kirimKeputusan('7', 'Proses Seleksi'); });
         });
     </script>
 @endsection

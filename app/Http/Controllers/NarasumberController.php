@@ -49,6 +49,13 @@ class NarasumberController extends Controller
                 ->get()
                 ->map(function ($baris) {
                     $baris->token = $this->encryptRouteValue($baris->idreview_narasumber);
+                    $baris->reviewed_at = $this->reviewerTerakhirUntukReviewNarasumber($baris->idreview_narasumber)->created_at ?? null;
+                    // '5' (Diterima) berarti baris ini sudah pernah '7' (Proses
+                    // Seleksi) lalu diputuskan Master SC — skornya tetap
+                    // melekat di baris yang sama (lihat NarasumberReviewController).
+                    $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6', '7', '8'], true)
+                        ? $this->kriteriaUntukReviewNarsum($baris->idreview_narasumber)
+                        : collect();
 
                     return $baris;
                 });
@@ -114,7 +121,6 @@ class NarasumberController extends Controller
                     DB::table('narasumber')->where('idnarasumber', $narasumber->idnarasumber)->update([
                         'idacara' => $validated['idacara'],
                         'subtema' => $validated['subtema'],
-                        'status_ajuan' => '1',
                     ]);
                 }
 
@@ -135,6 +141,8 @@ class NarasumberController extends Controller
                 } else {
                     throw new \RuntimeException('Pengajuan ini tidak bisa diubah pada status saat ini.');
                 }
+
+                $this->syncNarasumberStatus($narasumber->idnarasumber);
 
                 if ($request->hasFile('berkas')) {
                     $path = $this->simpanBerkasNarasumber($narasumber->idnarasumber, $idreview, $request->file('berkas'));
@@ -198,7 +206,7 @@ class NarasumberController extends Controller
 
         DB::transaction(function () use ($narasumber, $draft, $userdata) {
             DB::table('review_narasumber')->where('idreview_narasumber', $draft->idreview_narasumber)->update(['status_ajuan' => '2']);
-            DB::table('narasumber')->where('idnarasumber', $narasumber->idnarasumber)->update(['status_ajuan' => '2']);
+            $this->syncNarasumberStatus($narasumber->idnarasumber);
 
             $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
 

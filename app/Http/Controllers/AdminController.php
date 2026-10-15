@@ -18,6 +18,8 @@ class AdminController extends Controller
 
     private const ROLE_PETUGAS_KIT = 5;
 
+    private const ROLE_MASTER_SC = 6;
+
     /**
      * Maps the "box" slug used throughout this page/view to its role ID.
      *
@@ -27,6 +29,7 @@ class AdminController extends Controller
         'admin' => self::ROLE_ADMIN,
         'sc' => self::ROLE_SC,
         'petugas-kit' => self::ROLE_PETUGAS_KIT,
+        'master-sc' => self::ROLE_MASTER_SC,
     ];
 
     public function index()
@@ -45,8 +48,9 @@ class AdminController extends Controller
         $adminUsers = $this->getUsersByRole(self::ROLE_ADMIN);
         $scUsers = $this->getUsersByRole(self::ROLE_SC);
         $petugasKitUsers = $this->getUsersByRole(self::ROLE_PETUGAS_KIT);
+        $masterScUsers = $this->getUsersByRole(self::ROLE_MASTER_SC);
 
-        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers', 'petugasKitUsers'));
+        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers', 'petugasKitUsers', 'masterScUsers'));
     }
 
     /**

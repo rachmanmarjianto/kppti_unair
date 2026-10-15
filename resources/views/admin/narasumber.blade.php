@@ -35,6 +35,8 @@
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
         '6' => ['Ditolak', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
     ];
 @endphp
 

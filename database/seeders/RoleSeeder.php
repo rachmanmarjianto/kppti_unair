@@ -17,6 +17,8 @@ class RoleSeeder extends Seeder
             ['idrole' => 2, 'nama_role' => 'Peserta'],
             ['idrole' => 3, 'nama_role' => 'Nara Sumber'],
             ['idrole' => 4, 'nama_role' => 'SC'],
+            ['idrole' => 5, 'nama_role' => 'Petugas Kit'],
+            ['idrole' => 6, 'nama_role' => 'Master SC'],
         ]);
 
         $this->syncSequence('role', 'idrole');

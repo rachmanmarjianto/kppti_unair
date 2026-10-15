@@ -1,6 +1,6 @@
 @extends('layout.layout')
 
-@section('title', 'Admin / SC / Petugas Kit Users')
+@section('title', 'Admin / SC / Petugas Kit / Master SC Users')
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
@@ -52,7 +52,7 @@
 
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="#">Users</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Admin / SC / Petugas Kit</li>
+    <li class="breadcrumb-item active" aria-current="page">Admin / SC / Petugas Kit / Master SC</li>
 @endsection
 
 @section('content')
@@ -66,6 +66,12 @@
         'boxId' => 'sc',
         'boxTitle' => 'SC Users',
         'users' => $scUsers,
+    ])
+
+    @include('admin.partials.user-role-box', [
+        'boxId' => 'master-sc',
+        'boxTitle' => 'Master SC Users',
+        'users' => $masterScUsers,
     ])
 
     @include('admin.partials.user-role-box', [
@@ -203,7 +209,7 @@
             var resetPasswordUrl = '{{ route('admin.admin-users.reset-password') }}';
             var hapusRoleUrl = '{{ route('admin.admin-users.hapus-role') }}';
             var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            var boxIds = ['admin', 'sc', 'petugas-kit'];
+            var boxIds = ['admin', 'sc', 'petugas-kit', 'master-sc'];
             var dataTables = {};
 
             boxIds.forEach(function (boxId) {

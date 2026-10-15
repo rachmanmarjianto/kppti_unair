@@ -29,6 +29,8 @@
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
         '6' => ['Ditolak', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
     ];
 @endphp
 
@@ -161,6 +163,30 @@
 
                                         @if($baris->catatan)
                                             <p><strong>Catatan SC:</strong><br>{{ $baris->catatan }}</p>
+                                        @endif
+
+                                        @if($baris->kriteria->isNotEmpty())
+                                            <table class="table table-sm table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Komponen Penilaian</th>
+                                                        <th>Komentar</th>
+                                                        <th class="text-center">Bobot</th>
+                                                        <th class="text-center">Nilai</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($baris->kriteria as $k)
+                                                        <tr>
+                                                            <td>{{ $k->nama_topik }}</td>
+                                                            <td>{{ $k->isi_review ?? '-' }}</td>
+                                                            <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
+                                                            <td class="text-center">{{ $k->nilai ?? '-' }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                            <p class="fw-bold mb-0">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
                                         @endif
 
                                         @if($baris->reviewed_at)

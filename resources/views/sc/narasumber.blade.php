@@ -20,6 +20,11 @@
             width: 95% !important;
             margin: 0 auto;
         }
+
+        .dt--top-section,
+        .dt--bottom-section {
+            padding: 0 15px;
+        }
     </style>
 @endsection
 
@@ -34,10 +39,13 @@
         '4' => ['Revisi', 'bg-warning'],
         '5' => ['Diterima', 'bg-success'],
         '6' => ['Ditolak', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
     ];
 @endphp
 
 @section('content')
+    <form method="GET" action="{{ route('sc.narasumber') }}" id="form-filter-acara-narasumber">
     <div class="col-lg-12 col-md-12 layout-spacing">
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
@@ -48,13 +56,67 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-parent-antrean" class="form-label">Filter Sub Tema</label>
+                    <select id="input-filter-parent-antrean" name="idparent_antrean" class="form-select" onchange="document.getElementById('input-filter-acara-antrean').value = ''; this.form.submit();">
+                        <option value="">-- Semua Sub Tema --</option>
+                        @foreach($acaraParentOptions as $parent)
+                            <option
+                                value="{{ $parent->idparent_acara }}"
+                                @if((string) $idparentAntrean === (string) $parent->idparent_acara) selected @endif
+                                @if($idparentDenganPengajuanBaru->contains($parent->idparent_acara)) style="color: #e7515a; font-weight: 600;" @endif
+                            >
+                                {{ $parent->parent_tema }}
+                                @if($idparentDenganPengajuanBaru->contains($parent->idparent_acara))
+                                    (Ada Pengajuan Baru)
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-acara-antrean" class="form-label">Filter Sesi</label>
+                    <select id="input-filter-acara-antrean" name="idacara_antrean" class="form-select" onchange="this.form.submit()" @if(! $idparentAntrean) disabled @endif>
+                        <option value="">-- Semua Sesi --</option>
+                        @foreach($acaraOptionsAntrean as $acara)
+                            <option
+                                value="{{ $acara->idacara }}"
+                                @if((string) $idacaraAntrean === (string) $acara->idacara) selected @endif
+                                @if($idacaraDenganPengajuanBaru->contains($acara->idacara)) style="color: #e7515a; font-weight: 600;" @endif
+                            >
+                                {{ $acara->tema }}
+                                @if($idacaraDenganPengajuanBaru->contains($acara->idacara))
+                                    (Ada Pengajuan Baru)
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    @if(! $idparentAntrean)
+                        <small class="text-muted">Pilih Sub Tema terlebih dahulu.</small>
+                    @endif
+                </div>
+
+                <p class="mb-3" style="margin:15px">
+                    <b>Acara yang dipilih:</b>
+                    @if($acaraTerpilihAntrean)
+                        @if($acaraTerpilihAntrean->parent_tema)
+                            {{ $acaraTerpilihAntrean->parent_tema }} <br>&mdash;
+                        @endif
+                        {{ $acaraTerpilihAntrean->tema }}
+                    @elseif($parentTerpilihAntrean)
+                        {{ $parentTerpilihAntrean->parent_tema }}
+                    @else
+                        Semua Acara
+                    @endif
+                </p>
+
                 <div class="table-responsive">
                     <table id="table-antrean-narasumber" class="table table-hover table-bordered table-sc-narasumber">
                         <thead>
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
-                                <th>Sesi yang Dipilih</th>
                                 <th>Status</th>
                                 <th class="text-center">Jumlah Riwayat Ajuan</th>
                                 <th>Reviewer Terakhir</th>
@@ -66,18 +128,6 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
-                                    <td>
-                                        @if($baris->acara_parent_tema)
-                                            {{ $baris->acara_parent_tema }} <br>&mdash;
-                                        @endif
-                                        {{ $baris->acara_tema ?? '-' }}
-                                        @if($baris->acara_hari_ke)
-                                           <br>&mdash; (Hari {{ $baris->acara_hari_ke }}, {{ substr($baris->acara_jam_mulai, 0, 5) }}–{{ substr($baris->acara_jam_akhir, 0, 5) }}, {{ $baris->acara_ruang ?? '-' }})
-                                        @endif
-                                        @if($baris->subtema)
-                                            <br><span class="text-muted" style="font-size: 12.5px;">Subtema: {{ $baris->subtema }}</span>
-                                        @endif
-                                    </td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
@@ -107,13 +157,53 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-parent-diproses" class="form-label">Filter Sub Tema</label>
+                    <select id="input-filter-parent-diproses" name="idparent_diproses" class="form-select" onchange="document.getElementById('input-filter-acara-diproses').value = ''; this.form.submit();">
+                        <option value="">-- Semua Sub Tema --</option>
+                        @foreach($acaraParentOptions as $parent)
+                            <option value="{{ $parent->idparent_acara }}" @if((string) $idparentDiproses === (string) $parent->idparent_acara) selected @endif>
+                                {{ $parent->parent_tema }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-acara-diproses" class="form-label">Filter Sesi</label>
+                    <select id="input-filter-acara-diproses" name="idacara_diproses" class="form-select" onchange="this.form.submit()" @if(! $idparentDiproses) disabled @endif>
+                        <option value="">-- Semua Sesi --</option>
+                        @foreach($acaraOptionsDiproses as $acara)
+                            <option value="{{ $acara->idacara }}" @if((string) $idacaraDiproses === (string) $acara->idacara) selected @endif>
+                                {{ $acara->tema }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if(! $idparentDiproses)
+                        <small class="text-muted">Pilih Sub Tema terlebih dahulu.</small>
+                    @endif
+                </div>
+
+                <p class="mb-3" style="margin:15px">
+                    <b>Acara yang dipilih:</b>
+                    @if($acaraTerpilihDiproses)
+                        @if($acaraTerpilihDiproses->parent_tema)
+                            {{ $acaraTerpilihDiproses->parent_tema }} <br>&mdash;
+                        @endif
+                        {{ $acaraTerpilihDiproses->tema }}
+                    @elseif($parentTerpilihDiproses)
+                        {{ $parentTerpilihDiproses->parent_tema }}
+                    @else
+                        Semua Acara
+                    @endif
+                </p>
+
                 <div class="table-responsive">
                     <table id="table-diproses-narasumber" class="table table-hover table-bordered table-sc-narasumber">
                         <thead>
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
-                                <th>Sesi yang Dipilih</th>
                                 <th>Status</th>
                                 <th>Reviewer Terakhir</th>
                                 <th class="text-center">Aksi</th>
@@ -124,18 +214,6 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
-                                    <td>
-                                        @if($baris->acara_parent_tema)
-                                            {{ $baris->acara_parent_tema }} <br>&mdash;
-                                        @endif                                        
-                                        {{ $baris->acara_tema ?? '-' }}
-                                        @if($baris->acara_hari_ke)
-                                            <br>&mdash; (Hari {{ $baris->acara_hari_ke }}, {{ substr($baris->acara_jam_mulai, 0, 5) }}–{{ substr($baris->acara_jam_akhir, 0, 5) }}, {{ $baris->acara_ruang ?? '-' }})
-                                        @endif
-                                        @if($baris->subtema)
-                                            <br><span class="text-muted" style="font-size: 12.5px;">Subtema: {{ $baris->subtema }}</span>
-                                        @endif
-                                    </td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
@@ -153,6 +231,7 @@
             </div>
         </div>
     </div>
+    </form>
 @endsection
 
 @section('page-js')

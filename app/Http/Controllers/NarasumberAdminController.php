@@ -63,13 +63,16 @@ class NarasumberAdminController extends Controller
         $submenu = '';
 
         $riwayat = DB::table('review_narasumber as r')
-            ->leftJoin('pengguna as sc', 'sc.idpengguna', '=', 'r.reviewed_by')
             ->where('r.idnarasumber', $idnarasumber)
             ->orderBy('r.idreview_narasumber')
-            ->select('r.*', 'sc.nama as nama_sc')
+            ->select('r.*')
             ->get()
             ->map(function ($baris) {
                 $baris->token = $this->encryptRouteValue($baris->idreview_narasumber);
+
+                $infoReviewer = $this->reviewerTerakhirUntukReviewNarasumber($baris->idreview_narasumber);
+                $baris->nama_sc = $infoReviewer->nama ?? null;
+                $baris->reviewed_at = $infoReviewer->created_at ?? null;
 
                 return $baris;
             });

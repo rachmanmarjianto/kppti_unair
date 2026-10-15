@@ -41,6 +41,7 @@ class Controller extends BaseController
         2 => 'peserta.home',
         4 => 'sc.pameran',
         5 => 'petugas-kit.home',
+        6 => 'master-sc.narasumber',
     ];
 
     /**
@@ -180,6 +181,61 @@ class Controller extends BaseController
             'done_at' => now(),
             'done_by' => $doneBy,
         ]);
+    }
+
+    /**
+     * Keep narasumber.status_ajuan mirroring the status_ajuan of its latest
+     * review_narasumber row — single source of truth so the two columns
+     * never drift apart (dikonfirmasi developer). Call this right after
+     * any write to review_narasumber.status_ajuan instead of setting
+     * narasumber.status_ajuan to a separately-tracked literal.
+     */
+    protected function syncNarasumberStatus(int $idnarasumber): void
+    {
+        $statusTerakhir = DB::table('review_narasumber')
+            ->where('idnarasumber', $idnarasumber)
+            ->orderByDesc('idreview_narasumber')
+            ->value('status_ajuan');
+
+        if ($statusTerakhir !== null) {
+            DB::table('narasumber')->where('idnarasumber', $idnarasumber)->update(['status_ajuan' => $statusTerakhir]);
+        }
+    }
+
+    /**
+     * Name + timestamp of the SC who most recently scored a topic for a
+     * review_narasumber row. review_narasumber no longer has its own
+     * reviewed_by/reviewed_at columns — that info now lives in
+     * isi_review_narsum.created_by/created_at (dikonfirmasi developer).
+     * Shared by NarasumberReviewController, NarasumberAdminController, and
+     * NarasumberController (peserta) for displaying "direview oleh/pada".
+     */
+    protected function reviewerTerakhirUntukReviewNarasumber(int $idreviewNarasumber): ?object
+    {
+        return DB::table('isi_review_narsum as i')
+            ->join('pengguna as sc', 'sc.idpengguna', '=', 'i.created_by')
+            ->where('i.idreview_narasumber', $idreviewNarasumber)
+            ->orderByDesc('i.created_at')
+            ->select('sc.nama', 'i.created_at')
+            ->first();
+    }
+
+    /**
+     * The 7-topic weighted scoring breakdown for one review_narasumber row
+     * (empty for rows that never reached a final decision), joined with
+     * topik_review_narsum for the criteria name — mirrors
+     * PameranReviewController::kriteriaUntukReview(). Shared by
+     * NarasumberReviewController, NarasumberAdminController, and
+     * NarasumberController (peserta, so they can see their own scores).
+     */
+    protected function kriteriaUntukReviewNarsum(int $idreviewNarasumber)
+    {
+        return DB::table('isi_review_narsum as i')
+            ->join('topik_review_narsum as t', 't.idtopik_review_narsum', '=', 'i.idtopik_review_narsum')
+            ->where('i.idreview_narasumber', $idreviewNarasumber)
+            ->select('t.nama_topik', 't.bobot_dlm_persen', 'i.isi_review', 'i.nilai')
+            ->orderBy('t.idtopik_review_narsum')
+            ->get();
     }
 
     protected function kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $hp)
