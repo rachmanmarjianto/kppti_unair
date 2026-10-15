@@ -47,8 +47,13 @@
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
                 <div class="row align-items-center">
-                    <div class="col-12">
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12">
                         <h4>Pengajuan Menjadi Narasumber</h4>
+                    </div>
+                    <div class="col-xl-6 col-md-6 col-sm-12 col-12 text-md-end mt-2 mt-md-0">
+                        <a href="{{ route('peserta.narasumber.pedoman') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-download me-1"></i> Pedoman Penulisan
+                        </a>
                     </div>
                 </div>
             </div>

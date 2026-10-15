@@ -22,6 +22,7 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/narasumber/simpan-draft', [NarasumberController::class, 'simpanDraft'])->name('peserta.narasumber.simpan-draft');
     Route::post('/narasumber/ajukan', [NarasumberController::class, 'ajukan'])->name('peserta.narasumber.ajukan');
     Route::get('/narasumber/berkas', [NarasumberController::class, 'tampilBerkas'])->name('peserta.narasumber.berkas');
+    Route::get('/narasumber/pedoman', [NarasumberController::class, 'unduhPedoman'])->name('peserta.narasumber.pedoman');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');

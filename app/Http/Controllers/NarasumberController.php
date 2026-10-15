@@ -251,6 +251,23 @@ class NarasumberController extends Controller
     }
 
     /**
+     * Unduh pedoman penulisan Extended Abstract — berkas statis bersama
+     * untuk semua peserta, disimpan di `storage/app/private/dokumen-template/`
+     * (pola sama seperti PameranController::unduhTemplate()).
+     */
+    public function unduhPedoman()
+    {
+        $namaFile = 'DRAFT_PEDOMAN_PENULISAN_EXTENDED_ABSTRACT.docx';
+        $path = "dokumen-template/{$namaFile}";
+
+        if (! Storage::disk('local')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download($path, $namaFile);
+    }
+
+    /**
      * Store an uploaded berkas file on the private `local` disk, keyed
      * deterministically by idnarasumber+idreview so re-uploading within the
      * same draft turn simply overwrites it (no stale leftover file).
