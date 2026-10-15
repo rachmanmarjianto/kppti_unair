@@ -14,6 +14,14 @@
         #modal-pilih-sesi .form-label, #modal-pilih-sesi .form-check-label, #modal-pilih-sesi .text-muted { color: #0e1726 !important; }
         #modal-pilih-sesi .form-control { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
         #modal-pilih-sesi .table { color: #0e1726 !important; }
+        #modal-pilih-sesi .form-check-input:checked {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
+        #modal-pilih-sesi .form-check-input:focus {
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+        }
     </style>
 @endsection
 
