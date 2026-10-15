@@ -71,7 +71,7 @@
                     <div class="col-12 col-sm-3 fw-bold">Sesi yang Dipilih Peserta</div>
                     <div class="col-12 col-sm-9">
                         @if($narasumber->acara_parent_tema)
-                            {{ $narasumber->acara_parent_tema }} &mdash;
+                            {{ $narasumber->acara_parent_tema }} <br>&mdash;
                         @endif
                         {{ $narasumber->acara_tema ?? '-' }}
                         @if($narasumber->acara_hari_ke)
