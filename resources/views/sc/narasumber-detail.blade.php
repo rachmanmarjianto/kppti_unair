@@ -129,7 +129,7 @@
                                     <div class="accordion-body">
                                         @if($baris->file_path)
                                             <p>
-                                                <a href="{{ route('sc.narasumber.berkas') }}?token={{ $baris->token }}" target="_blank">
+                                                <a href="{{ route('sc.narasumber.berkas') }}?token={{ $baris->token }}" target="_blank" style="color:green">
                                                     <i class="fa-solid fa-file-arrow-down"></i> Lihat Extended Abstract
                                                 </a>
                                             </p>
