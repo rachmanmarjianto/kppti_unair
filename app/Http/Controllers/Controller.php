@@ -902,6 +902,68 @@ class Controller extends BaseController
     }
 
     /**
+     * Data kontak PIC pameran (nama/email/no_wa) — dikirim ke BNI saat
+     * request VA, bukan data pengguna yang sedang login, karena PIC yang
+     * jadi penanggung jawab pembayaran, bukan sembarang anggota kontingen
+     * yang mungkin mengeklik tombol. Dipakai PameranController (ajukan
+     * sendiri) dan MasterScController (saat mengaktifkan tagihan
+     * Ditangguhkan menjadi Tertagih ketika pameran dinyatakan Terpilih).
+     */
+    protected function dataPicPameran(object $pameran): object
+    {
+        $pic = DB::table('peserta as pe')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
+            ->where('pe.idpeserta', $pameran->idpeserta_PIC)
+            ->select('p.nama', 'p.email', 'p.no_wa')
+            ->first();
+
+        if (! $pic) {
+            throw new \RuntimeException('Data PIC pameran tidak ditemukan.');
+        }
+
+        return $pic;
+    }
+
+    /**
+     * Kirim notifikasi WA "Terpilih" ke PIC pameran — dipakai otomatis
+     * oleh MasterScController saat pameran dinyatakan Terpilih, dan manual
+     * lewat tombol admin "Kirim WA" di halaman Terpilih (dikonfirmasi
+     * developer). Best-effort: kegagalan WA tidak melempar exception
+     * (dicatat ke log saja) supaya tidak menggagalkan keputusan Terpilih
+     * itu sendiri — admin masih bisa kirim ulang manual kapan saja.
+     *
+     * @return array{sent: bool, message?: string, response?: mixed}
+     */
+    protected function kirimWaPameranTerpilih(int $idpameran): array
+    {
+        $pameran = DB::table('pameran as p')
+            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
+            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->where('p.idpameran', $idpameran)
+            ->select('p.tema', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
+            ->first();
+
+        if (! $pameran || ! $pameran->no_wa_pic) {
+            return ['sent' => false, 'message' => 'PIC pengajuan ini belum memiliki nomor WhatsApp.'];
+        }
+
+        try {
+            $res = $this->kirim_wa_oca_token_3(
+                "Selamat {$pameran->nama_pic},",
+                "Pengajuan pameran Anda dengan tema \"{$pameran->tema}\" dinyatakan TERPILIH.",
+                'Silakan login ke portal KPPTI untuk melengkapi informasi stand (penjaga stand & jadwal loading).',
+                $pameran->no_wa_pic
+            );
+
+            return ['sent' => true, 'response' => $res];
+        } catch (\Throwable $e) {
+            report($e);
+
+            return ['sent' => false, 'message' => 'Gagal mengirim notifikasi WhatsApp.'];
+        }
+    }
+
+    /**
      * Inquiry billing ke BNI untuk satu baris tagihan, lalu proses hasilnya:
      * kalau BNI melapor sudah ada pembayaran (`payment_ntb` terisi) dan
      * pembayaran itu belum pernah tercatat (`payment_ntb` belum ada di

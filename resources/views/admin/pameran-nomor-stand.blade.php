@@ -77,7 +77,7 @@
                                     <td>{{ $baris->jadwal_loading ? \Illuminate\Support\Carbon::parse($baris->jadwal_loading)->format('d/m/Y') : '-' }}</td>
                                     <td>{{ $baris->nomor_stand ?? '-' }}</td>
                                     <td class="text-center">
-                                        @if($baris->jumlah_penjaga > 0 && $baris->jadwal_loading)
+                                        @if($baris->jumlah_penjaga > 0 && $baris->jadwal_loading && $baris->tagihan_lunas)
                                             <button type="button" class="btn btn-sm btn-outline-primary btn-nomor-stand"
                                                     data-idpameran="{{ $baris->idpameran }}"
                                                     data-nama-institusi="{{ $baris->nama_institusi }}"
@@ -86,8 +86,10 @@
                                             </button>
                                         @elseif($baris->jumlah_penjaga == 0)
                                             <span style="font-size: 12.5px; color:red;">Belum ada penjaga</span>
-                                        @else
+                                        @elseif(! $baris->jadwal_loading)
                                             <span style="font-size: 12.5px; color:red;">Belum ada tanggal loading</span>
+                                        @else
+                                            <span style="font-size: 12.5px; color:red;">Tagihan belum lunas</span>
                                         @endif
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-penjaga-{{ $baris->idpameran }}">
                                             Kelola Penjaga

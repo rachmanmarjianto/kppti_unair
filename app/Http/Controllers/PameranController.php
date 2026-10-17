@@ -768,27 +768,6 @@ class PameranController extends Controller
     }
 
     /**
-     * Data kontak PIC pameran (nama/email/no_wa) — dikirim ke BNI saat
-     * request VA, bukan data pengguna yang sedang login, karena PIC yang
-     * jadi penanggung jawab pembayaran, bukan sembarang anggota kontingen
-     * yang mungkin mengeklik tombol.
-     */
-    private function dataPicPameran(object $pameran): object
-    {
-        $pic = DB::table('peserta as pe')
-            ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
-            ->where('pe.idpeserta', $pameran->idpeserta_PIC)
-            ->select('p.nama', 'p.email', 'p.no_wa')
-            ->first();
-
-        if (! $pic) {
-            throw new \RuntimeException('Data PIC pameran tidak ditemukan.');
-        }
-
-        return $pic;
-    }
-
-    /**
      * Tandai tagihan expired kalau waktunya sudah lewat dan status masih
      * tertagih/terbayar sebagian — dipanggil setiap halaman pameran/detail
      * tagihan dibuka (bukan cuma sekali), jadi dijaga idempotent: status

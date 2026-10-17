@@ -140,6 +140,9 @@ class PameranAdminController extends Controller
                     ->orderBy('p.nama')
                     ->get();
 
+                $tagihan = $this->tagihanTerbaru($row->idpameran);
+                $row->tagihan_lunas = $tagihan && (int) $tagihan->status === 3;
+
                 return $row;
             });
 
@@ -178,6 +181,12 @@ class PameranAdminController extends Controller
 
         if (! $pameran->jadwal_loading) {
             return $this->jsonResponse(422, 'Tanggal loading belum diisi peserta. Tanggal loading diperlukan sebelum nomor stand bisa diberikan.');
+        }
+
+        $tagihan = $this->tagihanTerbaru($pameran->idpameran);
+
+        if (! $tagihan || (int) $tagihan->status !== 3) {
+            return $this->jsonResponse(422, 'Tagihan pengajuan ini belum lunas. Nomor stand baru bisa diberikan setelah tagihan terbayar.');
         }
 
         $sudahDipakai = DB::table('pameran')
@@ -494,9 +503,11 @@ class PameranAdminController extends Controller
     }
 
     /**
-     * Kirim notifikasi WA ke PIC pameran yang sudah Terpilih — pola sama
-     * seperti pemakaian kirim_wa_oca_token_3() di AdminController/
-     * PesertaController.
+     * Kirim (ulang) notifikasi WA ke PIC pameran yang sudah Terpilih —
+     * tombol manual, pakai helper yang sama dengan pengiriman otomatis
+     * saat Master SC memutuskan Terpilih (lihat
+     * Controller::kirimWaPameranTerpilih() dan
+     * MasterScController::pameranPutuskan()).
      */
     public function kirimWaTerpilih(Request $request)
     {
@@ -504,36 +515,19 @@ class PameranAdminController extends Controller
             'idpameran' => ['required', 'integer'],
         ]);
 
-        $pameran = DB::table('pameran as p')
-            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
-            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
-            ->where('p.idpameran', $validated['idpameran'])
-            ->where('p.status_ajuan', '9')
-            ->select('p.tema', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
-            ->first();
+        $ada = DB::table('pameran')->where('idpameran', $validated['idpameran'])->where('status_ajuan', '9')->exists();
 
-        if (! $pameran) {
+        if (! $ada) {
             return $this->jsonResponse(404, 'Pengajuan pameran Terpilih tidak ditemukan.');
         }
 
-        if (! $pameran->no_wa_pic) {
-            return $this->jsonResponse(422, 'PIC pengajuan ini belum memiliki nomor WhatsApp.');
+        $hasil = $this->kirimWaPameranTerpilih($validated['idpameran']);
+
+        if (! $hasil['sent']) {
+            return $this->jsonResponse(422, $hasil['message']);
         }
 
-        try {
-            $res = $this->kirim_wa_oca_token_3(
-                "Selamat {$pameran->nama_pic},",
-                "Pengajuan pameran Anda dengan tema \"{$pameran->tema}\" dinyatakan TERPILIH.",
-                'Silakan login ke portal KPPTI untuk melengkapi informasi stand (penjaga stand & jadwal loading).',
-                $pameran->no_wa_pic
-            );
-        } catch (\Throwable $e) {
-            report($e);
-
-            return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp.');
-        }
-
-        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $res]);
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $hasil['response']]);
     }
 
     /**

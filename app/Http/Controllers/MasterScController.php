@@ -2,11 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BniVirtualAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MasterScController extends Controller
 {
+    /**
+     * Status tagihan "Ditangguhkan" (kluster berbayar yang belum benar-
+     * benar ditagihkan saat pengajuan, lihat PameranController::ajukan()).
+     */
+    private const TAGIHAN_STATUS_DITANGGUHKAN = 6;
+
+    private const TAGIHAN_STATUS_TERTAGIH = 1;
+
     /**
      * Daftar pengajuan narasumber yang sudah/sedang melalui seleksi akhir
      * Master SC — status "Proses Seleksi" (7, tombol keputusan masih
@@ -171,6 +180,16 @@ class MasterScController extends Controller
      * seperti narasumber_acara milik narasumber — alur nomor stand/jadwal
      * loading sudah berjalan lewat status 9 di PameranAdminController/
      * PameranController (dikonfirmasi developer).
+     *
+     * Untuk kluster berbayar yang tagihannya masih "Ditangguhkan" (6),
+     * keputusan Terpilih sekaligus mengaktifkan tagihan itu jadi "Tertagih"
+     * (1) dan meminta VA ke BNI — kalau request VA gagal, seluruh
+     * keputusan Terpilih ini dibatalkan (transaksi di-rollback, pengajuan
+     * tetap "Proses Seleksi") supaya tidak ada pengajuan Terpilih tanpa
+     * tagihan yang valid (dikonfirmasi developer). Notifikasi WA ke PIC
+     * dikirim setelah keputusan berhasil disimpan — best-effort, tidak
+     * membatalkan keputusan kalau gagal (lihat
+     * Controller::kirimWaPameranTerpilih()).
      */
     public function pameranPutuskan(Request $request)
     {
@@ -187,18 +206,84 @@ class MasterScController extends Controller
             return $this->jsonResponse(404, 'Pengajuan ini tidak bisa diputuskan.');
         }
 
-        $terklaim = DB::table('pameran')
-            ->where('idpameran', $pameran->idpameran)
-            ->where('status_ajuan', '7')
-            ->update(['status_ajuan' => $validated['keputusan']]);
+        $terklaim = false;
 
-        if ($terklaim === 0) {
+        try {
+            DB::transaction(function () use ($validated, $pameran, $userdata, &$terklaim) {
+                $affected = DB::table('pameran')
+                    ->where('idpameran', $pameran->idpameran)
+                    ->where('status_ajuan', '7')
+                    ->update(['status_ajuan' => $validated['keputusan']]);
+
+                if ($affected === 0) {
+                    return;
+                }
+
+                $terklaim = true;
+
+                if ($validated['keputusan'] === '9') {
+                    $this->aktifkanTagihanDitangguhkan($pameran, $userdata['idpengguna']);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(422, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal memutuskan pengajuan ini.');
+        }
+
+        if (! $terklaim) {
             return $this->jsonResponse(409, 'Pengajuan ini sudah diputuskan Master SC lain.');
         }
 
         $label = $validated['keputusan'] === '9' ? 'Terpilih' : 'Tidak Terpilih';
         $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Keputusan akhir pengajuan pameran '{$pameran->tema}' oleh Master SC: {$label}");
 
+        if ($validated['keputusan'] === '9') {
+            $this->kirimWaPameranTerpilih($pameran->idpameran);
+        }
+
         return $this->jsonResponse(200, "Keputusan '{$label}' berhasil dikirim.");
+    }
+
+    /**
+     * Kalau tagihan pameran ini masih "Ditangguhkan" (kluster berbayar
+     * yang belum benar-benar ditagihkan saat pengajuan), buat baris
+     * tagihan baru berstatus "Tertagih" dan minta VA ke BNI — mirror pola
+     * PameranController::requestVaBaru(). Melempar RuntimeException kalau
+     * BNI gagal, supaya transaksi pemanggil (pameranPutuskan) ikut
+     * di-rollback.
+     */
+    private function aktifkanTagihanDitangguhkan(object $pameran, int $idpengguna): void
+    {
+        $tagihan = $this->tagihanTerbaru($pameran->idpameran);
+
+        if (! $tagihan || (int) $tagihan->status !== self::TAGIHAN_STATUS_DITANGGUHKAN) {
+            return;
+        }
+
+        $pic = $this->dataPicPameran($pameran);
+
+        $idtagihanBaru = DB::table('tagihan')->insertGetId([
+            'idinstitusi_asal' => $pameran->idinstitusi_asal,
+            'idpameran' => $pameran->idpameran,
+            'created_at' => now(),
+            'created_by' => $idpengguna,
+            'status' => self::TAGIHAN_STATUS_TERTAGIH,
+            'tagihan' => config('services.biaya_pameran'),
+            'sisa_tagihan' => config('services.biaya_pameran'),
+        ], 'idtagihan');
+
+        $va_arr = app(BniVirtualAccountService::class)->requestVa($idtagihanBaru, $pic->nama, $pic->email, $pic->no_wa);
+
+        if ($va_arr['code'] !== 200) {
+            throw new \RuntimeException('Pengajuan tidak bisa dinyatakan Terpilih: gagal membuat Virtual Account BNI — '.$va_arr['message']);
+        }
+
+        DB::table('tagihan')->where('idtagihan', $idtagihanBaru)->update([
+            'va' => $va_arr['data']['va_number'],
+            'expired_date' => $va_arr['data']['datetime_expired'],
+        ]);
     }
 }
