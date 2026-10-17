@@ -224,7 +224,7 @@ class Controller extends BaseController
      * The 7-topic weighted scoring breakdown for one review_narasumber row
      * (empty for rows that never reached a final decision), joined with
      * topik_review_narsum for the criteria name — mirrors
-     * PameranReviewController::kriteriaUntukReview(). Shared by
+     * Controller::kriteriaUntukReviewPameran(). Shared by
      * NarasumberReviewController, NarasumberAdminController, and
      * NarasumberController (peserta, so they can see their own scores).
      */
@@ -236,6 +236,103 @@ class Controller extends BaseController
             ->select('t.nama_topik', 't.bobot_dlm_persen', 'i.isi_review', 'i.nilai')
             ->orderBy('t.idtopik_review_narsum')
             ->get();
+    }
+
+    /**
+     * The weighted scoring breakdown for one review_pameran row (empty for
+     * rows that never reached a final decision), joined with topik_review
+     * for the criteria name — mirrors kriteriaUntukReviewNarsum(). Shared
+     * by PameranController, PameranReviewController, and
+     * PameranAdminController (replaces 3 near-duplicate private methods
+     * that used to select the now-dropped isi_review_pameran.memenuhi).
+     */
+    protected function kriteriaUntukReviewPameran(int $idreview)
+    {
+        return DB::table('isi_review_pameran as i')
+            ->join('topik_review as t', 't.idtopik_review', '=', 'i.idtopik_review')
+            ->where('i.idreview', $idreview)
+            ->select('t.nama_topik', 't.bobot_dlm_persen', 'i.isi_review', 'i.nilai')
+            ->orderBy('t.idtopik_review')
+            ->get();
+    }
+
+    /**
+     * The reviewer_pameran row (SC reviewer assignment slot) belonging to
+     * a given pengguna for a given pameran, or null if that pengguna isn't
+     * mapped to it — used by PameranReviewController to gate access since
+     * reviewers are assigned by Admin, not self-claimed (dikonfirmasi
+     * developer).
+     */
+    protected function reviewerPameranUntukPengguna(int $idpameran, int $idpengguna): ?object
+    {
+        return DB::table('reviewer_pameran')
+            ->where('idpameran', $idpameran)
+            ->where('idpengguna', $idpengguna)
+            ->first();
+    }
+
+    /**
+     * Keep pameran.status_ajuan in sync with the aggregate state of its (up
+     * to 2) independent reviewer threads — single source of truth, call
+     * right after any write to review_pameran.status_ajuan (dikonfirmasi
+     * developer):
+     *   1. Any reviewer thread's latest turn is Tidak Memenuhi (6) → pameran
+     *      becomes 6 immediately, overriding whatever the other reviewer
+     *      decided (even if they already said Memenuhi).
+     *   2. Both reviewer slots exist and both latest turns are Memenuhi (5)
+     *      → nilai_final (average) and selisih_nilai (absolute difference)
+     *      of both nilai_akhir are computed and stored, pameran becomes 7
+     *      (Proses Seleksi).
+     *   3. Otherwise, if any reviewer thread has at least one turn → pameran
+     *      becomes 3 (Review) — stays 3 through Revisi back-and-forth; a
+     *      single reviewer's Revisi (4) never surfaces onto pameran itself.
+     *   4. Otherwise (no reviewer has started yet) → left untouched.
+     * Never touches 8/9 — that's exclusively MasterScController's domain.
+     */
+    protected function syncPameranStatus(int $idpameran): void
+    {
+        $latestPerThread = DB::table('reviewer_pameran as rp')
+            ->where('rp.idpameran', $idpameran)
+            ->select('rp.idreviewer_pameran', 'rp.reviewer_ke')
+            ->selectSub(
+                DB::table('review_pameran')->whereColumn('created_by', 'rp.idreviewer_pameran')->orderByDesc('idreview')->select('status_ajuan')->limit(1),
+                'status_ajuan_terakhir'
+            )
+            ->selectSub(
+                DB::table('review_pameran')->whereColumn('created_by', 'rp.idreviewer_pameran')->orderByDesc('idreview')->select('nilai_akhir')->limit(1),
+                'nilai_akhir_terakhir'
+            )
+            ->get();
+
+        $sudahMulai = $latestPerThread->filter(fn ($t) => $t->status_ajuan_terakhir !== null);
+
+        if ($sudahMulai->isEmpty()) {
+            return;
+        }
+
+        if ($sudahMulai->contains(fn ($t) => $t->status_ajuan_terakhir === '6')) {
+            DB::table('pameran')->where('idpameran', $idpameran)->update(['status_ajuan' => '6']);
+
+            return;
+        }
+
+        $keduaMemenuhi = $latestPerThread->count() === 2
+            && $sudahMulai->count() === 2
+            && $sudahMulai->every(fn ($t) => $t->status_ajuan_terakhir === '5');
+
+        if ($keduaMemenuhi) {
+            $nilaiAkhirList = $sudahMulai->pluck('nilai_akhir_terakhir')->map(fn ($n) => (float) $n);
+
+            DB::table('pameran')->where('idpameran', $idpameran)->update([
+                'nilai_final' => $nilaiAkhirList->avg(),
+                'selisih_nilai' => abs($nilaiAkhirList->first() - $nilaiAkhirList->last()),
+                'status_ajuan' => '7',
+            ]);
+
+            return;
+        }
+
+        DB::table('pameran')->where('idpameran', $idpameran)->update(['status_ajuan' => '3']);
     }
 
     protected function kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $hp)

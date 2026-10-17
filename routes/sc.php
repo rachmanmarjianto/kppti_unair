@@ -10,11 +10,11 @@ Route::middleware(['akses:4'])->group(function () {
 
     Route::get('/sc/pameran', [PameranReviewController::class, 'index'])->name('sc.pameran');
     Route::get('/sc/pameran/detail', [PameranReviewController::class, 'detail'])->name('sc.pameran.detail');
-    Route::get('/sc/pameran/review', [PameranReviewController::class, 'formReview'])->name('sc.pameran.review');
-    Route::post('/sc/pameran/klaim', [PameranReviewController::class, 'klaim'])->name('sc.pameran.klaim');
+    Route::post('/sc/pameran/mulai-review', [PameranReviewController::class, 'mulaiReview'])->name('sc.pameran.mulai-review');
     Route::post('/sc/pameran/simpan-review', [PameranReviewController::class, 'simpanReview'])->name('sc.pameran.simpan-review');
     Route::post('/sc/pameran/kirim-keputusan', [PameranReviewController::class, 'kirimKeputusan'])->name('sc.pameran.kirim-keputusan');
     Route::get('/sc/pameran/portofolio', [PameranReviewController::class, 'tampilPortofolio'])->name('sc.pameran.portofolio');
+    Route::get('/sc/pameran/file-pertama', [PameranReviewController::class, 'tampilFilePertama'])->name('sc.pameran.file-pertama');
 
     Route::get('/sc/narasumber', [NarasumberReviewController::class, 'index'])->name('sc.narasumber');
     Route::get('/sc/narasumber/detail', [NarasumberReviewController::class, 'detail'])->name('sc.narasumber.detail');

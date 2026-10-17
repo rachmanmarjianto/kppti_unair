@@ -103,6 +103,12 @@
                             <li @if($submenu == 'nomor-stand') class="active" @endif>
                                 <a href="{{ route('admin.pameran.nomor-stand') }}"> Nomor Stand </a>
                             </li>
+                            <li @if($submenu == 'reviewer') class="active" @endif>
+                                <a href="{{ route('admin.pameran.reviewer') }}"> Reviewer SC </a>
+                            </li>
+                            <li @if($submenu == 'terpilih') class="active" @endif>
+                                <a href="{{ route('admin.pameran.terpilih') }}"> Terpilih </a>
+                            </li>
                         </ul>
                     </li>
 

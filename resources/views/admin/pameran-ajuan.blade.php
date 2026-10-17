@@ -38,8 +38,11 @@
         '2' => ['Pengajuan', 'bg-info'],
         '3' => ['Review', 'bg-warning'],
         '4' => ['Revisi', 'bg-warning'],
-        '5' => ['Diterima', 'bg-success'],
-        '6' => ['Ditolak', 'bg-danger'],
+        '5' => ['Memenuhi', 'bg-success'],
+        '6' => ['Tidak Memenuhi', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
+        '9' => ['Terpilih', 'bg-success'],
     ];
 @endphp
 

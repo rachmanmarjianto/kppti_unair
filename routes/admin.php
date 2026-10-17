@@ -46,10 +46,16 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-pameran/ajuan', [PameranAdminController::class, 'index'])->name('admin.pameran.ajuan');
     Route::get('/admin-pameran/ajuan/detail', [PameranAdminController::class, 'detail'])->name('admin.pameran.ajuan.detail');
     Route::get('/admin-pameran/ajuan/portofolio', [PameranAdminController::class, 'tampilPortofolio'])->name('admin.pameran.ajuan.portofolio');
+    Route::get('/admin-pameran/ajuan/file-pertama', [PameranAdminController::class, 'tampilFilePertama'])->name('admin.pameran.ajuan.file-pertama');
     Route::get('/admin-pameran/nomor-stand', [PameranAdminController::class, 'nomorStand'])->name('admin.pameran.nomor-stand');
     Route::post('/admin-pameran/nomor-stand/update', [PameranAdminController::class, 'updateNomorStand'])->name('admin.pameran.nomor-stand.update');
     Route::post('/admin-pameran/penjaga/tambah', [PameranAdminController::class, 'tambahPenjaga'])->name('admin.pameran.penjaga.tambah');
     Route::post('/admin-pameran/penjaga/hapus', [PameranAdminController::class, 'hapusPenjaga'])->name('admin.pameran.penjaga.hapus');
+    Route::get('/admin-pameran/reviewer', [PameranAdminController::class, 'reviewerIndex'])->name('admin.pameran.reviewer');
+    Route::post('/admin-pameran/reviewer/tambah', [PameranAdminController::class, 'tambahReviewer'])->name('admin.pameran.reviewer.tambah');
+    Route::post('/admin-pameran/reviewer/hapus', [PameranAdminController::class, 'hapusReviewer'])->name('admin.pameran.reviewer.hapus');
+    Route::get('/admin-pameran/terpilih', [PameranAdminController::class, 'terpilihIndex'])->name('admin.pameran.terpilih');
+    Route::post('/admin-pameran/terpilih/kirim-wa', [PameranAdminController::class, 'kirimWaTerpilih'])->name('admin.pameran.terpilih.kirim-wa');
     Route::get('/admin-seminar-kit/master', [SeminarKitController::class, 'index'])->name('admin.seminar-kit.master');
     Route::post('/admin-seminar-kit/master/tambah', [SeminarKitController::class, 'store'])->name('admin.seminar-kit.master.tambah');
     Route::post('/admin-seminar-kit/master/update', [SeminarKitController::class, 'update'])->name('admin.seminar-kit.master.update');

@@ -132,4 +132,73 @@ class MasterScController extends Controller
 
         return $this->jsonResponse(200, "Keputusan '{$label}' berhasil dikirim.");
     }
+
+    /**
+     * Daftar pengajuan pameran berstatus "Proses Seleksi" (7) — kedua SC
+     * reviewer sudah menyatakan Memenuhi, tinggal Master SC yang
+     * menentukan Terpilih (9) / Tidak Terpilih (8). Filter kluster flat
+     * (bukan 2-jenjang seperti narasumber — kluster pameran tidak punya
+     * parent/child, dikonfirmasi developer). Baris yang sudah diputuskan
+     * tetap tampil (mirror pola narasumber).
+     */
+    public function pameranIndex(Request $request)
+    {
+        $menu = 'pameran';
+        $submenu = '';
+
+        $klusterOptions = DB::table('kluster_pameran')->where('status', true)->orderBy('nomor_kluster')->get();
+        $idkluster = $request->query('idkluster');
+
+        $pameran = DB::table('pameran as p')
+            ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->whereIn('p.status_ajuan', ['7', '8', '9'])
+            ->when($idkluster, fn ($query) => $query->where('p.idkluster_pameran', $idkluster))
+            ->select('p.idpameran', 'p.status_ajuan', 'p.tema', 'p.nilai_final', 'p.selisih_nilai', 'i.nama_institusi')
+            ->orderBy('p.idpameran')
+            ->get()
+            ->map(function ($row) {
+                $row->token = $this->encryptRouteValue($row->idpameran);
+
+                return $row;
+            });
+
+        return view('master-sc.pameran', compact('menu', 'submenu', 'klusterOptions', 'idkluster', 'pameran'));
+    }
+
+    /**
+     * Keputusan final Terpilih (9) / Tidak Terpilih (8) atas pengajuan
+     * pameran berstatus "Proses Seleksi" (7). Tidak ada efek samping lain
+     * seperti narasumber_acara milik narasumber — alur nomor stand/jadwal
+     * loading sudah berjalan lewat status 9 di PameranAdminController/
+     * PameranController (dikonfirmasi developer).
+     */
+    public function pameranPutuskan(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpameran' => ['required', 'integer'],
+            'keputusan' => ['required', 'in:8,9'],
+        ]);
+
+        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->first();
+
+        if (! $pameran || $pameran->status_ajuan !== '7') {
+            return $this->jsonResponse(404, 'Pengajuan ini tidak bisa diputuskan.');
+        }
+
+        $terklaim = DB::table('pameran')
+            ->where('idpameran', $pameran->idpameran)
+            ->where('status_ajuan', '7')
+            ->update(['status_ajuan' => $validated['keputusan']]);
+
+        if ($terklaim === 0) {
+            return $this->jsonResponse(409, 'Pengajuan ini sudah diputuskan Master SC lain.');
+        }
+
+        $label = $validated['keputusan'] === '9' ? 'Terpilih' : 'Tidak Terpilih';
+        $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Keputusan akhir pengajuan pameran '{$pameran->tema}' oleh Master SC: {$label}");
+
+        return $this->jsonResponse(200, "Keputusan '{$label}' berhasil dikirim.");
+    }
 }

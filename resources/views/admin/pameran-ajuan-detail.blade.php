@@ -14,11 +14,14 @@
 @php
     $labelStatus = [
         '1' => ['Draft', 'bg-secondary'],
-        '2' => $pameran->direview_oleh ? ['Sedang Direview', 'bg-warning'] : ['Pengajuan', 'bg-info'],
+        '2' => ['Pengajuan', 'bg-info'],
         '3' => ['Review', 'bg-warning'],
         '4' => ['Revisi', 'bg-warning'],
-        '5' => ['Diterima', 'bg-success'],
-        '6' => ['Ditolak', 'bg-danger'],
+        '5' => ['Memenuhi', 'bg-success'],
+        '6' => ['Tidak Memenuhi', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
+        '9' => ['Terpilih', 'bg-success'],
     ];
 @endphp
 
@@ -58,8 +61,24 @@
                             <td>{!! $pameran->abstract !!}</td>
                         </tr>
                         <tr>
+                            <th>Form Keikutsertaan (berkas pertama)</th>
+                            <td>
+                                @if($pameran->file_path_pertama)
+                                    <a href="{{ route('admin.pameran.ajuan.file-pertama') }}?token={{ $token }}" target="_blank">
+                                        <i class="fa-solid fa-file-arrow-down"></i> Lihat berkas pertama
+                                    </a>
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
                             <th>Nomor Stand</th>
                             <td>{{ $pameran->nomor_stand }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nilai Final / Selisih Nilai</th>
+                            <td>{{ $pameran->nilai_final ?? '-' }} / {{ $pameran->selisih_nilai ?? '-' }}</td>
                         </tr>
                         <tr>
                             <th>Status Saat Ini</th>
@@ -69,88 +88,91 @@
                                 </span>
                             </td>
                         </tr>
-                        <tr>
-                            <th>Direview Oleh</th>
-                            <td>{{ $pameran->nama_sc }}</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    {{-- Card 2: riwayat review_pameran, read-only --}}
-    <div class="col-lg-12 col-md-12 layout-spacing">
-        <div class="statbox widget box box-shadow">
-            <div class="widget-header">
-                <div class="row align-items-center">
-                    <div class="col-12">
-                        <h4>Riwayat Review</h4>
+    {{-- Card 2 & 3: riwayat per reviewer, read-only — 2 thread independen
+         (dikonfirmasi developer), masing-masing bisa null kalau Admin
+         belum memetakan reviewer di slot itu. --}}
+    @foreach([1 => $reviewer1, 2 => $reviewer2] as $reviewerKe => $reviewer)
+        <div class="col-lg-12 col-md-12 layout-spacing">
+            <div class="statbox widget box box-shadow">
+                <div class="widget-header">
+                    <div class="row align-items-center">
+                        <div class="col-12">
+                            <h4>Riwayat Reviewer {{ $reviewerKe }}@if($reviewer) &mdash; {{ $reviewer['namaSc'] }}@endif</h4>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="widget-content widget-content-area">
-                @if($riwayat->isEmpty())
-                    <p class="text-muted mb-0">Belum ada riwayat.</p>
-                @else
-                    <div class="accordion" id="accordion-riwayat">
-                        @foreach($riwayat as $i => $baris)
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button @if(! $loop->last) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $i }}">
-                                        #{{ $i + 1 }} &mdash;
-                                        <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
-                                            {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
-                                        </span>
-                                    </button>
-                                </h2>
-                                <div id="riwayat-{{ $i }}" class="accordion-collapse collapse @if($loop->last) show @endif" data-bs-parent="#accordion-riwayat">
-                                    <div class="accordion-body">
-                                        @if($baris->file_path)
-                                            <p>
-                                                <a href="{{ route('admin.pameran.ajuan.portofolio') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
-                                                </a>
-                                            </p>
-                                        @endif
+                <div class="widget-content widget-content-area">
+                    @if(! $reviewer)
+                        <p class="text-muted mb-0">Reviewer belum ditugaskan Admin.</p>
+                    @elseif($reviewer['riwayat']->isEmpty())
+                        <p class="text-muted mb-0">Reviewer belum mulai review.</p>
+                    @else
+                        <div class="accordion" id="accordion-riwayat-{{ $reviewerKe }}">
+                            @foreach($reviewer['riwayat'] as $i => $baris)
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button @if(! $loop->last) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $reviewerKe }}-{{ $i }}">
+                                            #{{ $i + 1 }} &mdash;
+                                            <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
+                                                {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
+                                            </span>
+                                        </button>
+                                    </h2>
+                                    <div id="riwayat-{{ $reviewerKe }}-{{ $i }}" class="accordion-collapse collapse @if($loop->last) show @endif" data-bs-parent="#accordion-riwayat-{{ $reviewerKe }}">
+                                        <div class="accordion-body">
+                                            @if($baris->file_path)
+                                                <p>
+                                                    <a href="{{ route('admin.pameran.ajuan.portofolio') }}?token={{ $baris->token }}" target="_blank">
+                                                        <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
+                                                    </a>
+                                                </p>
+                                            @endif
 
-                                        @if($baris->catatan)
-                                            <p><strong>Catatan:</strong><br>{{ $baris->catatan }}</p>
-                                        @endif
+                                            @if($baris->catatan)
+                                                <p><strong>Catatan SC:</strong><br>{{ $baris->catatan }}</p>
+                                            @endif
 
-                                        @if($baris->kriteria->isNotEmpty())
-                                            <table class="table table-sm table-bordered">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Kriteria</th>
-                                                        <th>Catatan</th>
-                                                        <th>Memenuhi</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($baris->kriteria as $k)
+                                            @if($baris->catatan_peserta)
+                                                <p><strong>Catatan Peserta:</strong><br>{{ $baris->catatan_peserta }}</p>
+                                            @endif
+
+                                            @if($baris->kriteria->isNotEmpty())
+                                                <table class="table table-sm table-bordered">
+                                                    <thead>
                                                         <tr>
-                                                            <td>{{ $k->nama_topik }}</td>
-                                                            <td>{!! $k->isi_review !!}</td>
-                                                            <td>
-                                                                @if($k->memenuhi)
-                                                                    <span class="badge bg-success">Ya</span>
-                                                                @else
-                                                                    <span class="badge bg-danger">Tidak</span>
-                                                                @endif
-                                                            </td>
+                                                            <th>Topik</th>
+                                                            <th>Komentar</th>
+                                                            <th class="text-center">Bobot</th>
+                                                            <th class="text-center">Nilai</th>
                                                         </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        @endif
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($baris->kriteria as $k)
+                                                            <tr>
+                                                                <td>{{ $k->nama_topik }}</td>
+                                                                <td>{{ $k->isi_review ?? '-' }}</td>
+                                                                <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
+                                                                <td class="text-center">{{ $k->nilai ?? '-' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                                <p class="fw-bold mb-0">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
-    </div>
+    @endforeach
 @endsection

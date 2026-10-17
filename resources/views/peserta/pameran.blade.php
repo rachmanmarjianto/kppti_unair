@@ -23,8 +23,11 @@
         '2' => ['Pengajuan', 'bg-info'],
         '3' => ['Review', 'bg-warning'],
         '4' => ['Revisi', 'bg-warning'],
-        '5' => ['Diterima', 'bg-success'],
-        '6' => ['Ditolak', 'bg-danger'],
+        '5' => ['Memenuhi', 'bg-success'],
+        '6' => ['Tidak Memenuhi', 'bg-danger'],
+        '7' => ['Proses Seleksi', 'bg-dark'],
+        '8' => ['Tidak Terpilih', 'bg-danger'],
+        '9' => ['Terpilih', 'bg-success'],
     ];
 
     $labelTagihan = [
@@ -33,6 +36,7 @@
         3 => ['Lunas', 'bg-success'],
         4 => ['Batal', 'bg-danger'],
         5 => ['Expired', 'bg-dark'],
+        6 => ['Ditangguhkan', 'bg-warning'],
     ];
 @endphp
 
@@ -81,6 +85,10 @@
                                 @elseif($tagihan->status === 1)
                                     <p class="mt-2 mb-0" style="font-size: 12.5px; color:red">
                                         Tagihan ini belum dibayar. Silahkan lakukan pembayaran untuk dapat direview oleh SC.
+                                    </p>
+                                @elseif($tagihan->status === 6)
+                                    <p class="mt-2 mb-0" style="font-size: 12.5px;">
+                                        Tagihan untuk kluster ini ditangguhkan — baru akan ditagihkan jika pengajuan dinyatakan Diterima. Pengajuan ini tetap dapat direview SC sekarang.
                                     </p>
                                 @endif
                             </div>
@@ -132,7 +140,7 @@
                     </div>
                 @endif
 
-                @if($pameran && $pameran->status_ajuan === '5')
+                @if($pameran && $pameran->status_ajuan === '9')
                     <hr class="mt-4">
                     <h5>Penjaga Stand &amp; Tanggal Loading</h5>
 
@@ -226,10 +234,10 @@
                         <div class="mb-3">
                             <label class="form-label" for="input-portofolio">Form Keikutsertaan (PDF/DOC/DOCX, maks. 5 MB)</label>
                             <input type="file" name="portofolio" id="input-portofolio" class="form-control" accept=".pdf,.doc,.docx">
-                            @if($draftSaatIni && $draftSaatIni->file_path)
+                            @if($pameran && $pameran->file_path_pertama)
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">
                                     Sudah ada file tersimpan —
-                                    <a href="{{ route('peserta.pameran.portofolio') }}?token={{ $draftSaatIni->token }}" target="_blank">lihat file saat ini</a>.
+                                    <a href="{{ route('peserta.pameran.file-pertama') }}?token={{ $tokenFilePertama }}" target="_blank">lihat file saat ini</a>.
                                     Biarkan kosong untuk tetap memakai file ini, atau pilih file baru untuk menggantinya.
                                 </div>
                             @else
@@ -248,63 +256,97 @@
                     </form>
                 @endif
 
-                @if($riwayat->isNotEmpty())
+                @if($pameran)
                     <hr class="mt-4">
-                    <h5>Riwayat Pengajuan</h5>
+                    <h5>Riwayat Review</h5>
+                    <p class="text-muted" style="font-size: 12.5px;">
+                        Pengajuan ini direview oleh 2 SC secara independen.
+                    </p>
 
-                    <div class="accordion" id="accordion-riwayat">
-                        @foreach($riwayat as $i => $baris)
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button @if(!$loop->last) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $i }}">
-                                        #{{ $i + 1 }} &mdash;
-                                        <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
-                                            {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
-                                        </span>
-                                    </button>
-                                </h2>
-                                <div id="riwayat-{{ $i }}" class="accordion-collapse collapse @if($loop->last) show @endif" data-bs-parent="#accordion-riwayat">
-                                    <div class="accordion-body">
-                                        @if($baris->file_path)
-                                            <p>
-                                                <a href="{{ route('peserta.pameran.portofolio') }}?token={{ $baris->token }}" target="_blank">
-                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
-                                                </a>
-                                            </p>
-                                        @endif
+                    <ul class="nav nav-tabs" id="tab-reviewer" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-reviewer-1-btn" data-bs-toggle="tab" data-bs-target="#tab-reviewer-1" type="button" role="tab">
+                                Reviewer Pertama
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-reviewer-2-btn" data-bs-toggle="tab" data-bs-target="#tab-reviewer-2" type="button" role="tab">
+                                Reviewer Kedua
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3" id="tab-reviewer-content">
+                        @foreach([1 => $reviewer1, 2 => $reviewer2] as $reviewerKe => $reviewer)
+                            <div class="tab-pane fade @if($reviewerKe === 1) show active @endif" id="tab-reviewer-{{ $reviewerKe }}" role="tabpanel">
+                                @if(! $reviewer)
+                                    <p class="text-muted mb-0">Reviewer belum ditugaskan panitia.</p>
+                                @elseif($reviewer['riwayat']->isEmpty())
+                                    <p class="text-muted mb-0">Reviewer belum mulai melakukan review.</p>
+                                @else
+                                    <div class="accordion" id="accordion-riwayat-{{ $reviewerKe }}">
+                                        @foreach($reviewer['riwayat'] as $i => $baris)
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button @if(!$loop->last) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $reviewerKe }}-{{ $i }}">
+                                                        #{{ $i + 1 }} &mdash;
+                                                        <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
+                                                            {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
+                                                        </span>
+                                                    </button>
+                                                </h2>
+                                                <div id="riwayat-{{ $reviewerKe }}-{{ $i }}" class="accordion-collapse collapse @if($loop->last) show @endif" data-bs-parent="#accordion-riwayat-{{ $reviewerKe }}">
+                                                    <div class="accordion-body">
+                                                        @if($baris->file_path)
+                                                            <p>
+                                                                <a href="{{ route('peserta.pameran.portofolio') }}?token={{ $baris->token }}" target="_blank">
+                                                                    <i class="fa-solid fa-file-arrow-down"></i> Lihat Form Keikutsertaan
+                                                                </a>
+                                                            </p>
+                                                        @endif
 
-                                        @if($baris->catatan)
-                                            <p><strong>Catatan SC:</strong><br>{{ $baris->catatan }}</p>
-                                        @endif
+                                                        @if($baris->catatan)
+                                                            <p><strong>Catatan SC:</strong><br>{{ $baris->catatan }}</p>
+                                                        @endif
 
-                                        @if($baris->kriteria->isNotEmpty())
-                                            <table class="table table-sm table-bordered">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Kriteria</th>
-                                                        <th>Catatan</th>
-                                                        <th>Memenuhi</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($baris->kriteria as $k)
-                                                        <tr>
-                                                            <td>{{ $k->nama_topik }}</td>
-                                                            <td>{!! $k->isi_review !!}</td>
-                                                            <td>
-                                                                @if($k->memenuhi)
-                                                                    <span class="badge bg-success">Ya</span>
-                                                                @else
-                                                                    <span class="badge bg-danger">Tidak</span>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        @endif
+                                                        @if($baris->catatan_peserta)
+                                                            <p><strong>Catatan Saya:</strong><br>{{ $baris->catatan_peserta }}</p>
+                                                        @endif
+
+                                                        @if($baris->kriteria->isNotEmpty())
+                                                            <table class="table table-sm table-bordered">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Topik</th>
+                                                                        <th>Komentar</th>
+                                                                        <th class="text-center">Bobot</th>
+                                                                        <th class="text-center">Nilai</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach($baris->kriteria as $k)
+                                                                        <tr>
+                                                                            <td>{{ $k->nama_topik }}</td>
+                                                                            <td>{{ $k->isi_review ?? '-' }}</td>
+                                                                            <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
+                                                                            <td class="text-center">{{ $k->nilai ?? '-' }}</td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                </tbody>
+                                                            </table>
+                                                            <p class="fw-bold mb-0">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
+                                                        @endif
+
+                                                        @if($loop->last && $baris->status_ajuan === '4')
+                                                            <a href="{{ route('peserta.pameran.balas-revisi') }}?token={{ $reviewer['tokenReviewer'] }}" class="btn btn-sm btn-primary mt-2">
+                                                                Revisi
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
                                     </div>
-                                </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -314,7 +356,7 @@
     </div>
 
     {{-- Modal: pilih penjaga stand --}}
-    @if($pameran && $pameran->status_ajuan === '5')
+    @if($pameran && $pameran->status_ajuan === '9')
         <div class="modal fade" id="modal-pilih-penjaga" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -361,7 +403,6 @@
             var tambahPenjagaUrl = '{{ route('peserta.pameran.penjaga.tambah') }}';
             var hapusPenjagaUrl = '{{ route('peserta.pameran.penjaga.hapus') }}';
             var simpanJadwalLoadingUrl = '{{ route('peserta.pameran.jadwal-loading') }}';
-            var idKlusterBerbayar = {{ $idKlusterBerbayar }};
 
             @if($bisaEdit)
                 var quillAbstract = new Quill('#editor-abstract', {
@@ -552,16 +593,9 @@
             });
 
             $('#btn-ajukan').on('click', function () {
-                var klusterTerpilih = parseInt($('#input-idkluster-pameran').val(), 10);
-                var perluBayar = klusterTerpilih === idKlusterBerbayar;
-
-                var teksKonfirmasi = perluBayar
-                    ? 'Kluster ini berbayar — tagihan akan diterbitkan (atau sudah ada tagihan yang menunggu dibayar) dan kontingen harus menyelesaikan pembayaran sebelum SC dapat mereview. Ajukan sekarang?'
-                    : 'Kluster ini tidak dikenakan biaya. Risalah Singkat Pameran dan Form Keikutsertaan akan disimpan, lalu pengajuan ini langsung dapat direview SC. Ajukan sekarang?';
-
                 Swal.fire({
                     title: 'Konfirmasi',
-                    text: teksKonfirmasi,
+                    text: 'Risalah Singkat Pameran dan Form Keikutsertaan akan disimpan, lalu pengajuan ini langsung dapat direview SC. Ajukan sekarang?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, ajukan',

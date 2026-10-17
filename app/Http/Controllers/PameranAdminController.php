@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -34,10 +35,9 @@ class PameranAdminController extends Controller
 
     /**
      * Detail read-only — tampilan sama seperti halaman detail SC, tapi tanpa
-     * aksi apa pun (tidak ada klaim/beri review). Breakdown 4 kriteria cuma
-     * ditampilkan untuk baris yang sudah final (4/5/6); baris yang masih
-     * diklaim/direview SC (status 2/3) tetap disembunyikan isinya dari admin
-     * juga — admin tidak pernah jadi pihak yang mengklaim.
+     * aksi apa pun. Riwayat dipecah per reviewer (2 thread independen,
+     * dikonfirmasi developer) — tidak ada lagi satu `direview_oleh`/riwayat
+     * tunggal, lihat Controller::syncPameranStatus().
      */
     public function detail(Request $request)
     {
@@ -53,9 +53,8 @@ class PameranAdminController extends Controller
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
-            ->leftJoin('pengguna as sc', 'sc.idpengguna', '=', 'p.direview_oleh')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic', 'sc.nama as nama_sc')
+            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic')
             ->first();
 
         if (! $pameran) {
@@ -64,25 +63,52 @@ class PameranAdminController extends Controller
 
         $menu = 'pameran';
         $submenu = 'ajuan';
+        $token = $this->encryptRouteValue($idpameran);
+
+        $reviewer1 = $this->riwayatReviewerPameranAdmin($idpameran, 1);
+        $reviewer2 = $this->riwayatReviewerPameranAdmin($idpameran, 2);
+
+        return view('admin.pameran-ajuan-detail', compact('menu', 'submenu', 'pameran', 'token', 'reviewer1', 'reviewer2'));
+    }
+
+    /**
+     * Riwayat satu thread reviewer untuk tampilan admin (read-only, semua
+     * baris terlihat termasuk yang masih berjalan — beda dari tampilan SC
+     * yang membatasi ke thread sendiri).
+     *
+     * @return array{namaSc: string, riwayat: Collection}|null
+     */
+    private function riwayatReviewerPameranAdmin(int $idpameran, int $reviewerKe): ?array
+    {
+        $reviewerPameran = DB::table('reviewer_pameran as rp')
+            ->join('pengguna as sc', 'sc.idpengguna', '=', 'rp.idpengguna')
+            ->where('rp.idpameran', $idpameran)
+            ->where('rp.reviewer_ke', $reviewerKe)
+            ->select('rp.idreviewer_pameran', 'sc.nama as nama_sc')
+            ->first();
+
+        if (! $reviewerPameran) {
+            return null;
+        }
 
         $riwayat = DB::table('review_pameran')
-            ->where('idpameran', $idpameran)
+            ->where('created_by', $reviewerPameran->idreviewer_pameran)
             ->orderBy('idreview')
             ->get()
             ->map(function ($baris) {
                 $baris->token = $this->encryptRouteValue($baris->idreview);
                 $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
-                    ? $this->kriteriaUntukReview($baris->idreview)
+                    ? $this->kriteriaUntukReviewPameran($baris->idreview)
                     : collect();
 
                 return $baris;
             });
 
-        return view('admin.pameran-ajuan-detail', compact('menu', 'submenu', 'pameran', 'riwayat'));
+        return ['namaSc' => $reviewerPameran->nama_sc, 'riwayat' => $riwayat];
     }
 
     /**
-     * Daftar pengajuan pameran yang sudah Diterima — satu-satunya tempat
+     * Daftar pengajuan pameran yang sudah Terpilih — satu-satunya tempat
      * admin menetapkan nomor stand.
      */
     public function nomorStand()
@@ -95,7 +121,7 @@ class PameranAdminController extends Controller
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
-            ->where('p.status_ajuan', '5')
+            ->where('p.status_ajuan', '9')
             ->select('p.idpameran', 'p.idinstitusi_asal', 'p.tema', 'p.nomor_stand', 'p.jadwal_loading', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
             ->orderBy('p.idpameran')
             ->get()
@@ -121,8 +147,8 @@ class PameranAdminController extends Controller
     }
 
     /**
-     * Tetapkan/ubah nomor stand satu pengajuan yang sudah Diterima — nomor
-     * stand harus unik antar pengajuan Diterima (dikonfirmasi developer).
+     * Tetapkan/ubah nomor stand satu pengajuan yang sudah Terpilih — nomor
+     * stand harus unik antar pengajuan Terpilih (dikonfirmasi developer).
      */
     public function updateNomorStand(Request $request)
     {
@@ -137,11 +163,11 @@ class PameranAdminController extends Controller
 
         $pameran = DB::table('pameran')
             ->where('idpameran', $validated['idpameran'])
-            ->where('status_ajuan', '5')
+            ->where('status_ajuan', '9')
             ->first();
 
         if (! $pameran) {
-            return $this->jsonResponse(404, 'Pengajuan pameran Diterima tidak ditemukan.');
+            return $this->jsonResponse(404, 'Pengajuan pameran Terpilih tidak ditemukan.');
         }
 
         $adaPenjaga = DB::table('petugas_jaga')->where('idpameran', $pameran->idpameran)->exists();
@@ -155,7 +181,7 @@ class PameranAdminController extends Controller
         }
 
         $sudahDipakai = DB::table('pameran')
-            ->where('status_ajuan', '5')
+            ->where('status_ajuan', '9')
             ->where('idpameran', '!=', $pameran->idpameran)
             ->whereRaw('LOWER(nomor_stand) = ?', [mb_strtolower($nomorStand)])
             ->exists();
@@ -188,10 +214,10 @@ class PameranAdminController extends Controller
             'idpeserta' => ['required', 'integer'],
         ]);
 
-        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->where('status_ajuan', '5')->first();
+        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->where('status_ajuan', '9')->first();
 
         if (! $pameran) {
-            return $this->jsonResponse(404, 'Pengajuan pameran Diterima tidak ditemukan.');
+            return $this->jsonResponse(404, 'Pengajuan pameran Terpilih tidak ditemukan.');
         }
 
         $peserta = $this->findPesertaInOwnInstitusi((int) $validated['idpeserta'], $pameran->idinstitusi_asal);
@@ -277,17 +303,251 @@ class PameranAdminController extends Controller
     }
 
     /**
-     * The 4-criteria scoring breakdown for one review_pameran row (empty for
-     * rows that never reached an SC decision), joined with topik_review for
-     * the criteria name.
+     * Serve the very first uploaded file (pameran.file_path_pertama).
+     * Admin boleh akses kapan pun, tanpa batasan kepemilikan.
      */
-    private function kriteriaUntukReview(int $idreview)
+    public function tampilFilePertama(Request $request)
     {
-        return DB::table('isi_review_pameran as i')
-            ->join('topik_review as t', 't.idtopik_review', '=', 'i.idtopik_review')
-            ->where('i.idreview', $idreview)
-            ->select('t.nama_topik', 'i.isi_review', 'i.memenuhi')
-            ->orderBy('t.idtopik_review')
+        $idpameran = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpameran === null) {
+            abort(404);
+        }
+
+        $pameran = DB::table('pameran')->where('idpameran', (int) $idpameran)->first();
+
+        if (! $pameran || ! $pameran->file_path_pertama || ! Storage::disk('local')->exists($pameran->file_path_pertama)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($pameran->file_path_pertama);
+    }
+
+    /**
+     * Daftar pengajuan pameran yang sudah diajukan (status >= 2, belum
+     * Draft) untuk dipetakan 2 SC reviewer-nya — mirror pola
+     * tambahPenjaga()/hapusPenjaga() (maksimal 2 slot), tapi SC bukan
+     * peserta institusi sendiri (dikonfirmasi developer).
+     */
+    public function reviewerIndex(Request $request)
+    {
+        $menu = 'pameran';
+        $submenu = 'reviewer';
+
+        $klusterOptions = DB::table('kluster_pameran')->where('status', true)->orderBy('nomor_kluster')->get();
+        $idkluster = $request->query('idkluster');
+        $klusterTerpilih = $idkluster ? $klusterOptions->firstWhere('idkluster_pameran', (int) $idkluster) : null;
+
+        $pameran = DB::table('pameran as p')
+            ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->where('p.status_ajuan', '!=', '1')
+            ->when($idkluster, fn ($query) => $query->where('p.idkluster_pameran', $idkluster))
+            ->select('p.idpameran', 'p.tema', 'i.nama_institusi')
+            ->orderBy('p.idpameran')
+            ->get()
+            ->map(function ($row) {
+                $row->token = $this->encryptRouteValue($row->idpameran);
+                $row->reviewer = DB::table('reviewer_pameran as rp')
+                    ->join('pengguna as sc', 'sc.idpengguna', '=', 'rp.idpengguna')
+                    ->where('rp.idpameran', $row->idpameran)
+                    ->select('rp.idreviewer_pameran', 'rp.reviewer_ke', 'sc.idpengguna', 'sc.nama')
+                    ->orderBy('rp.reviewer_ke')
+                    ->get()
+                    ->keyBy('reviewer_ke');
+
+                return $row;
+            });
+
+        $scOptions = $this->scOptions();
+
+        return view('admin.pameran-reviewer', compact(
+            'menu', 'submenu', 'klusterOptions', 'idkluster', 'klusterTerpilih', 'pameran', 'scOptions'
+        ));
+    }
+
+    /**
+     * Petakan satu SC ke salah satu slot reviewer (1 atau 2) sebuah
+     * pameran — slot harus masih kosong, dan satu SC tidak boleh mengisi
+     * kedua slot pameran yang sama.
+     */
+    public function tambahReviewer(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpameran' => ['required', 'integer'],
+            'idpengguna' => ['required', 'integer'],
+            'reviewer_ke' => ['required', 'in:1,2'],
+        ]);
+
+        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->where('status_ajuan', '!=', '1')->first();
+
+        if (! $pameran) {
+            return $this->jsonResponse(404, 'Pengajuan pameran tidak ditemukan.');
+        }
+
+        $slotTerisi = DB::table('reviewer_pameran')
+            ->where('idpameran', $pameran->idpameran)
+            ->where('reviewer_ke', $validated['reviewer_ke'])
+            ->exists();
+
+        if ($slotTerisi) {
+            return $this->jsonResponse(422, 'Slot reviewer ini sudah terisi. Hapus dulu sebelum menggantinya.');
+        }
+
+        $scSudahDiSlotLain = DB::table('reviewer_pameran')
+            ->where('idpameran', $pameran->idpameran)
+            ->where('idpengguna', $validated['idpengguna'])
+            ->exists();
+
+        if ($scSudahDiSlotLain) {
+            return $this->jsonResponse(422, 'SC ini sudah jadi reviewer lain pada pengajuan yang sama.');
+        }
+
+        $sc = DB::table('pengguna as p')
+            ->join('role_pengguna as rp', 'rp.idpengguna', '=', 'p.idpengguna')
+            ->where('p.idpengguna', $validated['idpengguna'])
+            ->where('rp.idrole', 4)
+            ->select('p.nama')
+            ->first();
+
+        if (! $sc) {
+            return $this->jsonResponse(422, 'Pengguna yang dipilih bukan SC.');
+        }
+
+        DB::table('reviewer_pameran')->insert([
+            'idpameran' => $pameran->idpameran,
+            'idpengguna' => $validated['idpengguna'],
+            'reviewer_ke' => $validated['reviewer_ke'],
+        ]);
+
+        $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Admin memetakan {$sc->nama} sebagai reviewer ke-{$validated['reviewer_ke']} pameran: {$pameran->tema}");
+
+        return $this->jsonResponse(200, 'Reviewer berhasil dipetakan.');
+    }
+
+    /**
+     * Hapus satu reviewer dari slotnya — ditolak kalau thread itu sudah
+     * mulai review (ada baris review_pameran), supaya riwayat penilaian
+     * tidak jadi anak yatim tanpa reviewer_pameran induknya.
+     */
+    public function hapusReviewer(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idreviewer_pameran' => ['required', 'integer'],
+        ]);
+
+        $reviewerPameran = DB::table('reviewer_pameran as rp')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
+            ->where('rp.idreviewer_pameran', $validated['idreviewer_pameran'])
+            ->select('rp.idreviewer_pameran', 'p.idinstitusi_asal')
+            ->first();
+
+        if (! $reviewerPameran) {
+            return $this->jsonResponse(404, 'Reviewer tidak ditemukan.');
+        }
+
+        $sudahMulai = DB::table('review_pameran')->where('created_by', $reviewerPameran->idreviewer_pameran)->exists();
+
+        if ($sudahMulai) {
+            return $this->jsonResponse(422, 'Reviewer ini sudah mulai review, tidak bisa dihapus.');
+        }
+
+        DB::table('reviewer_pameran')->where('idreviewer_pameran', $reviewerPameran->idreviewer_pameran)->delete();
+
+        $this->logInstitusi($reviewerPameran->idinstitusi_asal, $userdata['idpengguna'], 'Admin menghapus satu reviewer pameran.');
+
+        return $this->jsonResponse(200, 'Reviewer berhasil dihapus.');
+    }
+
+    /**
+     * Daftar pengajuan pameran berstatus Terpilih (9) — tampilan sama
+     * seperti halaman Master SC, tapi read-only + tombol kirim WA ke PIC
+     * (dikonfirmasi developer).
+     */
+    public function terpilihIndex(Request $request)
+    {
+        $menu = 'pameran';
+        $submenu = 'terpilih';
+
+        $klusterOptions = DB::table('kluster_pameran')->where('status', true)->orderBy('nomor_kluster')->get();
+        $idkluster = $request->query('idkluster');
+
+        $pameran = DB::table('pameran as p')
+            ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
+            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->where('p.status_ajuan', '9')
+            ->when($idkluster, fn ($query) => $query->where('p.idkluster_pameran', $idkluster))
+            ->select('p.idpameran', 'p.tema', 'p.nilai_final', 'p.selisih_nilai', 'i.nama_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
+            ->orderBy('p.idpameran')
+            ->get()
+            ->map(function ($row) {
+                $row->token = $this->encryptRouteValue($row->idpameran);
+
+                return $row;
+            });
+
+        return view('admin.pameran-terpilih', compact('menu', 'submenu', 'klusterOptions', 'idkluster', 'pameran'));
+    }
+
+    /**
+     * Kirim notifikasi WA ke PIC pameran yang sudah Terpilih — pola sama
+     * seperti pemakaian kirim_wa_oca_token_3() di AdminController/
+     * PesertaController.
+     */
+    public function kirimWaTerpilih(Request $request)
+    {
+        $validated = $request->validate([
+            'idpameran' => ['required', 'integer'],
+        ]);
+
+        $pameran = DB::table('pameran as p')
+            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
+            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->where('p.idpameran', $validated['idpameran'])
+            ->where('p.status_ajuan', '9')
+            ->select('p.tema', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
+            ->first();
+
+        if (! $pameran) {
+            return $this->jsonResponse(404, 'Pengajuan pameran Terpilih tidak ditemukan.');
+        }
+
+        if (! $pameran->no_wa_pic) {
+            return $this->jsonResponse(422, 'PIC pengajuan ini belum memiliki nomor WhatsApp.');
+        }
+
+        try {
+            $res = $this->kirim_wa_oca_token_3(
+                "Selamat {$pameran->nama_pic},",
+                "Pengajuan pameran Anda dengan tema \"{$pameran->tema}\" dinyatakan TERPILIH.",
+                'Silakan login ke portal KPPTI untuk melengkapi informasi stand (penjaga stand & jadwal loading).',
+                $pameran->no_wa_pic
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp.');
+        }
+
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $res]);
+    }
+
+    /**
+     * Daftar pengguna ber-role SC — dipakai untuk pilihan di select
+     * "Petakan Reviewer".
+     */
+    private function scOptions()
+    {
+        return DB::table('pengguna as p')
+            ->join('role_pengguna as rp', 'rp.idpengguna', '=', 'p.idpengguna')
+            ->where('rp.idrole', 4)
+            ->where('p.is_deleted', false)
+            ->select('p.idpengguna', 'p.nama')
+            ->orderBy('p.nama')
             ->get();
     }
 }

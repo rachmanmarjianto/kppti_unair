@@ -11,6 +11,9 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/pameran/simpan-draft', [PameranController::class, 'simpanDraft'])->name('peserta.pameran.simpan-draft');
     Route::post('/pameran/ajukan', [PameranController::class, 'ajukan'])->name('peserta.pameran.ajukan');
     Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
+    Route::get('/pameran/file-pertama', [PameranController::class, 'tampilFilePertama'])->name('peserta.pameran.file-pertama');
+    Route::get('/pameran/balas-revisi', [PameranController::class, 'tampilBalasRevisi'])->name('peserta.pameran.balas-revisi');
+    Route::post('/pameran/balas-revisi/kirim', [PameranController::class, 'balasRevisi'])->name('peserta.pameran.balas-revisi.kirim');
     Route::get('/pameran/template', [PameranController::class, 'unduhTemplate'])->name('peserta.pameran.template');
     Route::get('/pameran/tagihan', [PameranController::class, 'tagihan'])->name('peserta.pameran.tagihan');
     Route::post('/pameran/tagihan/request-va-baru', [PameranController::class, 'requestVaBaru'])->name('peserta.pameran.tagihan.request-va-baru');

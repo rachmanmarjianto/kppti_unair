@@ -15,27 +15,31 @@ class TopikReviewSeeder extends Seeder
         DB::table('topik_review')->insertOrIgnore([
             [
                 'idtopik_review' => 1,
-                'nama_topik' => 'Sudah Diimplementasikan',
+                'nama_topik' => 'Bukti Dampak Nyata (Impact & Validation)',
                 'status' => true,
-                'petunjuk' => "<ul>\r\n<li>Tujuan</li>\r\n<li>Diterapkan Dilingkungan Nyata</li>\r\n<li>Before After</li>\r\n<li>Dokumen Implementasi</li>\r\n</ul>",
+                'petunjuk' => 'Indikator: Bukti penggunaan oleh mitra (mitra industri/UMKM/masyarakat), data efisiensi atau peningkatan omzet, dokumen serah terima, atau testimoni terverifikasi.',
+                'bobot_dlm_persen' => 40,
             ],
             [
                 'idtopik_review' => 2,
-                'nama_topik' => 'Memiliki Dampak Yang Terukur',
+                'nama_topik' => 'Potensi Replikasi (Replicability / Best Practice)',
                 'status' => true,
-                'petunjuk' => "<p><strong>Output</strong></p>\r\n<ul>\r\n<li>Prototype, Produk Inovasi, Program</li>\r\n</ul>\r\n<p><strong>Outcome / dampak</strong></p>\r\n<ul>\r\n<li>Akademik</li>\r\n<li>Ekonomi</li>\r\n<li>Sosial</li>\r\n<li>Institusional</li>\r\n<li>Lingkungan</li>\r\n</ul>",
+                'petunjuk' => 'Indikator: Kesiapan panduan teknis, modul, atau cetak biru operasional yang memungkinkan kampus lain meniru program/produk tersebut',
+                'bobot_dlm_persen' => 25,
             ],
             [
                 'idtopik_review' => 3,
-                'nama_topik' => 'Dapat direplikasi oleh PT/Masyarakat',
+                'nama_topik' => 'Kesiapan Tingkat Adopsi (Readiness Level)',
                 'status' => true,
-                'petunjuk' => "<ul>\r\n<li>Mudah dipelajari</li>\r\n<li>Terdokumentasi</li>\r\n<li>Adaptif</li>\r\n<li>Biaya</li>\r\n<li>Ketergantungan</li>\r\n</ul>",
+                'petunjuk' => 'Indikator: Untuk produk fisik minimal TRL/TKT 7 (prototipe teruji di lingkungan sebenarnya). Untuk program sosial memiliki kemandirian keberlanjutan (sustainability)',
+                'bobot_dlm_persen' => 20,
             ],
             [
                 'idtopik_review' => 4,
-                'nama_topik' => 'Keterlibatan Mitra',
+                'nama_topik' => 'Rencana Presentasi Visual & Interaktivitas Booth',
                 'status' => true,
-                'petunjuk' => "<ul>\r\n<li>Kesiapan Modul, SOP, Perangkat Pembelajaran</li>\r\n<li>Peluang kolaborasi bersama</li>\r\n<li>Kesiapan Mentor / TOT</li>\r\n<li>Potensi Kemitraan Stakeholder</li>\r\n</ul>",
+                'petunjuk' => 'Indikator: Konsep display luring yang interaktif, demonstratif, menghindari penumpukan banner/poster (X-Banner konvensional), dan mengutamakan pengalaman langsung (hands-on)',
+                'bobot_dlm_persen' => 15,
             ],
         ]);
 

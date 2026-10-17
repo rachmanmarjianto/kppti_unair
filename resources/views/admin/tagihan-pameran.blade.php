@@ -46,6 +46,7 @@
         3 => ['Lunas', 'bg-success'],
         4 => ['Batal', 'bg-danger'],
         5 => ['Expired', 'bg-dark'],
+        6 => ['Ditangguhkan', 'bg-warning'],
     ];
 @endphp
 

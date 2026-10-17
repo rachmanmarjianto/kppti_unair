@@ -10,45 +10,63 @@ class PameranReviewController extends Controller
 {
     /**
      * Label keputusan SC, dipakai untuk pesan log (lihat `kirimKeputusan()`).
+     * "Diterima"/"Ditolak" berganti nama jadi "Memenuhi"/"Tidak Memenuhi" —
+     * keputusan akhir Terpilih/Tidak Terpilih sekarang domain Master SC
+     * (dikonfirmasi developer, lihat Controller::syncPameranStatus()).
      *
      * @var array<string, string>
      */
-    private const LABEL_KEPUTUSAN = ['4' => 'Revisi', '5' => 'Diterima', '6' => 'Ditolak'];
+    private const LABEL_KEPUTUSAN = ['4' => 'Revisi', '5' => 'Memenuhi', '6' => 'Tidak Memenuhi'];
 
     /**
-     * Antrean pengajuan yang sudah lunas & belum diklaim siapa pun, plus
-     * daftar yang sedang/sudah ditangani (riwayat read-only untuk semua SC —
-     * lihat docs/features/007-pengajuan-pameran.md §5).
+     * Status tagihan yang membuat sebuah pengajuan pameran siap direview SC
+     * — Lunas (3) atau Ditangguhkan (6, kluster berbayar yang baru
+     * benar-benar ditagihkan kalau hasil review-nya Terpilih, dikonfirmasi
+     * developer; lihat PameranController::ajukan()).
+     *
+     * @var array<int, int>
+     */
+    private const TAGIHAN_STATUS_BOLEH_REVIEW = [3, 6];
+
+    /**
+     * Antrean pengajuan yang dipetakan Admin ke SC ini tapi belum ia mulai
+     * review, plus daftar yang sudah ia mulai (riwayat thread-nya sendiri
+     * saja — SC lain yang juga direviewer di pameran yang sama tidak
+     * terlihat di sini, dikonfirmasi developer). Tidak ada lagi klaim
+     * rebutan — reviewer sudah pasti dari mapping Admin di `reviewer_pameran`.
      */
     public function index()
     {
         $menu = 'pameran';
         $submenu = '';
 
-        $antrean = DB::table('pameran as p')
+        $userdata = session('userdata');
+
+        $belumMulai = fn ($query) => $query->whereNotExists(
+            fn ($sub) => $sub->select('idreview')->from('review_pameran')->whereColumn('created_by', 'rp.idreviewer_pameran')
+        );
+
+        $antrean = DB::table('reviewer_pameran as rp')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
-            ->where('p.status_ajuan', '2')
-            ->whereNull('p.direview_oleh')
+            ->where('rp.idpengguna', $userdata['idpengguna'])
+            ->where($belumMulai)
             ->select('p.idpameran', 'p.tema', 'i.nama_institusi')
             ->orderBy('p.idpameran')
             ->get()
-            ->filter(function ($row) {
-                $tagihan = $this->tagihanTerbaru($row->idpameran);
-
-                return $tagihan && (int) $tagihan->status === 3;
-            })
             ->map(function ($row) {
                 $row->token = $this->encryptRouteValue($row->idpameran);
 
                 return $row;
-            })
-            ->values();
+            });
 
-        $diproses = DB::table('pameran as p')
+        $diproses = DB::table('reviewer_pameran as rp')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
-            ->where(function ($query) {
-                $query->whereNotNull('p.direview_oleh')->orWhereIn('p.status_ajuan', ['3', '4', '5', '6']);
-            })
+            ->where('rp.idpengguna', $userdata['idpengguna'])
+            ->whereExists(
+                fn ($sub) => $sub->select('idreview')->from('review_pameran')->whereColumn('created_by', 'rp.idreviewer_pameran')
+            )
             ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'p.status_ajuan')
             ->orderBy('p.idpameran')
             ->get()
@@ -62,50 +80,10 @@ class PameranReviewController extends Controller
     }
 
     /**
-     * Klaim satu pengajuan — race condition sederhana lewat conditional
-     * update kolom `pameran.direview_oleh` (lihat
-     * docs/features/007-pengajuan-pameran.md §5). Tidak membuat baris
-     * `review_pameran` baru — SC bekerja langsung di baris yang sudah dibuat
-     * peserta saat mengajukan.
-     */
-    public function klaim(Request $request)
-    {
-        $userdata = session('userdata');
-
-        $validated = $request->validate([
-            'idpameran' => ['required', 'integer'],
-        ]);
-
-        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->first();
-
-        if (! $pameran) {
-            return $this->jsonResponse(404, 'Pengajuan tidak ditemukan.');
-        }
-
-        $tagihan = $this->tagihanTerbaru($pameran->idpameran);
-
-        if (! $tagihan || (int) $tagihan->status !== 3) {
-            return $this->jsonResponse(422, 'Tagihan pengajuan ini belum lunas.');
-        }
-
-        $terklaim = DB::table('pameran')
-            ->where('idpameran', $pameran->idpameran)
-            ->where('status_ajuan', '2')
-            ->whereNull('direview_oleh')
-            ->update(['direview_oleh' => $userdata['idpengguna']]);
-
-        if ($terklaim === 0) {
-            return $this->jsonResponse(409, 'Pengajuan ini sudah diambil SC lain.');
-        }
-
-        return $this->jsonResponse(200, 'Berhasil mengklaim pengajuan ini.', ['token' => $this->encryptRouteValue($pameran->idpameran)]);
-    }
-
-    /**
-     * Riwayat lengkap + form penilaian (kalau SC yang login sedang
-     * mengklaim). Isi penilaian (`isi_review_pameran`) baris yang masih
-     * berstatus Pengajuan (2) hanya ditampilkan ke SC yang mengklaimnya —
-     * lihat docs/features/007-pengajuan-pameran.md §6.
+     * Riwayat thread sendiri + form penilaian inline (kartu per topik),
+     * sama seperti NarasumberReviewController::detail(). Kalau thread
+     * belum punya baris review_pameran sama sekali, tampilkan tombol
+     * "Mulai Review" (lihat `mulaiReview()`) bukan form penilaian.
      */
     public function detail(Request $request)
     {
@@ -122,12 +100,17 @@ class PameranReviewController extends Controller
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
-            ->leftJoin('pengguna as sc', 'sc.idpengguna', '=', 'p.direview_oleh')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic', 'sc.nama as nama_sc')
+            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic')
             ->first();
 
         if (! $pameran) {
+            abort(404);
+        }
+
+        $reviewerPameran = $this->reviewerPameranUntukPengguna($idpameran, $userdata['idpengguna']);
+
+        if (! $reviewerPameran) {
             abort(404);
         }
 
@@ -135,111 +118,90 @@ class PameranReviewController extends Controller
         $submenu = '';
         $token = $this->encryptRouteValue($idpameran);
 
-        $sayaReviewer = $pameran->direview_oleh !== null && (int) $pameran->direview_oleh === (int) $userdata['idpengguna'];
-
         $riwayat = DB::table('review_pameran')
-            ->where('idpameran', $idpameran)
+            ->where('created_by', $reviewerPameran->idreviewer_pameran)
             ->orderBy('idreview')
             ->get()
-            ->map(function ($baris) use ($sayaReviewer) {
+            ->map(function ($baris) {
                 $baris->token = $this->encryptRouteValue($baris->idreview);
-
-                $tampilkanKriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
-                    || (in_array($baris->status_ajuan, ['2', '3'], true) && $sayaReviewer);
-
-                $baris->kriteria = $tampilkanKriteria ? $this->kriteriaUntukReview($baris->idreview) : collect();
+                $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
+                    ? $this->kriteriaUntukReviewPameran($baris->idreview)
+                    : collect();
 
                 return $baris;
             });
 
-        $reviewAktif = $sayaReviewer
-            ? $riwayat->first(fn ($baris) => in_array($baris->status_ajuan, ['2', '3'], true))
-            : null;
-
-        return view('sc.pameran-detail', compact(
-            'menu', 'submenu', 'pameran', 'token', 'riwayat', 'reviewAktif'
-        ));
-    }
-
-    /**
-     * Halaman tersendiri untuk mengisi penilaian 4 kriteria (WYSIWYG) — lebih
-     * leluasa dibanding modal untuk 4 editor penuh (dikonfirmasi developer).
-     * Nilai awal tiap editor diisi dari `topik_review.petunjuk` kalau SC
-     * belum pernah menyimpan isi untuk kriteria itu, supaya tinggal
-     * dilengkapi/dihapus (dikonfirmasi developer).
-     */
-    public function formReview(Request $request)
-    {
-        $userdata = session('userdata');
-        $idreview = $this->decryptRouteValue($request->query('token'));
-
-        if ($idreview === null) {
-            abort(404);
-        }
-
-        $review = $this->reviewYangSayaKlaim((int) $idreview, (int) $userdata['idpengguna']);
-
-        if (! $review) {
-            abort(404);
-        }
-
-        $pameran = DB::table('pameran as p')
-            ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
-            ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
-            ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
-            ->where('p.idpameran', $review->idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic')
-            ->first();
-
-        $menu = 'pameran';
-        $submenu = '';
-        $token = $this->encryptRouteValue($review->idreview);
-        $tokenPameran = $this->encryptRouteValue($review->idpameran);
+        $mulaiReviewDiperlukan = $riwayat->isEmpty();
+        $reviewAktif = $riwayat->first(fn ($baris) => in_array($baris->status_ajuan, ['2', '3'], true));
 
         $topikAktif = DB::table('topik_review')->where('status', true)->orderBy('idtopik_review')->get();
-        $skorSaatIni = DB::table('isi_review_pameran')->where('idreview', $review->idreview)->get()->keyBy('idtopik_review');
+        $skorSaatIni = $reviewAktif
+            ? DB::table('isi_review_pameran')->where('idreview', $reviewAktif->idreview)->get()->keyBy('idtopik_review')
+            : collect();
 
-        $penilaianSebelumnya = $this->penilaianSebelumnyaDenganSkor($review->idpameran, $review->idreview);
-        $skorPenilaianSebelumnya = $penilaianSebelumnya->keyBy('idreview')->map(fn ($p) => $p['skor']);
-
-        return view('sc.pameran-review', compact(
-            'menu', 'submenu', 'pameran', 'review', 'token', 'tokenPameran',
-            'topikAktif', 'skorSaatIni', 'penilaianSebelumnya', 'skorPenilaianSebelumnya'
+        return view('sc.pameran-detail', compact(
+            'menu', 'submenu', 'pameran', 'token', 'riwayat', 'reviewAktif', 'mulaiReviewDiperlukan', 'topikAktif', 'skorSaatIni'
         ));
     }
 
     /**
-     * Penilaian-penilaian sebelumnya (`review_pameran` lain milik `idpameran`
-     * yang sama) yang sudah pernah dinilai SC — dipakai untuk opsi "salin
-     * nilai dari penilaian sebelumnya" di form penilaian, supaya SC tidak
-     * perlu menulis ulang dari nol tiap siklus revisi.
+     * Mulai thread review SC ini — hanya sekali per reviewer_pameran
+     * (dikonfirmasi developer). Membuat baris review_pameran pertama di
+     * thread ini, file_path disalin dari pameran.file_path_pertama.
      */
-    private function penilaianSebelumnyaDenganSkor(int $idpameran, int $idreviewSaatIni)
+    public function mulaiReview(Request $request)
     {
-        return DB::table('review_pameran')
-            ->where('idpameran', $idpameran)
-            ->orderBy('idreview')
-            ->get()
-            ->values()
-            ->map(fn ($baris, $i) => [
-                'idreview' => $baris->idreview,
-                'nomorPenilaian' => $i + 1,
-                'statusAjuan' => $baris->status_ajuan,
-                'skor' => DB::table('isi_review_pameran')
-                    ->where('idreview', $baris->idreview)
-                    ->get()
-                    ->mapWithKeys(fn ($s) => [$s->idtopik_review => ['isi_review' => $s->isi_review, 'memenuhi' => (bool) $s->memenuhi]]),
-            ])
-            ->filter(fn ($p) => $p['idreview'] !== $idreviewSaatIni && $p['skor']->isNotEmpty())
-            ->values();
+        $userdata = session('userdata');
+        $idpameran = $this->decryptRouteValue($request->input('token'));
+
+        if ($idpameran === null) {
+            return $this->jsonResponse(404, 'Pengajuan tidak ditemukan.');
+        }
+
+        $idpameran = (int) $idpameran;
+
+        $reviewerPameran = $this->reviewerPameranUntukPengguna($idpameran, $userdata['idpengguna']);
+
+        if (! $reviewerPameran) {
+            return $this->jsonResponse(404, 'Anda tidak ditugaskan sebagai reviewer pengajuan ini.');
+        }
+
+        $sudahMulai = DB::table('review_pameran')->where('created_by', $reviewerPameran->idreviewer_pameran)->exists();
+
+        if ($sudahMulai) {
+            return $this->jsonResponse(422, 'Review ini sudah dimulai.');
+        }
+
+        $pameran = DB::table('pameran')->where('idpameran', $idpameran)->first();
+
+        if (! $pameran || ! in_array($pameran->status_ajuan, ['2', '3'], true)) {
+            return $this->jsonResponse(422, 'Pengajuan ini tidak bisa direview pada status saat ini.');
+        }
+
+        $tagihan = $this->tagihanTerbaru($idpameran);
+
+        if (! $tagihan || ! in_array((int) $tagihan->status, self::TAGIHAN_STATUS_BOLEH_REVIEW, true)) {
+            return $this->jsonResponse(422, 'Tagihan pengajuan ini belum lunas.');
+        }
+
+        DB::transaction(function () use ($reviewerPameran, $pameran) {
+            DB::table('review_pameran')->insert([
+                'created_by' => $reviewerPameran->idreviewer_pameran,
+                'status_ajuan' => '3',
+                'file_path' => $pameran->file_path_pertama,
+                'created_at' => now(),
+            ]);
+
+            $this->syncPameranStatus($pameran->idpameran);
+        });
+
+        return $this->jsonResponse(200, 'Review berhasil dimulai.');
     }
 
     /**
-     * Simpan draf penilaian (catatan + skor 4 kriteria) — belum final,
-     * dipanggil berulang selama SC masih menyusun keputusan. Ditulis
-     * langsung ke baris `review_pameran` milik peserta (bukan baris baru),
-     * dan menandai baris itu (+ `pameran`) berstatus Review (3) — SC masih
-     * bisa terus menyimpan ulang draf ini sampai kirim keputusan final.
+     * Simpan draf penilaian (catatan umum + komentar/nilai per topik) —
+     * belum final, dipanggil berulang selama SC masih menyusun keputusan.
+     * Mirror NarasumberReviewController::simpanReview().
      */
     public function simpanReview(Request $request)
     {
@@ -248,48 +210,54 @@ class PameranReviewController extends Controller
         $validated = $request->validate([
             'idreview' => ['required', 'integer'],
             'catatan' => ['nullable', 'string'],
-            'kriteria' => ['required', 'array'],
-            'kriteria.*.isi_review' => ['nullable', 'string'],
-            'kriteria.*.memenuhi' => ['nullable', 'boolean'],
+            'topik' => ['nullable', 'array'],
+            'topik.*.isi_review' => ['nullable', 'string'],
+            'topik.*.nilai' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
-        $review = $this->reviewYangSayaKlaim((int) $validated['idreview'], (int) $userdata['idpengguna']);
+        $review = $this->reviewPameranUntukPengguna((int) $validated['idreview'], (int) $userdata['idpengguna']);
 
-        if (! $review) {
+        if (! $review || ! in_array($review->status_ajuan, ['2', '3'], true)) {
             return $this->jsonResponse(404, 'Review ini tidak bisa diubah.');
         }
 
-        DB::transaction(function () use ($validated, $review, $request, $userdata) {
+        $statusPameran = DB::table('pameran')->where('idpameran', $review->idpameran)->value('status_ajuan');
+
+        if (in_array($statusPameran, ['6', '7', '8', '9'], true)) {
+            return $this->jsonResponse(404, 'Pengajuan ini tidak bisa diubah pada status saat ini.');
+        }
+
+        DB::transaction(function () use ($validated, $review, $userdata) {
             DB::table('review_pameran')->where('idreview', $review->idreview)->update([
                 'status_ajuan' => '3',
                 'catatan' => $validated['catatan'] ?? null,
             ]);
 
-            DB::table('pameran')->where('idpameran', $review->idpameran)->update([
-                'status_ajuan' => '3',
-            ]);
-
-            foreach ($validated['kriteria'] as $idtopik => $data) {
+            foreach ($validated['topik'] ?? [] as $idtopik => $data) {
                 DB::table('isi_review_pameran')->updateOrInsert(
                     ['idreview' => $review->idreview, 'idtopik_review' => $idtopik],
                     [
-                        'isi_review' => $this->sanitizeRichText($data['isi_review'] ?? null),
-                        'memenuhi' => $request->boolean("kriteria.{$idtopik}.memenuhi"),
+                        'isi_review' => $data['isi_review'] ?? null,
+                        'nilai' => $data['nilai'] ?? null,
                         'created_by' => $userdata['idpengguna'],
                         'created_at' => now(),
                     ]
                 );
             }
+
+            $this->syncPameranStatus($review->idpameran);
         });
 
         return $this->jsonResponse(200, 'Draf penilaian berhasil disimpan.');
     }
 
     /**
-     * Kirim keputusan final (Revisi/Diterima/Ditolak) — menolak kalau 4
-     * kriteria belum lengkap diisi (dikonfirmasi developer, §7). Keputusan
-     * "Revisi" juga melepas klaim (`direview_oleh` dikosongkan) supaya SC
-     * mana pun bisa mengklaim giliran revisi berikutnya.
+     * Kirim keputusan final (Revisi/Memenuhi/Tidak Memenuhi) — menolak
+     * kalau ada topik aktif yang nilainya belum diisi (komentar tetap
+     * opsional, dikonfirmasi developer — mirror narasumber). Menghitung
+     * nilai_akhir berbobot, lalu Controller::syncPameranStatus() yang
+     * menentukan efeknya ke pameran (termasuk override "Tidak Memenuhi"
+     * dan agregasi nilai_final/selisih_nilai kalau kedua reviewer Memenuhi).
      */
     public function kirimKeputusan(Request $request)
     {
@@ -301,10 +269,16 @@ class PameranReviewController extends Controller
             'catatan' => ['nullable', 'string'],
         ]);
 
-        $review = $this->reviewYangSayaKlaim((int) $validated['idreview'], (int) $userdata['idpengguna']);
+        $review = $this->reviewPameranUntukPengguna((int) $validated['idreview'], (int) $userdata['idpengguna']);
 
-        if (! $review) {
+        if (! $review || ! in_array($review->status_ajuan, ['2', '3'], true)) {
             return $this->jsonResponse(404, 'Review ini tidak bisa diubah.');
+        }
+
+        $statusPameran = DB::table('pameran')->where('idpameran', $review->idpameran)->value('status_ajuan');
+
+        if (in_array($statusPameran, ['6', '7', '8', '9'], true)) {
+            return $this->jsonResponse(404, 'Pengajuan ini tidak bisa diubah pada status saat ini.');
         }
 
         $idTopikAktif = DB::table('topik_review')->where('status', true)->pluck('idtopik_review');
@@ -312,8 +286,7 @@ class PameranReviewController extends Controller
         $sudahTerisi = DB::table('isi_review_pameran')
             ->where('idreview', $review->idreview)
             ->whereIn('idtopik_review', $idTopikAktif)
-            ->whereNotNull('isi_review')
-            ->where('isi_review', '!=', '')
+            ->whereNotNull('nilai')
             ->pluck('idtopik_review');
 
         $belumTerisi = $idTopikAktif->diff($sudahTerisi);
@@ -321,48 +294,55 @@ class PameranReviewController extends Controller
         if ($belumTerisi->isNotEmpty()) {
             $namaBelumTerisi = DB::table('topik_review')->whereIn('idtopik_review', $belumTerisi)->pluck('nama_topik');
 
-            return $this->jsonResponse(422, 'Lengkapi catatan untuk kriteria: '.$namaBelumTerisi->implode(', '));
+            return $this->jsonResponse(422, 'Lengkapi nilai untuk topik: '.$namaBelumTerisi->implode(', '));
         }
 
-        $pameran = DB::table('pameran')->where('idpameran', $review->idpameran)->first();
+        $nilaiAkhir = round(
+            (float) DB::table('isi_review_pameran as i')
+                ->join('topik_review as t', 't.idtopik_review', '=', 'i.idtopik_review')
+                ->where('i.idreview', $review->idreview)
+                ->whereIn('i.idtopik_review', $idTopikAktif)
+                ->selectRaw('COALESCE(SUM(i.nilai * t.bobot_dlm_persen / 100.0), 0) as total')
+                ->value('total'),
+            2
+        );
 
-        DB::transaction(function () use ($validated, $review) {
+        DB::transaction(function () use ($validated, $review, $nilaiAkhir) {
             DB::table('review_pameran')->where('idreview', $review->idreview)->update([
                 'status_ajuan' => $validated['keputusan'],
-                'catatan' => $validated['catatan'] ?? $review->catatan,
+                'catatan' => $validated['catatan'] ?? null,
+                'nilai_akhir' => $nilaiAkhir,
             ]);
 
-            $updatePameran = ['status_ajuan' => $validated['keputusan']];
-
-            if ($validated['keputusan'] === '4') {
-                $updatePameran['direview_oleh'] = null;
-            }
-
-            DB::table('pameran')->where('idpameran', $review->idpameran)->update($updatePameran);
+            $this->syncPameranStatus($review->idpameran);
         });
 
+        $pameran = DB::table('pameran')->where('idpameran', $review->idpameran)->first();
         $label = self::LABEL_KEPUTUSAN[$validated['keputusan']];
-        $this->logPeserta((int) $pameran->idpeserta_PIC, $userdata['idpengguna'], "Keputusan pengajuan pameran '{$pameran->tema}': {$label}");
+        $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Keputusan pengajuan pameran '{$pameran->tema}': {$label} (nilai akhir: {$nilaiAkhir})");
 
         return $this->jsonResponse(200, "Keputusan '{$label}' berhasil dikirim.");
     }
 
     /**
-     * Serve a portofolio file — never exposed as a static public URL
-     * (CONVENTIONS.md §7). SC bisa akses kapan pun kecuali baris masih
-     * berstatus Draft (belum pernah diajukan sama sekali).
+     * Serve a portofolio file untuk satu giliran review — hanya reviewer
+     * pemilik thread tersebut yang boleh akses (dikonfirmasi developer:
+     * SC hanya melihat thread-nya sendiri).
      */
     public function tampilPortofolio(Request $request)
     {
+        $userdata = session('userdata');
         $idreview = $this->decryptRouteValue($request->query('token'));
 
         if ($idreview === null) {
             abort(404);
         }
 
-        $review = DB::table('review_pameran')
-            ->where('idreview', (int) $idreview)
-            ->where('status_ajuan', '!=', '1')
+        $review = DB::table('review_pameran as r')
+            ->join('reviewer_pameran as rp', 'rp.idreviewer_pameran', '=', 'r.created_by')
+            ->where('r.idreview', (int) $idreview)
+            ->where('rp.idpengguna', $userdata['idpengguna'])
+            ->select('r.file_path')
             ->first();
 
         if (! $review || ! $review->file_path || ! Storage::disk('local')->exists($review->file_path)) {
@@ -373,33 +353,46 @@ class PameranReviewController extends Controller
     }
 
     /**
-     * The review_pameran row for $idreview, but only if it's still open
-     * (status Pengajuan atau Review) and its pameran is currently claimed by
-     * the SC making the request (`pameran.direview_oleh`).
+     * Serve file pertama (pameran.file_path_pertama) — dipakai SC untuk
+     * melihat berkas asli sebelum/selagi "Mulai Review".
      */
-    private function reviewYangSayaKlaim(int $idreview, int $idpengguna): ?object
+    public function tampilFilePertama(Request $request)
     {
-        return DB::table('review_pameran as r')
-            ->join('pameran as p', 'p.idpameran', '=', 'r.idpameran')
-            ->where('r.idreview', $idreview)
-            ->whereIn('r.status_ajuan', ['2', '3'])
-            ->where('p.direview_oleh', $idpengguna)
-            ->select('r.*')
-            ->first();
+        $userdata = session('userdata');
+        $idpameran = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpameran === null) {
+            abort(404);
+        }
+
+        $idpameran = (int) $idpameran;
+
+        if (! $this->reviewerPameranUntukPengguna($idpameran, $userdata['idpengguna'])) {
+            abort(404);
+        }
+
+        $pameran = DB::table('pameran')->where('idpameran', $idpameran)->first();
+
+        if (! $pameran || ! $pameran->file_path_pertama || ! Storage::disk('local')->exists($pameran->file_path_pertama)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($pameran->file_path_pertama);
     }
 
     /**
-     * The 4-criteria scoring breakdown for one review_pameran row (empty for
-     * rows that never reached an SC decision), joined with topik_review for
-     * the criteria name.
+     * The review_pameran row for $idreview, only if the requesting pengguna
+     * is the reviewer that owns its thread (joined via reviewer_pameran —
+     * reviewers are Admin-assigned, not self-claimed, dikonfirmasi
+     * developer).
      */
-    private function kriteriaUntukReview(int $idreview)
+    private function reviewPameranUntukPengguna(int $idreview, int $idpengguna): ?object
     {
-        return DB::table('isi_review_pameran as i')
-            ->join('topik_review as t', 't.idtopik_review', '=', 'i.idtopik_review')
-            ->where('i.idreview', $idreview)
-            ->select('t.nama_topik', 'i.isi_review', 'i.memenuhi')
-            ->orderBy('t.idtopik_review')
-            ->get();
+        return DB::table('review_pameran as r')
+            ->join('reviewer_pameran as rp', 'rp.idreviewer_pameran', '=', 'r.created_by')
+            ->where('r.idreview', $idreview)
+            ->where('rp.idpengguna', $idpengguna)
+            ->select('r.*', 'rp.idpameran', 'rp.idreviewer_pameran')
+            ->first();
     }
 }

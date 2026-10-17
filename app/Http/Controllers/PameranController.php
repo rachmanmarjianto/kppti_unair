@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Services\BniVirtualAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class PameranController extends Controller
 {
     private const TAGIHAN_STATUS_EXPIRED = 5;
+
+    private const TAGIHAN_STATUS_DITANGGUHKAN = 6;
 
     private const IDKLUSTER_BERBAYAR = 5;
 
@@ -43,7 +46,7 @@ class PameranController extends Controller
             $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
         }
 
-        $penjagaStand = ($pameran && $pameran->status_ajuan === '5')
+        $penjagaStand = ($pameran && $pameran->status_ajuan === '9')
             ? DB::table('petugas_jaga as pj')
                 ->join('peserta as pe', 'pe.idpeserta', '=', 'pj.idpeserta')
                 ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
@@ -63,51 +66,68 @@ class PameranController extends Controller
             ->orderBy('nomor_kluster')
             ->get();
 
-        $riwayat = collect();
-        $sedangDireview = $pameran && (
-            $pameran->status_ajuan === '3'
-            || ($pameran->status_ajuan === '2' && $pameran->direview_oleh !== null)
-        );
-        $draftSaatIni = null;
+        $reviewer1 = $pameran ? $this->riwayatReviewerPameran($pameran->idpameran, 1) : null;
+        $reviewer2 = $pameran ? $this->riwayatReviewerPameran($pameran->idpameran, 2) : null;
+        $tokenFilePertama = $pameran ? $this->encryptRouteValue($pameran->idpameran) : null;
 
-        if ($pameran) {
-            $semuaRiwayat = DB::table('review_pameran')
-                ->where('idpameran', $pameran->idpameran)
-                ->orderBy('idreview')
-                ->get()
-                ->map(function ($baris) {
-                    $baris->token = $this->encryptRouteValue($baris->idreview);
-                    $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
-                        ? $this->kriteriaUntukReview($baris->idreview)
-                        : collect();
-
-                    return $baris;
-                });
-
-            $terakhir = $semuaRiwayat->last();
-
-            if ($terakhir && $terakhir->status_ajuan === '1') {
-                $draftSaatIni = $terakhir;
-                $riwayat = $semuaRiwayat->slice(0, -1)->values();
-            } else {
-                $riwayat = $semuaRiwayat;
-            }
-        }
-
-        $bisaEdit = ! $pameran || in_array($pameran->status_ajuan, ['1', '4'], true);
-        $idKlusterBerbayar = self::IDKLUSTER_BERBAYAR;
+        $sedangDireview = $pameran && $pameran->status_ajuan === '3';
+        $bisaEdit = ! $pameran || $pameran->status_ajuan === '1';
 
         return view('peserta.pameran', compact(
-            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'klusterOptions', 'riwayat',
-            'sedangDireview', 'draftSaatIni', 'bisaEdit', 'penjagaStand', 'idKlusterBerbayar'
+            'menu', 'submenu', 'pameran', 'tagihan', 'pesertaOptions', 'klusterOptions',
+            'reviewer1', 'reviewer2', 'tokenFilePertama', 'sedangDireview', 'bisaEdit', 'penjagaStand'
         ));
     }
 
     /**
-     * Save (or start) the current draft turn — creates the `pameran` row on
-     * the very first save, and either updates the open Draft row or starts a
-     * new one when the previous turn ended in Revisi (see
-     * docs/features/007-pengajuan-pameran.md §8).
+     * Riwayat satu thread reviewer (reviewer_ke 1 atau 2) untuk sebuah
+     * pameran — null kalau Admin belum memetakan reviewer di slot itu
+     * (dikonfirmasi developer: 2 reviewer independen, masing-masing
+     * riwayat/revisi terpisah, lihat Controller::syncPameranStatus()).
+     *
+     * @return array{reviewerPameran: object, namaSc: string, riwayat: Collection}|null
+     */
+    private function riwayatReviewerPameran(int $idpameran, int $reviewerKe): ?array
+    {
+        $reviewerPameran = DB::table('reviewer_pameran as rp')
+            ->join('pengguna as sc', 'sc.idpengguna', '=', 'rp.idpengguna')
+            ->where('rp.idpameran', $idpameran)
+            ->where('rp.reviewer_ke', $reviewerKe)
+            ->select('rp.idreviewer_pameran', 'sc.nama as nama_sc')
+            ->first();
+
+        if (! $reviewerPameran) {
+            return null;
+        }
+
+        $riwayat = DB::table('review_pameran')
+            ->where('created_by', $reviewerPameran->idreviewer_pameran)
+            ->orderBy('idreview')
+            ->get()
+            ->map(function ($baris) {
+                $baris->token = $this->encryptRouteValue($baris->idreview);
+                $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6'], true)
+                    ? $this->kriteriaUntukReviewPameran($baris->idreview)
+                    : collect();
+
+                return $baris;
+            });
+
+        return [
+            'reviewerPameran' => $reviewerPameran,
+            'tokenReviewer' => $this->encryptRouteValue($reviewerPameran->idreviewer_pameran),
+            'namaSc' => $reviewerPameran->nama_sc,
+            'riwayat' => $riwayat,
+        ];
+    }
+
+    /**
+     * Save (or start) the Draft — creates the `pameran` row on the very
+     * first save, else updates it in place. The first-ever uploaded file
+     * is stored on `pameran.file_path_pertama` directly (dikonfirmasi
+     * developer) — there's no review_pameran row yet at this stage, since
+     * SC reviewer threads only start once Admin maps reviewers and an SC
+     * clicks "Mulai Review" (see PameranReviewController::mulaiReview()).
      */
     public function simpanDraft(Request $request)
     {
@@ -141,6 +161,10 @@ class PameranController extends Controller
 
         $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
 
+        if ($pameran && $pameran->status_ajuan !== '1') {
+            return $this->jsonResponse(422, 'Pengajuan ini tidak bisa diubah pada status saat ini.');
+        }
+
         try {
             DB::transaction(function () use ($request, $validated, $idInstitusiAsal, $userdata, &$pameran) {
                 if (! $pameran) {
@@ -160,32 +184,13 @@ class PameranController extends Controller
                         'abstract' => $validated['abstract'],
                         'idpeserta_PIC' => $validated['idpeserta_PIC'],
                         'idkluster_pameran' => $validated['idkluster_pameran'],
-                        'status_ajuan' => '1',
                     ]);
                 }
 
-                $terakhir = DB::table('review_pameran')
-                    ->where('idpameran', $pameran->idpameran)
-                    ->orderByDesc('idreview')
-                    ->first();
-
-                if ($terakhir && $terakhir->status_ajuan === '1') {
-                    $idreview = $terakhir->idreview;
-                } elseif (! $terakhir || $terakhir->status_ajuan === '4') {
-                    $idreview = DB::table('review_pameran')->insertGetId([
-                        'idpameran' => $pameran->idpameran,
-                        'status_ajuan' => '1',
-                        'created_by' => $userdata['idpengguna'],
-                        'created_at' => now(),
-                    ], 'idreview');
-                } else {
-                    throw new \RuntimeException('Pengajuan ini tidak bisa diubah pada status saat ini.');
-                }
-
                 if ($request->hasFile('portofolio')) {
-                    $path = $this->simpanPortofolioPameran($pameran->idpameran, $idreview, $request->file('portofolio'));
-                    DB::table('review_pameran')->where('idreview', $idreview)->update(['file_path' => $path]);
-                } elseif (! $terakhir || $terakhir->status_ajuan !== '1' || ! $terakhir->file_path) {
+                    $path = $this->simpanFilePertamaPameran($pameran->idpameran, $request->file('portofolio'));
+                    DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['file_path_pertama' => $path]);
+                } elseif (! $pameran->file_path_pertama) {
                     throw new \RuntimeException('Form Keikutsertaan (PDF/DOC/DOCX) wajib diunggah.');
                 }
 
@@ -203,9 +208,10 @@ class PameranController extends Controller
     }
 
     /**
-     * Submit the open Draft turn — moves it to Pengajuan and issues a
-     * tagihan (first submission only; later Revisi→Pengajuan cycles reuse
-     * the same tagihan, see docs/features/007-pengajuan-pameran.md §4).
+     * Submit the Draft — moves `pameran.status_ajuan` to Pengajuan (2) and
+     * issues a tagihan (first submission only). No `review_pameran` row is
+     * touched here anymore — SC reviewer threads only start once Admin
+     * maps reviewers and an SC clicks "Mulai Review".
      */
     public function ajukan(Request $request)
     {
@@ -214,20 +220,11 @@ class PameranController extends Controller
 
         $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
 
-        if (! $pameran) {
-            return $this->jsonResponse(404, 'Belum ada pengajuan pameran untuk diajukan.');
-        }
-
-        $draft = DB::table('review_pameran')
-            ->where('idpameran', $pameran->idpameran)
-            ->orderByDesc('idreview')
-            ->first();
-
-        if (! $draft || $draft->status_ajuan !== '1') {
+        if (! $pameran || $pameran->status_ajuan !== '1') {
             return $this->jsonResponse(422, 'Tidak ada draf yang bisa diajukan saat ini.');
         }
 
-        if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $pameran->idkluster_pameran || ! $draft->file_path) {
+        if (! $pameran->tema || ! $pameran->abstract || ! $pameran->idpeserta_PIC || ! $pameran->idkluster_pameran || ! $pameran->file_path_pertama) {
             return $this->jsonResponse(422, 'Lengkapi tema, kluster, PIC, Risalah Singkat Pameran, dan Form Keikutsertaan sebelum mengajukan.');
         }
 
@@ -238,103 +235,53 @@ class PameranController extends Controller
         }
 
         $tagihanBaruDibuat = false;
-        $perluBayar = false;
+        $klusterBerbayar = (int) $pameran->idkluster_pameran === self::IDKLUSTER_BERBAYAR;
 
         try {
-            $pic = $this->dataPicPameran($pameran);
-
-            DB::transaction(function () use ($pameran, $draft, $idInstitusiAsal, $userdata, $pic, &$tagihanBaruDibuat, &$perluBayar) {
-                DB::table('review_pameran')->where('idreview', $draft->idreview)->update(['status_ajuan' => '2']);
+            DB::transaction(function () use ($pameran, $idInstitusiAsal, $userdata, $klusterBerbayar, &$tagihanBaruDibuat) {
                 DB::table('pameran')->where('idpameran', $pameran->idpameran)->update(['status_ajuan' => '2']);
 
                 $tagihan = $this->tagihanTerbaru($pameran->idpameran);
-                $klusterBerbayar = (int) $pameran->idkluster_pameran === self::IDKLUSTER_BERBAYAR;
 
                 if (! $tagihan) {
-                    // Belum pernah ada tagihan sama sekali — pengajuan pertama kali.
                     $tagihanBaruDibuat = true;
-                    $perluBayar = $klusterBerbayar;
-                } elseif ($klusterBerbayar && (int) $tagihan->status === 3 && ! $this->pernahDibayar($pameran->idpameran)) {
-                    // Kluster baru diganti jadi berbayar, padahal tagihan yang ada
-                    // sekarang cuma auto-lunas (kluster lama tidak berbayar) —
-                    // belum pernah ada pembayaran sungguhan. Terbitkan tagihan
-                    // baru yang sungguh perlu dibayar (bukan update baris lama,
-                    // sama seperti requestVaBaru() — satu pameran bisa punya
-                    // beberapa baris tagihan berturutan).
-                    $tagihanBaruDibuat = true;
-                    $perluBayar = true;
-                }
 
-                if ($tagihanBaruDibuat && $perluBayar) {
-                    $idtagihan = DB::table('tagihan')->insertGetId([
-                        'idinstitusi_asal' => $idInstitusiAsal,
-                        'idpameran' => $pameran->idpameran,
-                        'created_at' => now(),
-                        'created_by' => $userdata['idpengguna'],
-                        'status' => 1,
-                        'tagihan' => config('services.biaya_pameran'),
-                        'sisa_tagihan' => config('services.biaya_pameran'),
-                    ], 'idtagihan');
-
-                    $tagihan = DB::table('tagihan')->where('idtagihan', $idtagihan)->first();
-
-                    $va_arr = app(BniVirtualAccountService::class)->requestVa($tagihan->idtagihan, $pic->nama, $pic->email, $pic->no_wa);
-
-                    if ($va_arr['code'] !== 200) {
-                        throw new \RuntimeException('Gagal membuat nomor Virtual Account baru: '.$va_arr['message']);
-                    }
-
-                    DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
-                        'va' => $va_arr['data']['va_number'],
-                        'expired_date' => $va_arr['data']['datetime_expired'],
-                    ]);
-                } elseif ($tagihanBaruDibuat) {
-                    // Kluster tidak dikenakan biaya — tagihan langsung lunas tanpa
-                    // VA, supaya pengajuan langsung bisa direview SC.
+                    // Kluster berbayar (5) tidak lagi diminta bayar saat
+                    // pengajuan — tagihan dibuat dengan status Ditangguhkan
+                    // (6), tanpa VA, supaya pengajuan tetap bisa langsung
+                    // direview SC (dikonfirmasi developer; lihat juga
+                    // PameranReviewController yang menerima status 3 & 6).
+                    // Tagihan baru benar-benar ditagihkan (VA diterbitkan)
+                    // kalau hasil review-nya Diterima — menyusul setelah
+                    // metode review diubah (pekerjaan terpisah).
                     DB::table('tagihan')->insertGetId([
                         'idinstitusi_asal' => $idInstitusiAsal,
                         'idpameran' => $pameran->idpameran,
                         'created_at' => now(),
                         'created_by' => $userdata['idpengguna'],
-                        'status' => 3,
-                        'tagihan' => 0,
-                        'sisa_tagihan' => 0,
+                        'status' => $klusterBerbayar ? self::TAGIHAN_STATUS_DITANGGUHKAN : 3,
+                        'tagihan' => $klusterBerbayar ? config('services.biaya_pameran') : 0,
+                        'sisa_tagihan' => $klusterBerbayar ? config('services.biaya_pameran') : 0,
                     ], 'idtagihan');
                 }
 
                 $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], "Mengajukan pameran: {$pameran->tema}");
             });
-        } catch (\RuntimeException $e) {
-            return $this->jsonResponse(422, $e->getMessage());
         } catch (\Throwable $e) {
             report($e);
 
             return $this->jsonResponse(500, 'Gagal mengajukan pameran.');
         }
 
-        if ($perluBayar) {
-            $pesan = 'Pengajuan pameran berhasil dikirim. Silakan selesaikan pembayaran agar bisa direview SC.';
+        if ($tagihanBaruDibuat && $klusterBerbayar) {
+            $pesan = 'Pengajuan pameran berhasil dikirim. Tagihan untuk kluster ini ditangguhkan dan baru ditagihkan jika pengajuan Diterima — pengajuan tetap langsung dapat direview SC.';
         } elseif ($tagihanBaruDibuat) {
-            $pesan = 'Pengajuan pameran berhasil dikirim. Kluster ini tidak dikenakan biaya, pengajuan langsung dapat direview SC.';
+            $pesan = 'Pengajuan pameran berhasil dikirim. Pengajuan langsung dapat direview SC.';
         } else {
             $pesan = 'Pengajuan pameran berhasil dikirim ulang untuk direview SC.';
         }
 
         return $this->jsonResponse(200, $pesan);
-    }
-
-    /**
-     * Apakah pameran ini pernah punya pembayaran sungguhan (lintas semua
-     * baris tagihan miliknya, bukan cuma yang terbaru) — dipakai untuk
-     * membedakan tagihan yang lunas karena kluster gratis (auto-lunas, tidak
-     * pernah ada baris `pembayaran`) dari yang benar-benar sudah dibayar.
-     */
-    private function pernahDibayar(int $idpameran): bool
-    {
-        return DB::table('pembayaran as pb')
-            ->join('tagihan as t', 't.idtagihan', '=', 'pb.idtagihan')
-            ->where('t.idpameran', $idpameran)
-            ->exists();
     }
 
     /**
@@ -500,7 +447,7 @@ class PameranController extends Controller
 
     /**
      * Tambah satu penjaga stand — maksimal 2 orang per pameran, dari
-     * kontingen sendiri (PIC boleh ikut dipilih), cuma setelah Diterima.
+     * kontingen sendiri (PIC boleh ikut dipilih), cuma setelah Terpilih (9).
      */
     public function tambahPenjaga(Request $request)
     {
@@ -513,8 +460,8 @@ class PameranController extends Controller
 
         $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
 
-        if (! $pameran || $pameran->status_ajuan !== '5') {
-            return $this->jsonResponse(422, 'Pengajuan harus sudah Diterima.');
+        if (! $pameran || $pameran->status_ajuan !== '9') {
+            return $this->jsonResponse(422, 'Pengajuan harus sudah Terpilih.');
         }
 
         if ($pameran->nomor_stand) {
@@ -553,8 +500,9 @@ class PameranController extends Controller
     }
 
     /**
-     * Simpan tanggal loading barang — hanya setelah Diterima, dan terkunci
-     * (sama seperti penjaga stand) begitu admin menetapkan nomor stand.
+     * Simpan tanggal loading barang — hanya setelah Terpilih (9), dan
+     * terkunci (sama seperti penjaga stand) begitu admin menetapkan nomor
+     * stand.
      */
     public function simpanJadwalLoading(Request $request)
     {
@@ -567,8 +515,8 @@ class PameranController extends Controller
 
         $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
 
-        if (! $pameran || $pameran->status_ajuan !== '5') {
-            return $this->jsonResponse(422, 'Pengajuan harus sudah Diterima.');
+        if (! $pameran || $pameran->status_ajuan !== '9') {
+            return $this->jsonResponse(422, 'Pengajuan harus sudah Terpilih.');
         }
 
         if ($pameran->nomor_stand) {
@@ -620,9 +568,11 @@ class PameranController extends Controller
     }
 
     /**
-     * Serve a portofolio file — never exposed as a static public URL
-     * (CONVENTIONS.md §7). Scoped to the kontingen that owns the pameran;
-     * SC/admin access the same file via their own controllers.
+     * Serve a portofolio file for a specific review turn — never exposed
+     * as a static public URL (CONVENTIONS.md §7). Scoped to the kontingen
+     * that owns the pameran, reached via review_pameran.created_by →
+     * reviewer_pameran.idpameran (review_pameran no longer has its own
+     * idpameran column, dikonfirmasi developer).
      */
     public function tampilPortofolio(Request $request)
     {
@@ -634,7 +584,8 @@ class PameranController extends Controller
         }
 
         $review = DB::table('review_pameran as r')
-            ->join('pameran as p', 'p.idpameran', '=', 'r.idpameran')
+            ->join('reviewer_pameran as rp', 'rp.idreviewer_pameran', '=', 'r.created_by')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
             ->where('r.idreview', (int) $idreview)
             ->where('p.idinstitusi_asal', $userdata['idinstitusi_asal'])
             ->select('r.file_path')
@@ -645,6 +596,149 @@ class PameranController extends Controller
         }
 
         return Storage::disk('local')->response($review->file_path);
+    }
+
+    /**
+     * Serve the very first uploaded file (pameran.file_path_pertama) —
+     * shown in both reviewer tabs' intro and used by SC when they click
+     * "Mulai Review" (file_path copied from here into their own
+     * review_pameran row).
+     */
+    public function tampilFilePertama(Request $request)
+    {
+        $userdata = session('userdata');
+        $idpameran = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpameran === null) {
+            abort(404);
+        }
+
+        $pameran = DB::table('pameran')
+            ->where('idpameran', (int) $idpameran)
+            ->where('idinstitusi_asal', $userdata['idinstitusi_asal'])
+            ->first();
+
+        if (! $pameran || ! $pameran->file_path_pertama || ! Storage::disk('local')->exists($pameran->file_path_pertama)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($pameran->file_path_pertama);
+    }
+
+    /**
+     * Halaman untuk membalas permintaan revisi dari satu reviewer —
+     * menampilkan catatan + breakdown kriteria permintaan revisi tersebut
+     * (konteks baca saja) sebelum peserta mengunggah file baru.
+     */
+    public function tampilBalasRevisi(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $idreviewerPameran = $this->decryptRouteValue($request->query('token'));
+
+        if ($idreviewerPameran === null) {
+            abort(404);
+        }
+
+        $reviewerPameran = DB::table('reviewer_pameran as rp')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
+            ->join('pengguna as sc', 'sc.idpengguna', '=', 'rp.idpengguna')
+            ->where('rp.idreviewer_pameran', (int) $idreviewerPameran)
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->select('rp.idreviewer_pameran', 'rp.idpameran', 'sc.nama as nama_sc', 'p.tema')
+            ->first();
+
+        if (! $reviewerPameran) {
+            abort(404);
+        }
+
+        $permintaanRevisi = DB::table('review_pameran')
+            ->where('created_by', $reviewerPameran->idreviewer_pameran)
+            ->orderByDesc('idreview')
+            ->first();
+
+        if (! $permintaanRevisi || $permintaanRevisi->status_ajuan !== '4') {
+            abort(404);
+        }
+
+        $menu = 'pameran';
+        $submenu = '';
+        $token = $this->encryptRouteValue($reviewerPameran->idreviewer_pameran);
+        $kriteria = $this->kriteriaUntukReviewPameran($permintaanRevisi->idreview);
+
+        return view('peserta.pameran-balas-revisi', compact(
+            'menu', 'submenu', 'token', 'reviewerPameran', 'permintaanRevisi', 'kriteria'
+        ));
+    }
+
+    /**
+     * Balas permintaan revisi dari salah satu reviewer — upload file baru
+     * (wajib) + catatan opsional untuk reviewer, menambahkan baris baru di
+     * thread reviewer tersebut. Catatan peserta disimpan di kolom
+     * `catatan_peserta`, terpisah dari `catatan` yang dipakai SC
+     * (dikonfirmasi developer). Hanya bisa dilakukan ketika giliran
+     * terakhir thread itu berstatus Revisi (4).
+     */
+    public function balasRevisi(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $idreviewerPameran = $this->decryptRouteValue($request->input('token'));
+
+        if ($idreviewerPameran === null) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'portofolio' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            'catatan' => ['nullable', 'string'],
+        ]);
+
+        $reviewerPameran = DB::table('reviewer_pameran as rp')
+            ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
+            ->where('rp.idreviewer_pameran', (int) $idreviewerPameran)
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->select('rp.idreviewer_pameran', 'rp.idpameran')
+            ->first();
+
+        if (! $reviewerPameran) {
+            return $this->jsonResponse(404, 'Reviewer tidak ditemukan.');
+        }
+
+        $terakhir = DB::table('review_pameran')
+            ->where('created_by', $reviewerPameran->idreviewer_pameran)
+            ->orderByDesc('idreview')
+            ->first();
+
+        if (! $terakhir || $terakhir->status_ajuan !== '4') {
+            return $this->jsonResponse(422, 'Tidak ada permintaan revisi yang menunggu dibalas pada reviewer ini.');
+        }
+
+        try {
+            DB::transaction(function () use ($request, $validated, $reviewerPameran, $idInstitusiAsal, $userdata) {
+                $idreview = DB::table('review_pameran')->insertGetId([
+                    'created_by' => $reviewerPameran->idreviewer_pameran,
+                    'status_ajuan' => '2',
+                    'catatan_peserta' => $validated['catatan'] ?? null,
+                    'created_at' => now(),
+                ], 'idreview');
+
+                $path = $this->simpanPortofolioPameran($reviewerPameran->idpameran, $idreview, $request->file('portofolio'));
+                DB::table('review_pameran')->where('idreview', $idreview)->update(['file_path' => $path]);
+
+                $this->syncPameranStatus($reviewerPameran->idpameran);
+
+                $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Membalas permintaan revisi pameran.');
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengirim balasan revisi.');
+        }
+
+        return $this->jsonResponse(200, 'Balasan revisi berhasil dikirim.');
     }
 
     /**
@@ -728,21 +822,6 @@ class PameranController extends Controller
     }
 
     /**
-     * The 4-criteria scoring breakdown for one review_pameran row (empty for
-     * rows that never reached an SC decision), joined with topik_review for
-     * the criteria name.
-     */
-    private function kriteriaUntukReview(int $idreview)
-    {
-        return DB::table('isi_review_pameran as i')
-            ->join('topik_review as t', 't.idtopik_review', '=', 'i.idtopik_review')
-            ->where('i.idreview', $idreview)
-            ->select('t.nama_topik', 'i.isi_review', 'i.memenuhi')
-            ->orderBy('t.idtopik_review')
-            ->get();
-    }
-
-    /**
      * Store an uploaded portofolio file on the private `local` disk, keyed
      * deterministically by idpameran+idreview so re-uploading within the
      * same draft turn simply overwrites it (no stale leftover file).
@@ -751,6 +830,21 @@ class PameranController extends Controller
     {
         $ext = strtolower($file->getClientOriginalExtension());
         $path = "portofolio-pameran/pameran-{$idpameran}-{$idreview}.{$ext}";
+
+        Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+
+        return $path;
+    }
+
+    /**
+     * Store the very first uploaded file directly on pameran.file_path_pertama
+     * — keyed by idpameran only (no idreview yet at this stage), so
+     * re-uploading before the first ajukan() simply overwrites it.
+     */
+    private function simpanFilePertamaPameran(int $idpameran, UploadedFile $file): string
+    {
+        $ext = strtolower($file->getClientOriginalExtension());
+        $path = "portofolio-pameran/pameran-{$idpameran}-pertama.{$ext}";
 
         Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
 
