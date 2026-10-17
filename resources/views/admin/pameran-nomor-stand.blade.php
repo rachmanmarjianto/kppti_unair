@@ -153,7 +153,7 @@
                                 <span class="flex-grow-1">{{ $petugas->nama ?? '' }}</span>
                                 <button type="button" class="btn btn-sm btn-outline-secondary btn-ganti-penjaga">Ganti</button>
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-hapus-penjaga-admin" data-idpetugas-jaga="{{ $petugas->idpetugas_jaga ?? '' }}">
-                                    <i class="fa-solid fa-trash"></i>
+                                    &times;
                                 </button>
                             </div>
 

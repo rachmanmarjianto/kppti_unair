@@ -291,6 +291,17 @@ class Controller extends BaseController
      */
     protected function syncPameranStatus(int $idpameran): void
     {
+        // Row lock on `pameran` so two concurrent calls for the same
+        // idpameran (e.g. both reviewers finalizing Memenuhi at nearly the
+        // same moment) are serialized — without this, both transactions
+        // can read each other's pre-update state and both conclude "not
+        // both Memenuhi yet", permanently losing the transition to
+        // Proses Seleksi (7) (confirmed via a 2-connection race
+        // reproduction before this fix was added). Every call site already
+        // wraps this in DB::transaction(), so the lock is held until that
+        // transaction commits.
+        DB::table('pameran')->where('idpameran', $idpameran)->lockForUpdate()->first();
+
         $latestPerThread = DB::table('reviewer_pameran as rp')
             ->where('rp.idpameran', $idpameran)
             ->select('rp.idreviewer_pameran', 'rp.reviewer_ke')

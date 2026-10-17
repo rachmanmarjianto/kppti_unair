@@ -184,16 +184,34 @@ class PameranReviewController extends Controller
             return $this->jsonResponse(422, 'Tagihan pengajuan ini belum lunas.');
         }
 
-        DB::transaction(function () use ($reviewerPameran, $pameran) {
-            DB::table('review_pameran')->insert([
-                'created_by' => $reviewerPameran->idreviewer_pameran,
-                'status_ajuan' => '3',
-                'file_path' => $pameran->file_path_pertama,
-                'created_at' => now(),
-            ]);
+        try {
+            DB::transaction(function () use ($reviewerPameran, $pameran) {
+                // Row lock supaya 2 klik beruntun dari SC yang sama (dobel
+                // klik, atau request yang di-retry) tidak lolos cek
+                // "sudahMulai" bersamaan dan membuat 2 baris review_pameran
+                // untuk thread yang sama — klik kedua akan menunggu baris
+                // ini, lalu cek ulang dan ditolak (dikonfirmasi lewat
+                // pengujian 2 koneksi terpisah).
+                DB::table('reviewer_pameran')->where('idreviewer_pameran', $reviewerPameran->idreviewer_pameran)->lockForUpdate()->first();
 
-            $this->syncPameranStatus($pameran->idpameran);
-        });
+                $sudahMulai = DB::table('review_pameran')->where('created_by', $reviewerPameran->idreviewer_pameran)->exists();
+
+                if ($sudahMulai) {
+                    throw new \RuntimeException('Review ini sudah dimulai.');
+                }
+
+                DB::table('review_pameran')->insert([
+                    'created_by' => $reviewerPameran->idreviewer_pameran,
+                    'status_ajuan' => '3',
+                    'file_path' => $pameran->file_path_pertama,
+                    'created_at' => now(),
+                ]);
+
+                $this->syncPameranStatus($pameran->idpameran);
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(422, $e->getMessage());
+        }
 
         return $this->jsonResponse(200, 'Review berhasil dimulai.');
     }
