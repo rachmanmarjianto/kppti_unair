@@ -84,7 +84,7 @@
                                     </p>
                                 @elseif($tagihan->status === 1)
                                     <p class="mt-2 mb-0" style="font-size: 12.5px; color:red">
-                                        Tagihan ini belum dibayar. Silahkan lakukan pembayaran untuk dapat direview oleh SC.
+                                        Tagihan ini belum dibayar. Silahkan lakukan pembayaran untuk dapat mengikuti Pameran.
                                     </p>
                                 @elseif($tagihan->status === 6)
                                     <p class="mt-2 mb-0" style="font-size: 12.5px;">
