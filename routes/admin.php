@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\DataMasterController;
 use App\Http\Controllers\JadwalPentingController;
 use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
@@ -62,4 +63,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-seminar-kit/master/toggle-status', [SeminarKitController::class, 'toggleStatus'])->name('admin.seminar-kit.master.toggle-status');
     Route::get('/admin-seminar-kit/progress', [SeminarKitController::class, 'progress'])->name('admin.seminar-kit.progress');
     Route::get('/admin-seminar-kit/progress/detail', [SeminarKitController::class, 'progressDetail'])->name('admin.seminar-kit.progress.detail');
+    Route::get('/admin-data-master/universitas', [DataMasterController::class, 'universitasIndex'])->name('admin.data-master.universitas');
+    Route::get('/admin-data-master/universitas/cari', [DataMasterController::class, 'cariUniversitas'])->name('admin.data-master.universitas.cari');
+    Route::post('/admin-data-master/universitas/tambah', [DataMasterController::class, 'tambahUniversitas'])->name('admin.data-master.universitas.tambah');
 });
