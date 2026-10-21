@@ -41,6 +41,7 @@
 @endphp
 
 @section('content')
+    <form method="GET" action="{{ route('admin.narasumber') }}" id="form-filter-acara-narasumber">
     <div class="col-lg-12 col-md-12 layout-spacing">
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
@@ -51,6 +52,47 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-parent-narasumber" class="form-label">Filter Sub Tema</label>
+                    <select id="input-filter-parent-narasumber" name="idparent_acara" class="form-select" onchange="document.getElementById('input-filter-acara-narasumber').value = ''; this.form.submit();">
+                        <option value="">-- Semua Sub Tema --</option>
+                        @foreach($acaraParentOptions as $parent)
+                            <option value="{{ $parent->idparent_acara }}" @if((string) $idparentAcara === (string) $parent->idparent_acara) selected @endif>
+                                {{ $parent->parent_tema }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3" style="width: 80%; margin:15px">
+                    <label for="input-filter-acara-narasumber" class="form-label">Filter Sesi</label>
+                    <select id="input-filter-acara-narasumber" name="idacara" class="form-select" onchange="this.form.submit()" @if(! $idparentAcara) disabled @endif>
+                        <option value="">-- Semua Sesi --</option>
+                        @foreach($acaraOptionsFilter as $acara)
+                            <option value="{{ $acara->idacara }}" @if((string) $idacara === (string) $acara->idacara) selected @endif>
+                                {{ $acara->tema }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if(! $idparentAcara)
+                        <small class="text-muted">Pilih Sub Tema terlebih dahulu.</small>
+                    @endif
+                </div>
+
+                <p class="mb-3" style="margin:15px">
+                    <b>Acara yang dipilih:</b>
+                    @if($acaraTerpilih)
+                        @if($acaraTerpilih->parent_tema)
+                            {{ $acaraTerpilih->parent_tema }} <br>&mdash;
+                        @endif
+                        {{ $acaraTerpilih->tema }}
+                    @elseif($parentTerpilih)
+                        {{ $parentTerpilih->parent_tema }}
+                    @else
+                        Semua Acara
+                    @endif
+                </p>
+
                 <div class="table-responsive">
                     <table id="table-narasumber" class="table table-hover table-bordered table-narasumber">
                         <thead>
@@ -82,6 +124,7 @@
             </div>
         </div>
     </div>
+    </form>
 @endsection
 
 @section('page-js')

@@ -49,9 +49,10 @@ class PameranReviewController extends Controller
         $antrean = DB::table('reviewer_pameran as rp')
             ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('rp.idpengguna', $userdata['idpengguna'])
             ->where($belumMulai)
-            ->select('p.idpameran', 'p.tema', 'i.nama_institusi')
+            ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'k.nomor_kluster', 'k.tema_kluster')
             ->orderBy('p.idpameran')
             ->get()
             ->map(function ($row) {
@@ -63,11 +64,12 @@ class PameranReviewController extends Controller
         $diproses = DB::table('reviewer_pameran as rp')
             ->join('pameran as p', 'p.idpameran', '=', 'rp.idpameran')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('rp.idpengguna', $userdata['idpengguna'])
             ->whereExists(
                 fn ($sub) => $sub->select('idreview')->from('review_pameran')->whereColumn('created_by', 'rp.idreviewer_pameran')
             )
-            ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'p.status_ajuan')
+            ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'p.status_ajuan', 'k.nomor_kluster', 'k.tema_kluster')
             ->orderBy('p.idpameran')
             ->get()
             ->map(function ($row) {
@@ -100,8 +102,9 @@ class PameranReviewController extends Controller
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic')
+            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic', 'k.nomor_kluster', 'k.tema_kluster')
             ->first();
 
         if (! $pameran) {

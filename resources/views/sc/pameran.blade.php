@@ -62,6 +62,7 @@
                             <tr>
                                 <th>Institusi</th>
                                 <th>Tema</th>
+                                <th>Kluster</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -70,6 +71,7 @@
                                 <tr>
                                     <td>{{ $baris->nama_institusi }}</td>
                                     <td>{{ $baris->tema }}</td>
+                                    <td>{{ $baris->nomor_kluster ? 'Kluster '.$baris->nomor_kluster.' — '.$baris->tema_kluster : '-' }}</td>
                                     <td class="text-center">
                                         <a href="{{ route('sc.pameran.detail') }}?token={{ $baris->token }}" class="btn btn-sm btn-outline-secondary">Lihat Detail</a>
                                     </td>
@@ -98,6 +100,7 @@
                             <tr>
                                 <th>Institusi</th>
                                 <th>Tema</th>
+                                <th>Kluster</th>
                                 <th>Status</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -107,6 +110,7 @@
                                 <tr>
                                     <td>{{ $baris->nama_institusi }}</td>
                                     <td>{{ $baris->tema }}</td>
+                                    <td>{{ $baris->nomor_kluster ? 'Kluster '.$baris->nomor_kluster.' — '.$baris->tema_kluster : '-' }}</td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}

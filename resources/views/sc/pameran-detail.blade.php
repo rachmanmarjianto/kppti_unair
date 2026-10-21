@@ -66,6 +66,10 @@
                     <div class="col-12 col-sm-9">{{ $pameran->tema }}</div>
                 </div>
                 <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Kluster Pameran</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nomor_kluster ? 'Kluster '.$pameran->nomor_kluster.' — '.$pameran->tema_kluster : '-' }}</div>
+                </div>
+                <div class="row mb-2">
                     <div class="col-12 col-sm-3 fw-bold">Risalah Singkat Pameran</div>
                     <div class="col-12 col-sm-9">{!! $pameran->abstract !!}</div>
                 </div>

@@ -13,14 +13,40 @@ class NarasumberAdminController extends Controller
      * luas di aplikasi ini, jadi ditampilkan tanpa kecuali (termasuk yang
      * masih Draft), sama seperti pola `PameranAdminController::index()`.
      */
-    public function index()
+    public function index(Request $request)
     {
         $menu = 'narasumber';
         $submenu = '';
 
+        $acaraOptions = $this->acaraAktifQuery()
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
+            ->where('acara.perlu_narsum', true)
+            ->select('acara.idacara', 'acara.tema', 'acara.idparent_acara', 'parent.tema as parent_tema')
+            ->orderBy('acara.tema')
+            ->get();
+
+        // Filter acara dibuat 2 jenjang, mengikuti pola yang sudah ada di
+        // halaman SC (`NarasumberReviewController::index()`): jenjang 1
+        // memilih sub tema (parent), jenjang 2 memilih sesinya sendiri.
+        $acaraParentOptions = $acaraOptions
+            ->unique('idparent_acara')
+            ->map(fn ($a) => (object) ['idparent_acara' => $a->idparent_acara, 'parent_tema' => $a->parent_tema])
+            ->sortBy('parent_tema')
+            ->values();
+
+        $idparentAcara = $request->query('idparent_acara');
+        $idacara = $request->query('idacara');
+
+        $acaraOptionsFilter = $idparentAcara ? $acaraOptions->where('idparent_acara', $idparentAcara)->values() : collect();
+        $acaraTerpilih = $idacara ? $acaraOptions->firstWhere('idacara', (int) $idacara) : null;
+        $parentTerpilih = $idparentAcara ? $acaraParentOptions->firstWhere('idparent_acara', (int) $idparentAcara) : null;
+
         $narasumber = DB::table('narasumber as n')
             ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
             ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
+            ->when($idacara, fn ($query) => $query->where('n.idacara', $idacara))
+            ->when(! $idacara && $idparentAcara, fn ($query) => $query->where('a.idparent_acara', $idparentAcara))
             ->select('n.idnarasumber', 'p.nama', 'n.status_ajuan', 'i.nama_institusi')
             ->orderBy('n.idnarasumber')
             ->get()
@@ -30,7 +56,10 @@ class NarasumberAdminController extends Controller
                 return $row;
             });
 
-        return view('admin.narasumber', compact('menu', 'submenu', 'narasumber'));
+        return view('admin.narasumber', compact(
+            'menu', 'submenu', 'narasumber', 'acaraParentOptions', 'acaraOptionsFilter',
+            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih'
+        ));
     }
 
     /**
