@@ -42,54 +42,54 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
-                <table class="table table-borderless mb-0">
-                    <tbody>
-                        <tr>
-                            <th style="width: 220px;">Institusi</th>
-                            <td>{{ $pameran->nama_institusi }}</td>
-                        </tr>
-                        <tr>
-                            <th>PIC</th>
-                            <td>{{ $pameran->nama_pic }}</td>
-                        </tr>
-                        <tr>
-                            <th>Tema</th>
-                            <td>{{ $pameran->tema }}</td>
-                        </tr>
-                        <tr>
-                            <th>Risalah Singkat Pameran</th>
-                            <td>{!! $pameran->abstract !!}</td>
-                        </tr>
-                        <tr>
-                            <th>Form Keikutsertaan (berkas pertama)</th>
-                            <td>
-                                @if($pameran->file_path_pertama)
-                                    <a href="{{ route('admin.pameran.ajuan.file-pertama') }}?token={{ $token }}" target="_blank">
-                                        <i class="fa-solid fa-file-arrow-down"></i> Lihat berkas pertama
-                                    </a>
-                                @else
-                                    -
-                                @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Nomor Stand</th>
-                            <td>{{ $pameran->nomor_stand }}</td>
-                        </tr>
-                        <tr>
-                            <th>Nilai Final / Selisih Nilai</th>
-                            <td>{{ $pameran->nilai_final ?? '-' }} / {{ $pameran->selisih_nilai ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Status Saat Ini</th>
-                            <td>
-                                <span class="badge {{ $labelStatus[$pameran->status_ajuan][1] ?? 'bg-secondary' }}">
-                                    {{ $labelStatus[$pameran->status_ajuan][0] ?? '-' }}
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Institusi</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nama_institusi }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">PIC</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nama_pic }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Tema</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->tema }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Kluster Pameran</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nomor_kluster ? 'Kluster '.$pameran->nomor_kluster.' — '.$pameran->tema_kluster : '-' }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Risalah Singkat Pameran</div>
+                    <div class="col-12 col-sm-9">{!! $pameran->abstract !!}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Form Keikutsertaan (berkas pertama)</div>
+                    <div class="col-12 col-sm-9">
+                        @if($pameran->file_path_pertama)
+                            <a href="{{ route('admin.pameran.ajuan.file-pertama') }}?token={{ $token }}" target="_blank">
+                                <i class="fa-solid fa-file-arrow-down"></i> Lihat berkas pertama
+                            </a>
+                        @else
+                            -
+                        @endif
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Nomor Stand</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nomor_stand }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Nilai Final / Selisih Nilai</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nilai_final ?? '-' }} / {{ $pameran->selisih_nilai ?? '-' }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Status Saat Ini</div>
+                    <div class="col-12 col-sm-9">
+                        <span class="badge {{ $labelStatus[$pameran->status_ajuan][1] ?? 'bg-secondary' }}">
+                            {{ $labelStatus[$pameran->status_ajuan][0] ?? '-' }}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

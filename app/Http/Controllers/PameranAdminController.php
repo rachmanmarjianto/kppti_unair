@@ -21,7 +21,8 @@ class PameranAdminController extends Controller
 
         $pameran = DB::table('pameran as p')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
-            ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'p.status_ajuan')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
+            ->select('p.idpameran', 'p.tema', 'i.nama_institusi', 'p.status_ajuan', 'k.nomor_kluster', 'k.tema_kluster')
             ->orderBy('p.idpameran')
             ->get()
             ->map(function ($row) {
@@ -53,8 +54,9 @@ class PameranAdminController extends Controller
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic')
+            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic', 'k.nomor_kluster', 'k.tema_kluster')
             ->first();
 
         if (! $pameran) {
