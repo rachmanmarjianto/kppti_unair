@@ -41,50 +41,50 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
-                <table class="table table-borderless mb-0">
-                    <tbody>
-                        <tr>
-                            <th style="width: 220px;">Nama Pengaju</th>
-                            <td>{{ $narasumber->nama_pengaju }}</td>
-                        </tr>
-                        <tr>
-                            <th>Email</th>
-                            <td>{{ $narasumber->email }}</td>
-                        </tr>
-                        <tr>
-                            <th>No. WA</th>
-                            <td>{{ $narasumber->no_wa ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Extended Abstrak</th>
-                            <td>{!! $narasumber->abstract !!}</td>
-                        </tr>
-                        <tr>
-                            <th>Status Saat Ini</th>
-                            <td>
-                                <span class="badge {{ $labelStatus[$narasumber->status_ajuan][1] ?? 'bg-secondary' }}">
-                                    {{ $labelStatus[$narasumber->status_ajuan][0] ?? '-' }}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Sesi yang Dipilih Peserta</th>
-                            <td>
-                                @if($narasumber->acara_parent_tema)
-                                    {{ $narasumber->acara_parent_tema }} &mdash;
-                                @endif
-                                {{ $narasumber->acara_tema ?? '-' }}
-                                @if($narasumber->acara_hari_ke)
-                                    (Hari {{ $narasumber->acara_hari_ke }}, {{ substr($narasumber->acara_jam_mulai, 0, 5) }}–{{ substr($narasumber->acara_jam_akhir, 0, 5) }}, {{ $narasumber->acara_ruang ?? '-' }})
-                                @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Subtema</th>
-                            <td>{{ $narasumber->subtema ?? '-' }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Nama Pengaju</div>
+                    <div class="col-12 col-sm-9">{{ $narasumber->nama_pengaju }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Institusi Asal</div>
+                    <div class="col-12 col-sm-9">{{ $narasumber->nama_institusi ?? '-' }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Email</div>
+                    <div class="col-12 col-sm-9">{{ $narasumber->email }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">No. WA</div>
+                    <div class="col-12 col-sm-9">{{ $narasumber->no_wa ?? '-' }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Extended Abstrak</div>
+                    <div class="col-12 col-sm-9">{!! $narasumber->abstract !!}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Status Saat Ini</div>
+                    <div class="col-12 col-sm-9">
+                        <span class="badge {{ $labelStatus[$narasumber->status_ajuan][1] ?? 'bg-secondary' }}">
+                            {{ $labelStatus[$narasumber->status_ajuan][0] ?? '-' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Sesi yang Dipilih Peserta</div>
+                    <div class="col-12 col-sm-9">
+                        @if($narasumber->acara_parent_tema)
+                            {{ $narasumber->acara_parent_tema }} <br>&mdash;
+                        @endif
+                        {{ $narasumber->acara_tema ?? '-' }}<br>
+                        @if($narasumber->acara_hari_ke)
+                            (Hari {{ $narasumber->acara_hari_ke }}, {{ substr($narasumber->acara_jam_mulai, 0, 5) }}–{{ substr($narasumber->acara_jam_akhir, 0, 5) }}, {{ $narasumber->acara_ruang ?? '-' }})
+                        @endif
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Subtema</div>
+                    <div class="col-12 col-sm-9">{{ $narasumber->subtema ?? '-' }}</div>
+                </div>
             </div>
         </div>
     </div>

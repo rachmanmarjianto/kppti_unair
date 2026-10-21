@@ -56,6 +56,7 @@
                         <thead>
                             <tr>
                                 <th>Nama Pengaju</th>
+                                <th>Institusi Asal</th>
                                 <th>Status</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -64,6 +65,7 @@
                             @foreach($narasumber as $baris)
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
+                                    <td>{{ $baris->nama_institusi ?? '-' }}</td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}

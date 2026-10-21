@@ -166,6 +166,22 @@ Umpan balik langsung ke pengguna itu penting, bukan hanya setelah submit:
 ### 6.6 Ukuran tombol
 Visibilitas lebih penting daripada menghemat ruang. **Hindari `btn-sm`** (atau ukuran kecil lain) kecuali ada urgensi nyata (mis. tombol ikon berulang di tiap baris tabel yang padat). Default-nya tombol berukuran normal, termasuk tombol aksi di samping input tunggal (bukan hanya tombol submit form penuh).
 
+### 6.7 Tata letak info detail (read-only)
+Untuk menampilkan informasi detail berpasangan label–nilai (mis. kartu "Data Pengajuan" di halaman detail), **gunakan grid system Bootstrap** (`row`/`col-*`), **jangan** `<table class="table-borderless">`. Grid lebih responsif di layar kecil karena label dan nilai bisa jatuh ke baris terpisah, sedangkan tabel memaksa dua kolom sejajar yang mudah sempit di mobile.
+
+Pola baku (satu `row` per pasangan label–nilai):
+
+```blade
+<div class="row mb-2">
+    <div class="col-12 col-sm-3 fw-bold">Label</div>
+    <div class="col-12 col-sm-9">{{ $nilai }}</div>
+</div>
+```
+
+- `col-12 col-sm-3`/`col-12 col-sm-9`: full-width bersusun di layar < `sm`, sejajar 3/9 kolom di layar `sm` ke atas.
+- Label pakai `fw-bold`, bukan elemen `<th>`.
+- Lihat `resources/views/sc/narasumber-detail.blade.php` dan `resources/views/admin/narasumber-detail.blade.php` sebagai contoh pola ini diterapkan konsisten.
+
 ## 7. Keamanan dasar
 
 - CSRF: semua `POST` (termasuk AJAX) menyertakan token.
