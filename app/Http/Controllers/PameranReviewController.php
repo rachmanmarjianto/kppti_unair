@@ -100,11 +100,12 @@ class PameranReviewController extends Controller
 
         $pameran = DB::table('pameran as p')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
             ->leftJoin('peserta as pe', 'pe.idpeserta', '=', 'p.idpeserta_PIC')
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
             ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'pic.nama as nama_pic', 'k.nomor_kluster', 'k.tema_kluster')
+            ->select('p.*', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'k.nomor_kluster', 'k.tema_kluster')
             ->first();
 
         if (! $pameran) {

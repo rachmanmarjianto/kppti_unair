@@ -50,6 +50,10 @@
                     <div class="col-12 col-sm-9">{{ $pameran->nama_institusi }}</div>
                 </div>
                 <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">Jenis Institusi</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->nama_jenis_institusi }}</div>
+                </div>
+                <div class="row mb-2">
                     <div class="col-12 col-sm-3 fw-bold">PIC</div>
                     <div class="col-12 col-sm-9">{{ $pameran->nama_pic ?? '-' }}</div>
                 </div>
