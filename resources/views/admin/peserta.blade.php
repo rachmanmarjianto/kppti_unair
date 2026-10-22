@@ -222,8 +222,13 @@
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
                 <div class="row align-items-center">
-                    <div class="col-12">
+                    <div class="col-6">
                         <h4>Peserta &amp; Institusi per Jenis Institusi</h4>
+                    </div>
+                    <div class="col-6 text-end">
+                        <button type="button" class="btn btn-outline-success btn-sm" id="btn-download-excel-peserta">
+                            <i class="fa-solid fa-file-excel me-1"></i> Download Excel
+                        </button>
                     </div>
                 </div>
             </div>
@@ -238,6 +243,42 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    {{-- Tabel tersembunyi, hanya dipakai sebagai sumber data tombol
+         "Download Excel" di atas (lewat DataTables Buttons) — kolomnya
+         beda dari tabel tampilan (pakai City Tour, bukan email/jabatan).
+         Pembungkus di luar ikut disembunyikan karena DataTables merender
+         toolbar tombolnya sendiri (hasil `dom: 'B'`) sebagai elemen sibling
+         di luar <table>, bukan di dalamnya — kalau hanya <table> yang
+         disembunyikan, toolbar tombol bawaan itu tetap akan terlihat. --}}
+    <div style="display:none">
+        <table id="table-export-peserta">
+            <thead>
+                <tr>
+                    <th>Jenis Institusi</th>
+                    <th>Institusi Asal</th>
+                    <th>Nama Peserta</th>
+                    <th>Status</th>
+                    <th>City Tour</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($jenisInstitusiList as $jenis)
+                    @foreach ($jenis->institusiList as $institusi)
+                        @foreach ($institusi->pesertaList as $peserta)
+                            <tr>
+                                <td>{{ $jenis->nama_jenis_institusi }}</td>
+                                <td>{{ $institusi->nama_institusi }}</td>
+                                <td>{{ $peserta->nama }}</td>
+                                <td>{{ $peserta->lengkap ? 'Lengkap' : 'Belum Lengkap' }}</td>
+                                <td>{{ $peserta->city_tour ? 'Ya' : 'Tidak' }}</td>
+                            </tr>
+                        @endforeach
+                    @endforeach
+                @endforeach
+            </tbody>
+        </table>
     </div>
 
     {{-- Daftar peserta, dikelompokkan per jenis institusi lalu institusi asal --}}
@@ -450,10 +491,32 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/jszip.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/buttons.html5.min.js') }}"></script>
 
     <script>
         $(function () {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+            // ------- Download Excel (data peserta per jenis & institusi) -------
+            var tableExportPeserta = $('#table-export-peserta').DataTable({
+                dom: 'B',
+                paging: false,
+                searching: false,
+                info: false,
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        filename: 'Peserta dan Institusi',
+                    },
+                ],
+            });
+
+            $('#btn-download-excel-peserta').on('click', function () {
+                tableExportPeserta.button(0).trigger();
+            });
             var resetPasswordUrl = '{{ route('admin.peserta.reset-password') }}';
             var detailUrl = '{{ route('admin.peserta.detail') }}';
             var fotoUrl = '{{ route('admin.peserta.foto') }}';
