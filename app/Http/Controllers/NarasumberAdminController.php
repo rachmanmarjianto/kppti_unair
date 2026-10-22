@@ -56,9 +56,27 @@ class NarasumberAdminController extends Controller
                 return $row;
             });
 
+        // Dashboard jumlah pengajuan & lolos per sesi — "pengajuan" tidak
+        // menghitung baris yang masih Draft (status '1', belum benar-benar
+        // diajukan peserta), "lolos" = status '5' (Diterima), satu-satunya
+        // keputusan akhir positif narasumber (lihat MasterScController::putuskan()).
+        $dashboardSesi = $this->acaraAktifQuery()
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
+            ->leftJoin('narasumber as n', function ($join) {
+                $join->on('n.idacara', '=', 'acara.idacara')->where('n.status_ajuan', '!=', '1');
+            })
+            ->where('acara.perlu_narsum', true)
+            ->select('acara.idacara', 'acara.tema', 'parent.tema as parent_tema')
+            ->selectRaw('count(n.idnarasumber) as jumlah_pengajuan')
+            ->selectRaw("count(case when n.status_ajuan = '5' then 1 end) as jumlah_lolos")
+            ->groupBy('acara.idacara', 'acara.tema', 'parent.tema')
+            ->orderBy('acara.tema')
+            ->get()
+            ->groupBy(fn ($baris) => $baris->parent_tema ?? '-');
+
         return view('admin.narasumber', compact(
             'menu', 'submenu', 'narasumber', 'acaraParentOptions', 'acaraOptionsFilter',
-            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih'
+            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih', 'dashboardSesi'
         ));
     }
 

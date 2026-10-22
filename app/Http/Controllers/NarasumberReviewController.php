@@ -231,27 +231,33 @@ class NarasumberReviewController extends Controller
             return $this->jsonResponse(404, 'Review ini tidak bisa diubah.');
         }
 
-        $diperbarui = DB::table('review_narasumber')
-            ->where('idreview_narasumber', $review->idreview_narasumber)
-            ->whereIn('status_ajuan', ['2', '3'])
-            ->update(['status_ajuan' => '3', 'catatan' => $validated['catatan'] ?? null]);
+        try {
+            DB::transaction(function () use ($validated, $review, $userdata) {
+                $diperbarui = DB::table('review_narasumber')
+                    ->where('idreview_narasumber', $review->idreview_narasumber)
+                    ->whereIn('status_ajuan', ['2', '3'])
+                    ->update(['status_ajuan' => '3', 'catatan' => $validated['catatan'] ?? null]);
 
-        if ($diperbarui === 0) {
-            return $this->jsonResponse(409, 'Pengajuan ini sudah diproses.');
-        }
+                if ($diperbarui === 0) {
+                    throw new \RuntimeException('Pengajuan ini sudah diproses.');
+                }
 
-        $this->syncNarasumberStatus($review->idnarasumber);
+                foreach ($validated['topik'] ?? [] as $idtopik => $data) {
+                    DB::table('isi_review_narsum')->updateOrInsert(
+                        ['idreview_narasumber' => $review->idreview_narasumber, 'idtopik_review_narsum' => $idtopik],
+                        [
+                            'isi_review' => $data['isi_review'] ?? null,
+                            'nilai' => $data['nilai'] ?? null,
+                            'created_by' => $userdata['idpengguna'],
+                            'created_at' => now(),
+                        ]
+                    );
+                }
 
-        foreach ($validated['topik'] ?? [] as $idtopik => $data) {
-            DB::table('isi_review_narsum')->updateOrInsert(
-                ['idreview_narasumber' => $review->idreview_narasumber, 'idtopik_review_narsum' => $idtopik],
-                [
-                    'isi_review' => $data['isi_review'] ?? null,
-                    'nilai' => $data['nilai'] ?? null,
-                    'created_by' => $userdata['idpengguna'],
-                    'created_at' => now(),
-                ]
-            );
+                $this->syncNarasumberStatus($review->idnarasumber);
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(409, $e->getMessage());
         }
 
         return $this->jsonResponse(200, 'Draf review berhasil disimpan.');
@@ -317,19 +323,24 @@ class NarasumberReviewController extends Controller
             'nilai_akhir' => $nilaiAkhir,
         ];
 
-        $terklaim = DB::table('review_narasumber')
-            ->where('idreview_narasumber', $review->idreview_narasumber)
-            ->whereIn('status_ajuan', ['2', '3'])
-            ->update($updateReview);
+        try {
+            DB::transaction(function () use ($review, $updateReview) {
+                $terklaim = DB::table('review_narasumber')
+                    ->where('idreview_narasumber', $review->idreview_narasumber)
+                    ->whereIn('status_ajuan', ['2', '3'])
+                    ->update($updateReview);
 
-        if ($terklaim === 0) {
-            return $this->jsonResponse(409, 'Pengajuan ini sudah diproses.');
+                if ($terklaim === 0) {
+                    throw new \RuntimeException('Pengajuan ini sudah diproses.');
+                }
+
+                $this->syncNarasumberStatus($review->idnarasumber);
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(409, $e->getMessage());
         }
 
         $narasumber = DB::table('narasumber')->where('idnarasumber', $review->idnarasumber)->first();
-
-        $this->syncNarasumberStatus($narasumber->idnarasumber);
-
         $label = self::LABEL_KEPUTUSAN[$validated['keputusan']];
         $idpeserta = DB::table('peserta')->where('idpengguna', $narasumber->idpengguna)->value('idpeserta');
 

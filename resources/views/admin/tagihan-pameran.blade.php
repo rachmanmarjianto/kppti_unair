@@ -63,9 +63,9 @@
             <div class="widget-content widget-content-area">
                 <div class="page-alert alert alert-danger d-none mb-3" role="alert"></div>
 
-                <div class="alert alert-warning">
+                <!-- <div class="alert alert-warning">
                     Integrasi Virtual Account BNI belum aktif. Gunakan tombol "Tandai Lunas" untuk menandai tagihan secara manual sampai integrasi tersedia.
-                </div>
+                </div> -->
 
                 <div class="table-responsive">
                     <table id="table-tagihan-pameran" class="table table-hover table-bordered table-tagihan-pameran">

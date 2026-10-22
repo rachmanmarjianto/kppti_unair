@@ -236,7 +236,7 @@ class PenggunaController extends Controller
             'otp' => ['required', 'string', 'size:6'],
         ]);
 
-        if (! $this->isOtpValid($request->input('no_wa'), $request->input('otp'), 60)) {
+        if (! $this->isOtpValid($request->input('no_wa'), $request->input('otp'), 120)) {
             return $this->jsonResponse(404, 'Kode OTP salah atau sudah kedaluwarsa.');
         }
 

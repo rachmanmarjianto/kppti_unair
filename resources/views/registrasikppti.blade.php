@@ -877,7 +877,7 @@
             }
 
             function startOtpCountdown() {
-                otpCountdown = 30;
+                otpCountdown = 60;
                 btnKirimOtp.disabled = true;
                 btnKirimOtp.textContent = `Kirim ulang (${otpCountdown}s)`;
 
