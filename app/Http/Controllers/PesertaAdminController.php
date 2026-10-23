@@ -49,7 +49,57 @@ class PesertaAdminController extends Controller
             'kontingenBelumSiap' => $institusiList->where('jumlahPeserta', '>', 0)->where('semuaLengkap', false)->count(),
         ];
 
-        return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'dashboard'));
+        return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard'));
+    }
+
+    /**
+     * Pindahkan satu peserta ke institusi_asal (kontingen) lain — dibutuhkan
+     * karena data master `universitas` punya duplikat nama (dikonfirmasi
+     * developer), yang membuat peserta tak sengaja terdaftar di kontingen
+     * yang salah. Submit form biasa (bukan AJAX, dikonfirmasi developer),
+     * jadi responsnya flash `status` + redirect, bukan `jsonResponse()`.
+     */
+    public function pindahKontingen(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer', 'exists:peserta,idpeserta'],
+            'idinstitusi_asal_baru' => ['required', 'integer', 'exists:institusi_asal,idinstitusi_asal'],
+        ]);
+
+        $peserta = DB::table('peserta as pe')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'pe.idpengguna')
+            ->where('pe.idpeserta', $validated['idpeserta'])
+            ->select('pe.idpeserta', 'p.idpengguna', 'p.nama', 'p.idinstitusi_asal')
+            ->first();
+
+        $idInstitusiBaru = (int) $validated['idinstitusi_asal_baru'];
+
+        if ($peserta->idinstitusi_asal === $idInstitusiBaru) {
+            return redirect()->route('admin.peserta')->with('status', [
+                'status' => 'danger',
+                'message' => 'Peserta tersebut sudah berada di kontingen itu.',
+            ]);
+        }
+
+        $namaInstitusiLama = DB::table('institusi_asal')->where('idinstitusi_asal', $peserta->idinstitusi_asal)->value('nama_institusi');
+        $namaInstitusiBaru = DB::table('institusi_asal')->where('idinstitusi_asal', $idInstitusiBaru)->value('nama_institusi');
+
+        DB::transaction(function () use ($peserta, $idInstitusiBaru, $namaInstitusiLama, $namaInstitusiBaru, $userdata) {
+            DB::table('pengguna')->where('idpengguna', $peserta->idpengguna)->update(['idinstitusi_asal' => $idInstitusiBaru]);
+
+            $this->logPeserta(
+                $peserta->idpeserta,
+                $userdata['idpengguna'],
+                "Dipindahkan dari kontingen '{$namaInstitusiLama}' ke kontingen '{$namaInstitusiBaru}' oleh admin"
+            );
+        });
+
+        return redirect()->route('admin.peserta')->with('status', [
+            'status' => 'success',
+            'message' => "Peserta '{$peserta->nama}' berhasil dipindahkan ke kontingen '{$namaInstitusiBaru}'.",
+        ]);
     }
 
     /**

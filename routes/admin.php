@@ -31,6 +31,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-peserta/foto', [PesertaAdminController::class, 'tampilFoto'])->name('admin.peserta.foto');
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
     Route::post('/admin-peserta/email/update', [PesertaAdminController::class, 'updateEmail'])->name('admin.peserta.email.update');
+    Route::post('/admin-peserta/pindah-kontingen', [PesertaAdminController::class, 'pindahKontingen'])->name('admin.peserta.pindah-kontingen');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
     Route::get('/admin-peserta/acara', [PesertaAdminController::class, 'acara'])->name('admin.peserta.acara');
     Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');

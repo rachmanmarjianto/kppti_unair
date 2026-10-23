@@ -29,10 +29,6 @@
             padding-left: 2rem;
         }
 
-        .baris-peserta {
-            cursor: pointer;
-        }
-
         .kartu-statistik {
             border-left: 4px solid var(--warna-statistik, #4361ee);
             height: 100%;
@@ -89,6 +85,10 @@
         #modal-edit-email .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
         #modal-edit-email .form-label, #modal-edit-email .text-muted { color: #0e1726 !important; }
         #modal-edit-email .form-control { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+
+        #modal-pindah-kontingen .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-pindah-kontingen .form-label, #modal-pindah-kontingen .text-muted { color: #0e1726 !important; }
+        #modal-pindah-kontingen .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
 
         #modal-detail-peserta .modal-content {
             background-color: #fff;
@@ -356,7 +356,7 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-center text-nowrap">
-                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-info" title="Detail Peserta">
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-info btn-detail-peserta" title="Detail Peserta" data-token="{{ $peserta->token }}">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </a>
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-primary btn-edit-email-peserta" title="Edit Email" data-idpeserta="{{ $peserta->idpeserta }}" data-email="{{ $peserta->email }}">
@@ -364,6 +364,9 @@
                                                     </a>
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-danger btn-reset-password-peserta" title="Reset Password" data-idpeserta="{{ $peserta->idpeserta }}" data-no-wa="{{ $peserta->no_wa }}">
                                                         <i class="fa-solid fa-key"></i>
+                                                    </a>
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning btn-pindah-kontingen" title="Pindah Kontingen" data-idpeserta="{{ $peserta->idpeserta }}" data-nama="{{ $peserta->nama }}" data-idinstitusi-asal="{{ $institusi->idinstitusi_asal }}">
+                                                        <i class="fa-solid fa-right-left"></i>
                                                     </a>
                                                 </td>
                                             </tr>
@@ -486,6 +489,39 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: pindah kontingen peserta --}}
+    <div class="modal fade" id="modal-pindah-kontingen" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('admin.peserta.pindah-kontingen') }}" id="form-pindah-kontingen">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pindah Kontingen</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="idpeserta" id="input-pindah-idpeserta">
+
+                        <p class="mb-3">Pindahkan <strong id="sel-pindah-nama"></strong> ke kontingen:</p>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="input-pindah-institusi">Kontingen Tujuan</label>
+                            <select name="idinstitusi_asal_baru" id="input-pindah-institusi" class="form-select" required>
+                                <option value="">-- Pilih Kontingen --</option>
+                                @foreach ($institusiList as $institusiOpsi)
+                                    <option value="{{ $institusiOpsi->idinstitusi_asal }}">{{ $institusiOpsi->nama_institusi }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page-js')
@@ -538,11 +574,7 @@
                 return tanggal + (jam ? ' ' + jam.substring(0, 5) : '');
             }
 
-            $('.baris-peserta').on('click', function (e) {
-                if ($(e.target).closest('.btn-reset-password-peserta, .btn-edit-email-peserta').length) {
-                    return;
-                }
-
+            $('.btn-detail-peserta').on('click', function () {
                 var token = $(this).data('token');
 
                 $detailLoading.removeClass('d-none');
@@ -723,6 +755,48 @@
                         $modalEditEmail.find('.modal-alert').removeClass('d-none').text(pesan);
                         $btn.prop('disabled', false).html(teksAwal);
                     });
+                });
+            });
+
+            // ------- Pindah kontingen (submit form biasa, bukan AJAX, -------
+            // sehingga halaman reload setelah berhasil, dikonfirmasi developer) -------
+            var $modalPindahKontingen = $('#modal-pindah-kontingen');
+            var $selectPindahInstitusi = $('#input-pindah-institusi');
+
+            $('.btn-pindah-kontingen').on('click', function () {
+                var idinstitusiAsalSaatIni = String($(this).data('idinstitusi-asal'));
+
+                $('#input-pindah-idpeserta').val($(this).data('idpeserta'));
+                $('#sel-pindah-nama').text($(this).data('nama'));
+
+                $selectPindahInstitusi.val('');
+                $selectPindahInstitusi.find('option').prop('disabled', false).show();
+                $selectPindahInstitusi.find('option[value="' + idinstitusiAsalSaatIni + '"]').prop('disabled', true).hide();
+
+                $modalPindahKontingen.modal('show');
+            });
+
+            $selectPindahInstitusi.on('change', function () {
+                if ($(this).val() === '') {
+                    return;
+                }
+
+                var namaPeserta = $('#sel-pindah-nama').text();
+                var namaKontingenBaru = $(this).find('option:selected').text().trim();
+
+                Swal.fire({
+                    title: 'Konfirmasi Pindah Kontingen',
+                    text: 'Pindahkan ' + namaPeserta + ' ke kontingen "' + namaKontingenBaru + '"?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, pindahkan',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        $('#form-pindah-kontingen').submit();
+                    } else {
+                        $selectPindahInstitusi.val('');
+                    }
                 });
             });
         });
