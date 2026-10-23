@@ -223,6 +223,62 @@ class NarasumberController extends Controller
     }
 
     /**
+     * Batalkan pengajuan (Pengajuan → Draft kembali) — hanya boleh selama
+     * status_ajuan masih '2' (belum masuk Review). Mirip
+     * `PameranController::batalkanAjuan()`, tapi tidak ada tagihan yang
+     * perlu dibatalkan (pengajuan narasumber tidak ditagih, lihat
+     * `ajukan()`).
+     */
+    public function batalkanAjuan(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $narasumber = DB::table('narasumber')->where('idpengguna', $userdata['idpengguna'])->first();
+
+        if (! $narasumber || $narasumber->status_ajuan !== '2') {
+            return $this->jsonResponse(422, 'Pengajuan ini tidak bisa dibatalkan pada status saat ini.');
+        }
+
+        $terakhir = DB::table('review_narasumber')
+            ->where('idnarasumber', $narasumber->idnarasumber)
+            ->orderByDesc('idreview_narasumber')
+            ->first();
+
+        if (! $terakhir || $terakhir->status_ajuan !== '2') {
+            return $this->jsonResponse(422, 'Pengajuan ini tidak bisa dibatalkan pada status saat ini.');
+        }
+
+        try {
+            DB::transaction(function () use ($narasumber, $terakhir, $userdata) {
+                $diperbarui = DB::table('review_narasumber')
+                    ->where('idreview_narasumber', $terakhir->idreview_narasumber)
+                    ->where('status_ajuan', '2')
+                    ->update(['status_ajuan' => '1']);
+
+                if ($diperbarui === 0) {
+                    throw new \RuntimeException('Pengajuan ini sudah diproses.');
+                }
+
+                $this->syncNarasumberStatus($narasumber->idnarasumber);
+
+                $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
+
+                if ($idpeserta) {
+                    $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], 'Membatalkan pengajuan narasumber, kembali ke Draft');
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(409, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal membatalkan pengajuan.');
+        }
+
+        return $this->jsonResponse(200, 'Pengajuan berhasil dikembalikan ke Draft.');
+    }
+
+    /**
      * Serve a berkas file — never exposed as a static public URL
      * (CONVENTIONS.md §7). Scoped to the pengguna that owns the narasumber
      * submission (individual, not kontingen-wide like pameran).

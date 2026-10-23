@@ -25,6 +25,7 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/narasumber', [NarasumberController::class, 'index'])->name('peserta.narasumber');
     Route::post('/narasumber/simpan-draft', [NarasumberController::class, 'simpanDraft'])->name('peserta.narasumber.simpan-draft');
     Route::post('/narasumber/ajukan', [NarasumberController::class, 'ajukan'])->name('peserta.narasumber.ajukan');
+    Route::post('/narasumber/batalkan-ajuan', [NarasumberController::class, 'batalkanAjuan'])->name('peserta.narasumber.batalkan-ajuan');
     Route::get('/narasumber/berkas', [NarasumberController::class, 'tampilBerkas'])->name('peserta.narasumber.berkas');
     Route::get('/narasumber/pedoman', [NarasumberController::class, 'unduhPedoman'])->name('peserta.narasumber.pedoman');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
