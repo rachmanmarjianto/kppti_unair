@@ -37,9 +37,20 @@ class PesertaController extends Controller
         $pesertaList = $this->pesertaDenganStatusLengkap($userdata['idinstitusi_asal']);
         $jumlahPeserta = $pesertaList->count();
         $jumlahLengkap = $pesertaList->where('lengkap', true)->count();
+        $jumlahBelumLengkap = $jumlahPeserta - $jumlahLengkap;
         $semuaLengkap = $jumlahPeserta > 0 && $jumlahLengkap === $jumlahPeserta;
 
-        return view('peserta.home', compact('menu', 'submenu', 'institusi', 'jumlahPeserta', 'jumlahLengkap', 'semuaLengkap'));
+        // Modal peringatan kelengkapan data hanya tampil sekali per sesi
+        // login (dikonfirmasi developer) — session di-flush saat logout
+        // (LoginController::logout()), jadi otomatis muncul lagi di login
+        // berikutnya tanpa perlu kolom/migrasi DB baru.
+        $tampilkanModalKelengkapan = ! session('modal_kelengkapan_shown');
+        session(['modal_kelengkapan_shown' => true]);
+
+        return view('peserta.home', compact(
+            'menu', 'submenu', 'institusi', 'jumlahPeserta', 'jumlahLengkap',
+            'jumlahBelumLengkap', 'semuaLengkap', 'tampilkanModalKelengkapan'
+        ));
     }
 
     /**

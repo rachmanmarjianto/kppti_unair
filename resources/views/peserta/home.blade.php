@@ -4,6 +4,9 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
 
     <style>
         .form-control[readonly] {
@@ -75,4 +78,50 @@
 @endsection
 
 @section('page-js')
+    <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
+
+    <script>
+        $(function () {
+            var tampilkanModal = {!! json_encode($tampilkanModalKelengkapan) !!};
+
+            if (! tampilkanModal) {
+                return;
+            }
+
+            var semuaLengkap = {!! json_encode($semuaLengkap) !!};
+            var jumlahPeserta = {!! json_encode($jumlahPeserta) !!};
+            var jumlahBelumLengkap = {!! json_encode($jumlahBelumLengkap) !!};
+            var urlSekontingen = '{{ route('peserta.sekontingen') }}';
+            var urlKartuKontingen = '{{ route('peserta.kartu-kontingen') }}';
+
+            if (semuaLengkap) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Data Kontingen Lengkap!',
+                    text: 'Semua ' + jumlahPeserta + ' peserta di kontingen Anda sudah lengkap datanya. Kartu registrasi kontingen sudah dapat diunduh.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Unduh Kartu Kontingen',
+                    cancelButtonText: 'Nanti',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        window.location.href = urlKartuKontingen;
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lengkapi Data Peserta!',
+                    text: jumlahBelumLengkap + ' dari ' + jumlahPeserta + ' peserta di kontingen Anda belum lengkap datanya. Data setiap peserta wajib lengkap untuk dapat melakukan registrasi ulang di hari kedatangan.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Lengkapi Sekarang',
+                    cancelButtonText: 'Nanti',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        window.location.href = urlSekontingen;
+                    }
+                });
+            }
+        });
+    </script>
 @endsection
