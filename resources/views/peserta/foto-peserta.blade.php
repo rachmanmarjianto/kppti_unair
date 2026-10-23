@@ -77,7 +77,7 @@
                     <b><em>face recognition</em></b> di lokasi acara. Dimohon:
                     <ol>
                         <li>Gunakan foto terbaru.</li>
-                        <li>Pastikan wajah terlihat jelas, menghadap kamera, tanpa penutup kepala.</li>
+                        <li>Pastikan wajah terlihat jelas, menghadap kamera, background terlihat cukup kontras.</li>
                         <li>Ikuti panduan kepala &amp; bahu di bawah.</li>
                     </ol>
                     Demi kelancaran acara, pastikan foto yang diunggah sesuai dengan ketentuan di atas.
