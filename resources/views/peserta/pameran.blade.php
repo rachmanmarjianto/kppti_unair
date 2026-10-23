@@ -140,6 +140,12 @@
                     </div>
                 @endif
 
+                @if($pameran && $pameran->status_ajuan === '2')
+                    <button type="button" class="btn btn-outline-danger" id="btn-batalkan-ajuan">
+                        <span class="btn-label">Batalkan Pengajuan, Kembali ke Draft</span>
+                    </button>
+                @endif
+
                 @if($pameran && $pameran->status_ajuan === '9')
                     <hr class="mt-4">
                     <h5>Penjaga Stand &amp; Tanggal Loading</h5>
@@ -400,6 +406,7 @@
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var simpanDraftUrl = '{{ route('peserta.pameran.simpan-draft') }}';
             var ajukanUrl = '{{ route('peserta.pameran.ajukan') }}';
+            var batalkanAjuanUrl = '{{ route('peserta.pameran.batalkan-ajuan') }}';
             var tambahPenjagaUrl = '{{ route('peserta.pameran.penjaga.tambah') }}';
             var hapusPenjagaUrl = '{{ route('peserta.pameran.penjaga.hapus') }}';
             var simpanJadwalLoadingUrl = '{{ route('peserta.pameran.jadwal-loading') }}';
@@ -638,6 +645,41 @@
                             $('#btn-simpan-draft, #btn-ajukan').prop('disabled', false);
                             $btn.html(teksAwal);
                         });
+                });
+            });
+
+            $('#btn-batalkan-ajuan').on('click', function () {
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Pengajuan akan dikembalikan ke Draft. Lanjutkan?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, batalkan',
+                    cancelButtonText: 'Tidak',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var $btn = $('#btn-batalkan-ajuan');
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+
+                    $.ajax({
+                        url: batalkanAjuanUrl,
+                        method: 'POST',
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanError(xhr);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
                 });
             });
         });

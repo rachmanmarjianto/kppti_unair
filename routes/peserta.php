@@ -10,6 +10,7 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/pameran', [PameranController::class, 'index'])->name('peserta.pameran');
     Route::post('/pameran/simpan-draft', [PameranController::class, 'simpanDraft'])->name('peserta.pameran.simpan-draft');
     Route::post('/pameran/ajukan', [PameranController::class, 'ajukan'])->name('peserta.pameran.ajukan');
+    Route::post('/pameran/batalkan-ajuan', [PameranController::class, 'batalkanAjuan'])->name('peserta.pameran.batalkan-ajuan');
     Route::get('/pameran/portofolio', [PameranController::class, 'tampilPortofolio'])->name('peserta.pameran.portofolio');
     Route::get('/pameran/file-pertama', [PameranController::class, 'tampilFilePertama'])->name('peserta.pameran.file-pertama');
     Route::get('/pameran/balas-revisi', [PameranController::class, 'tampilBalasRevisi'])->name('peserta.pameran.balas-revisi');

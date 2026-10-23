@@ -243,7 +243,7 @@ class PameranController extends Controller
 
                 $tagihan = $this->tagihanTerbaru($pameran->idpameran);
 
-                if (! $tagihan) {
+                if (! $tagihan || (int) $tagihan->status === 4) {
                     $tagihanBaruDibuat = true;
 
                     // Kluster berbayar (5) tidak lagi diminta bayar saat
@@ -282,6 +282,65 @@ class PameranController extends Controller
         }
 
         return $this->jsonResponse(200, $pesan);
+    }
+
+    /**
+     * Batalkan pengajuan (Pengajuan → Draft kembali) — hanya boleh selama
+     * status_ajuan masih '2' (belum masuk Review). Tagihan yang sudah
+     * terbit (walau sudah Lunas — status 3, biasa terjadi untuk kluster
+     * non-berbayar yang tagihannya 0) ikut dibatalkan (status 4) supaya
+     * `ajukan()` membuat tagihan baru lagi saat diajukan ulang, bukan
+     * menganggap tagihan lama (yang sudah batal) masih berlaku. Tidak ada
+     * refund — VA BNI belum pernah diterbitkan selagi status masih
+     * Pengajuan (baru diterbitkan saat Master SC menyatakan Terpilih).
+     */
+    public function batalkanAjuan(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $pameran || $pameran->status_ajuan !== '2') {
+            return $this->jsonResponse(422, 'Pengajuan ini tidak bisa dibatalkan pada status saat ini.');
+        }
+
+        try {
+            DB::transaction(function () use ($pameran, $userdata) {
+                $diperbarui = DB::table('pameran')
+                    ->where('idpameran', $pameran->idpameran)
+                    ->where('status_ajuan', '2')
+                    ->update(['status_ajuan' => '1']);
+
+                if ($diperbarui === 0) {
+                    throw new \RuntimeException('Pengajuan ini sudah diproses.');
+                }
+
+                $tagihan = $this->tagihanTerbaru($pameran->idpameran);
+
+                if ($tagihan && (int) $tagihan->status !== 4) {
+                    DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update(['status' => 4]);
+
+                    DB::table('log_ubah_status_by_pengguna')->insert([
+                        'done_at' => now(),
+                        'done_by' => $userdata['idpengguna'],
+                        'idtagihan' => $tagihan->idtagihan,
+                        'status_awal' => $tagihan->status,
+                        'status_akhir' => 4,
+                    ]);
+                }
+
+                $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "Membatalkan pengajuan pameran, kembali ke Draft: {$pameran->tema}");
+            });
+        } catch (\RuntimeException $e) {
+            return $this->jsonResponse(409, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal membatalkan pengajuan.');
+        }
+
+        return $this->jsonResponse(200, 'Pengajuan berhasil dikembalikan ke Draft.');
     }
 
     /**
