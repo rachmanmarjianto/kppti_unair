@@ -131,7 +131,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label" for="input-berkas">Extended Abstract (PDF/DOC/DOCX, maks. 5 MB)</label>
+                            <label class="form-label" for="input-berkas">Extended Abstract (PDF/DOC/DOCX, maks. 10 MB)</label>
                             <input type="file" name="berkas" id="input-berkas" class="form-control" accept=".pdf,.doc,.docx">
                             @if($draftSaatIni && $draftSaatIni->file_path)
                                 <div class="text-muted mt-1" style="font-size: 12.5px;">

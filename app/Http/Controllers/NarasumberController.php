@@ -92,7 +92,7 @@ class NarasumberController extends Controller
         $validated = $request->validate([
             'idacara' => ['required', 'integer'],
             'subtema' => ['required', 'string', 'max:255'],
-            'berkas' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            'berkas' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
         ]);
 
         $acaraValid = $this->acaraAktifQuery()

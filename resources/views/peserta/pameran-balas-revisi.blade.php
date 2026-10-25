@@ -68,7 +68,7 @@
                     <input type="hidden" name="token" value="{{ $token }}">
 
                     <div class="mb-3">
-                        <label class="form-label" for="input-portofolio">Form Keikutsertaan baru (PDF/DOC/DOCX, maks. 5 MB)</label>
+                        <label class="form-label" for="input-portofolio">Form Keikutsertaan baru (PDF/DOC/DOCX, maks. 10 MB)</label>
                         <input type="file" name="portofolio" id="input-portofolio" class="form-control" accept=".pdf,.doc,.docx" required>
                     </div>
 

@@ -139,7 +139,7 @@ class PameranController extends Controller
             'idkluster_pameran' => ['required', 'integer'],
             'tema' => ['required', 'string', 'max:255'],
             'abstract' => ['required', 'string'],
-            'portofolio' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            'portofolio' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
         ]);
 
         $validated['abstract'] = $this->sanitizeRichText($validated['abstract']);
@@ -751,7 +751,7 @@ class PameranController extends Controller
         }
 
         $validated = $request->validate([
-            'portofolio' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            'portofolio' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             'catatan' => ['nullable', 'string'],
         ]);
 
