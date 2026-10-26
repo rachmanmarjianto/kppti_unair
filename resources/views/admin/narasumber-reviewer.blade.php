@@ -20,8 +20,13 @@
         }
 
         .table-narasumber-reviewer {
-            width: 95% !important;
-            margin: 0 auto;
+            width: 100% !important;
+            max-width: 100%;
+        }
+
+        .table-narasumber-reviewer td {
+            white-space: normal;
+            word-break: break-word;
         }
     </style>
 @endsection
