@@ -59,6 +59,11 @@
                     </div>
                 </form>
 
+                <div class="form-check mb-3" style="margin:15px">
+                    <input type="checkbox" class="form-check-input" id="input-sertakan-tema" checked>
+                    <label class="form-check-label" for="input-sertakan-tema">Sertakan tema</label>
+                </div>
+
                 <div class="table-responsive">
                     <table id="table-pameran-reviewer" class="table table-hover table-bordered table-pameran-reviewer">
                         <thead>
@@ -155,7 +160,7 @@
             var hapusReviewerUrl = '{{ route('admin.pameran.reviewer.hapus') }}';
             var namaFileExcel = {!! json_encode($klusterTerpilih ? 'Kluster '.$klusterTerpilih->nomor_kluster.' - '.$klusterTerpilih->tema_kluster : 'Semua Kluster') !!};
 
-            $('#table-pameran-reviewer').DataTable({
+            var tablePameranReviewer = $('#table-pameran-reviewer').DataTable({
                 dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6 d-flex justify-content-md-start justify-content-center'B><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
                     "<'table-responsive'tr>" +
                     "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>",
@@ -183,6 +188,10 @@
                 lengthMenu: [10, 25, 50],
                 pageLength: 10,
                 columnDefs: [{ orderable: false, targets: -1 }],
+            });
+
+            $('#input-sertakan-tema').on('change', function () {
+                tablePameranReviewer.column(1).visible(this.checked);
             });
 
             function tampilkanError($form, xhr) {
