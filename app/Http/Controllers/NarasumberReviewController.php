@@ -16,16 +16,18 @@ class NarasumberReviewController extends Controller
     private const LABEL_KEPUTUSAN = ['4' => 'Revisi', '6' => 'Ditolak', '7' => 'Proses Seleksi'];
 
     /**
-     * Antrean pengajuan yang belum ada yang menangani (status Pengajuan),
-     * plus daftar yang sedang/sudah diproses (riwayat read-only untuk semua
-     * SC). Tidak ada tagihan/klaim terpisah di sini — lihat
-     * NarasumberReviewController::simpanReview()/kirimKeputusan() untuk
-     * mekanisme race-condition "siapa cepat dia yang dapat".
+     * Antrean pengajuan yang dipetakan Admin ke SC ini tapi belum masuk
+     * Review, plus daftar yang sedang/sudah ia proses — hanya pengajuan
+     * dengan `narasumber.reviewer_sc` milik SC ini yang terlihat (admin
+     * yang memetakan lewat `NarasumberAdminController::setReviewer()`,
+     * menggantikan model klaim bebas, mirror `PameranReviewController::index()`).
      */
     public function index(Request $request)
     {
         $menu = 'narasumber';
         $submenu = '';
+
+        $userdata = session('userdata');
 
         $acaraOptions = $this->acaraAktifQuery()
             ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
@@ -58,6 +60,7 @@ class NarasumberReviewController extends Controller
 
         $idacaraDenganPengajuanBaru = DB::table('narasumber')
             ->where('status_ajuan', '2')
+            ->where('reviewer_sc', $userdata['idpengguna'])
             ->whereNotNull('idacara')
             ->distinct()
             ->pluck('idacara');
@@ -65,6 +68,7 @@ class NarasumberReviewController extends Controller
         $idparentDenganPengajuanBaru = DB::table('narasumber as n')
             ->join('acara as a', 'a.idacara', '=', 'n.idacara')
             ->where('n.status_ajuan', '2')
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
             ->distinct()
             ->pluck('a.idparent_acara');
 
@@ -74,6 +78,7 @@ class NarasumberReviewController extends Controller
             ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
             ->leftJoin('acara as parent', 'parent.idacara', '=', 'a.idparent_acara')
             ->where('n.status_ajuan', '2')
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
             ->when($idacaraAntrean, fn ($query) => $query->where('n.idacara', $idacaraAntrean))
             ->when(! $idacaraAntrean && $idparentAntrean, fn ($query) => $query->where('a.idparent_acara', $idparentAntrean))
             ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.subtema', 'a.tema as acara_tema', 'a.hari_ke as acara_hari_ke', 'a.jam_mulai as acara_jam_mulai', 'a.jam_akhir as acara_jam_akhir', 'a.ruang as acara_ruang', 'parent.tema as acara_parent_tema')
@@ -96,6 +101,7 @@ class NarasumberReviewController extends Controller
             ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
             ->leftJoin('acara as parent', 'parent.idacara', '=', 'a.idparent_acara')
             ->whereIn('n.status_ajuan', ['3', '4', '5', '6', '7', '8'])
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
             ->when($idacaraDiproses, fn ($query) => $query->where('n.idacara', $idacaraDiproses))
             ->when(! $idacaraDiproses && $idparentDiproses, fn ($query) => $query->where('a.idparent_acara', $idparentDiproses))
             ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.subtema', 'a.tema as acara_tema', 'a.hari_ke as acara_hari_ke', 'a.jam_mulai as acara_jam_mulai', 'a.jam_akhir as acara_jam_akhir', 'a.ruang as acara_ruang', 'parent.tema as acara_parent_tema')
@@ -156,6 +162,7 @@ class NarasumberReviewController extends Controller
             ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
             ->leftJoin('acara as parent', 'parent.idacara', '=', 'a.idparent_acara')
             ->where('n.idnarasumber', $idnarasumber)
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
             ->select('n.*', 'p.nama as nama_pengaju', 'p.email', 'p.no_wa', 'i.nama_institusi', 'a.tema as acara_tema', 'a.hari_ke as acara_hari_ke', 'a.jam_mulai as acara_jam_mulai', 'a.jam_akhir as acara_jam_akhir', 'a.ruang as acara_ruang', 'parent.tema as acara_parent_tema')
             ->first();
 
@@ -190,9 +197,11 @@ class NarasumberReviewController extends Controller
 
         $reviewAktif = $riwayat->first(fn ($baris) => in_array($baris->status_ajuan, ['2', '3'], true));
 
-        // Tidak ada lagi lock per-SC: siapa pun SC boleh melanjutkan review
-        // yang sudah diklaim (dikonfirmasi developer) — nama_sc di riwayat
-        // cukup sebagai info "reviewer terakhir", bukan pembatas akses.
+        // Akses halaman ini sudah dibatasi lewat filter reviewer_sc di query
+        // $narasumber di atas (SC yang bukan reviewer-nya kena 404) — jadi
+        // $bolehReview di sini murni soal ada/tidaknya turn aktif untuk
+        // diisi, bukan lagi soal lock per-SC. nama_sc di riwayat tetap
+        // info tampilan "siapa yang terakhir menilai", bukan pembatas akses.
         $bolehReview = (bool) $reviewAktif;
 
         $topikAktif = DB::table('topik_review_narsum')->where('status', true)->orderBy('idtopik_review_narsum')->get();
@@ -207,11 +216,12 @@ class NarasumberReviewController extends Controller
 
     /**
      * Simpan draf penilaian (catatan + topik) — belum final, dipanggil
-     * berulang selama SC masih menyusun keputusan. Tidak ada lock per-SC
-     * (dikonfirmasi developer): SC mana pun boleh melanjutkan review yang
-     * sudah diklaim sebelumnya, "reviewer terakhir" hanya info tampilan
-     * (lihat detail()). `whereIn(status_ajuan)` di update tetap menjaga
-     * agar draft tidak menimpa baris yang sudah final diputuskan.
+     * berulang selama SC masih menyusun keputusan. Reviewer sudah pasti
+     * dari pemetaan Admin (`narasumber.reviewer_sc`, lihat
+     * `NarasumberAdminController::setReviewer()`), jadi query awal di
+     * bawah ini sekaligus jadi otorisasi — SC yang bukan reviewer-nya
+     * dapat 404. `whereIn(status_ajuan)` di update tetap menjaga agar
+     * draft tidak menimpa baris yang sudah final diputuskan.
      */
     public function simpanReview(Request $request)
     {
@@ -225,7 +235,12 @@ class NarasumberReviewController extends Controller
             'topik.*.nilai' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
-        $review = DB::table('review_narasumber')->where('idreview_narasumber', $validated['idreview_narasumber'])->first();
+        $review = DB::table('review_narasumber as r')
+            ->join('narasumber as n', 'n.idnarasumber', '=', 'r.idnarasumber')
+            ->where('r.idreview_narasumber', $validated['idreview_narasumber'])
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
+            ->select('r.*')
+            ->first();
 
         if (! $review || ! in_array($review->status_ajuan, ['2', '3'], true)) {
             return $this->jsonResponse(404, 'Review ini tidak bisa diubah.');
@@ -267,13 +282,13 @@ class NarasumberReviewController extends Controller
      * Kirim keputusan final (Revisi/Ditolak/Proses Seleksi) — menolak
      * kalau ketujuh topik penilaian belum lengkap (nilai saja; komentar per
      * topik tidak lagi wajib, dikonfirmasi developer). "Diterima" tidak
-     * lagi dipilih di sini —
-     * begitu status jadi "Proses Seleksi" (7), keputusan akhir
-     * Diterima/Ditolak ditentukan role Master SC lewat
+     * lagi dipilih di sini — begitu status jadi "Proses Seleksi" (7),
+     * keputusan akhir Diterima/Ditolak ditentukan role Master SC lewat
      * MasterScController::putuskan() (lihat juga narasumber_acara di sana).
-     * Boleh dipanggil dari status Pengajuan maupun Review, oleh SC mana pun
-     * (tidak ada lock per-SC, dikonfirmasi developer) — `whereIn` di update
-     * hanya menjaga agar tidak menimpa baris yang sudah final diputuskan.
+     * Boleh dipanggil dari status Pengajuan maupun Review, tapi hanya oleh
+     * SC yang dipetakan Admin sebagai reviewer-nya (query awal di bawah
+     * sekaligus jadi otorisasi) — `whereIn` di update hanya menjaga agar
+     * tidak menimpa baris yang sudah final diputuskan.
      */
     public function kirimKeputusan(Request $request)
     {
@@ -285,7 +300,12 @@ class NarasumberReviewController extends Controller
             'catatan' => ['nullable', 'string'],
         ]);
 
-        $review = DB::table('review_narasumber')->where('idreview_narasumber', $validated['idreview_narasumber'])->first();
+        $review = DB::table('review_narasumber as r')
+            ->join('narasumber as n', 'n.idnarasumber', '=', 'r.idnarasumber')
+            ->where('r.idreview_narasumber', $validated['idreview_narasumber'])
+            ->where('n.reviewer_sc', $userdata['idpengguna'])
+            ->select('r.*')
+            ->first();
 
         if (! $review || ! in_array($review->status_ajuan, ['2', '3'], true)) {
             return $this->jsonResponse(404, 'Review ini tidak bisa diubah.');

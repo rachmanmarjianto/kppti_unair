@@ -40,6 +40,8 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-narasumber', [NarasumberAdminController::class, 'index'])->name('admin.narasumber');
     Route::get('/admin-narasumber/detail', [NarasumberAdminController::class, 'detail'])->name('admin.narasumber.detail');
     Route::get('/admin-narasumber/berkas', [NarasumberAdminController::class, 'tampilBerkas'])->name('admin.narasumber.berkas');
+    Route::get('/admin-narasumber/reviewer', [NarasumberAdminController::class, 'reviewerIndex'])->name('admin.narasumber.reviewer');
+    Route::post('/admin-narasumber/reviewer/set', [NarasumberAdminController::class, 'setReviewer'])->name('admin.narasumber.reviewer.set');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');

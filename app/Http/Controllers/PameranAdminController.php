@@ -532,19 +532,4 @@ class PameranAdminController extends Controller
 
         return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $hasil['response']]);
     }
-
-    /**
-     * Daftar pengguna ber-role SC — dipakai untuk pilihan di select
-     * "Petakan Reviewer".
-     */
-    private function scOptions()
-    {
-        return DB::table('pengguna as p')
-            ->join('role_pengguna as rp', 'rp.idpengguna', '=', 'p.idpengguna')
-            ->where('rp.idrole', 4)
-            ->where('p.is_deleted', false)
-            ->select('p.idpengguna', 'p.nama')
-            ->orderBy('p.nama')
-            ->get();
-    }
 }

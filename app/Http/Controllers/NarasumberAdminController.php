@@ -16,7 +16,7 @@ class NarasumberAdminController extends Controller
     public function index(Request $request)
     {
         $menu = 'narasumber';
-        $submenu = '';
+        $submenu = 'ajuan';
 
         $acaraOptions = $this->acaraAktifQuery()
             ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
@@ -109,7 +109,7 @@ class NarasumberAdminController extends Controller
         }
 
         $menu = 'narasumber';
-        $submenu = '';
+        $submenu = 'ajuan';
 
         $riwayat = DB::table('review_narasumber as r')
             ->where('r.idnarasumber', $idnarasumber)
@@ -127,6 +127,104 @@ class NarasumberAdminController extends Controller
             });
 
         return view('admin.narasumber-detail', compact('menu', 'submenu', 'narasumber', 'riwayat'));
+    }
+
+    /**
+     * Daftar pengajuan narasumber yang sudah diajukan (status bukan Draft)
+     * untuk dipetakan ke satu SC reviewer — menggantikan model klaim bebas
+     * SC, mirror `PameranAdminController::reviewerIndex()` tapi lebih
+     * sederhana (1 kolom `reviewer_sc` langsung di `narasumber`, bukan
+     * tabel junction 2-slot seperti `reviewer_pameran`).
+     */
+    public function reviewerIndex(Request $request)
+    {
+        $menu = 'narasumber';
+        $submenu = 'reviewer';
+
+        $acaraOptions = $this->acaraAktifQuery()
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
+            ->where('acara.perlu_narsum', true)
+            ->select('acara.idacara', 'acara.tema', 'acara.idparent_acara', 'parent.tema as parent_tema')
+            ->orderBy('acara.tema')
+            ->get();
+
+        // Filter Sub Tema/Sesi 2 jenjang, sama seperti index() (Ajuan).
+        $acaraParentOptions = $acaraOptions
+            ->unique('idparent_acara')
+            ->map(fn ($a) => (object) ['idparent_acara' => $a->idparent_acara, 'parent_tema' => $a->parent_tema])
+            ->sortBy('parent_tema')
+            ->values();
+
+        $idparentAcara = $request->query('idparent_acara');
+        $idacara = $request->query('idacara');
+
+        $acaraOptionsFilter = $idparentAcara ? $acaraOptions->where('idparent_acara', $idparentAcara)->values() : collect();
+        $acaraTerpilih = $idacara ? $acaraOptions->firstWhere('idacara', (int) $idacara) : null;
+        $parentTerpilih = $idparentAcara ? $acaraParentOptions->firstWhere('idparent_acara', (int) $idparentAcara) : null;
+
+        $narasumber = DB::table('narasumber as n')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('pengguna as sc', 'sc.idpengguna', '=', 'n.reviewer_sc')
+            ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
+            ->where('n.status_ajuan', '!=', '1')
+            ->when($idacara, fn ($query) => $query->where('n.idacara', $idacara))
+            ->when(! $idacara && $idparentAcara, fn ($query) => $query->where('a.idparent_acara', $idparentAcara))
+            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.reviewer_sc', 'sc.nama as nama_reviewer')
+            ->orderBy('n.idnarasumber')
+            ->get();
+
+        $scOptions = $this->scOptions();
+
+        return view('admin.narasumber-reviewer', compact(
+            'menu', 'submenu', 'narasumber', 'scOptions', 'acaraParentOptions', 'acaraOptionsFilter',
+            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih'
+        ));
+    }
+
+    /**
+     * Tetapkan (atau lepas, kalau `idpengguna` kosong) SC reviewer untuk
+     * satu pengajuan narasumber.
+     */
+    public function setReviewer(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idnarasumber' => ['required', 'integer', 'exists:narasumber,idnarasumber'],
+            'idpengguna' => ['nullable', 'integer'],
+        ]);
+
+        $idpengguna = $validated['idpengguna'] ?? null;
+
+        if ($idpengguna) {
+            $sc = DB::table('pengguna as p')
+                ->join('role_pengguna as rp', 'rp.idpengguna', '=', 'p.idpengguna')
+                ->where('p.idpengguna', $idpengguna)
+                ->where('rp.idrole', 4)
+                ->select('p.nama')
+                ->first();
+
+            if (! $sc) {
+                return $this->jsonResponse(422, 'Pengguna yang dipilih bukan SC.');
+            }
+        }
+
+        $narasumber = DB::table('narasumber')->where('idnarasumber', $validated['idnarasumber'])->first();
+
+        DB::table('narasumber')->where('idnarasumber', $narasumber->idnarasumber)->update(['reviewer_sc' => $idpengguna]);
+
+        $idpeserta = DB::table('peserta')->where('idpengguna', $narasumber->idpengguna)->value('idpeserta');
+
+        if ($idpeserta) {
+            $pesanLog = $idpengguna
+                ? "Admin memetakan {$sc->nama} sebagai reviewer pengajuan narasumber."
+                : 'Admin melepas pemetaan reviewer pengajuan narasumber.';
+
+            $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], $pesanLog);
+        }
+
+        return $this->jsonResponse(200, 'Reviewer berhasil diperbarui.');
     }
 
     /**
