@@ -15,7 +15,7 @@
         .dataTables_wrapper .page-item.first .page-link,
         .dataTables_wrapper .page-item.last .page-link {
             width: auto;
-            white-space: nowrap;
+            /* white-space: nowrap; */
             padding: 0 12px;
         }
 
