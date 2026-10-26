@@ -147,6 +147,7 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                        <small class="text-muted label-proses-reviewer d-none">Proses...</small>
                                     </td>
                                 </tr>
                             @endforeach
@@ -218,12 +219,14 @@
                 tableNarasumberReviewer.column(2).visible(this.checked);
             });
 
-            $('.select-set-reviewer').on('change', function () {
+            $('#table-narasumber-reviewer').on('change', '.select-set-reviewer', function () {
                 var $select = $(this);
+                var $labelProses = $select.siblings('.label-proses-reviewer');
                 var idnarasumber = $select.data('idnarasumber');
                 var idpengguna = $select.val();
 
                 $select.prop('disabled', true);
+                $labelProses.removeClass('d-none');
 
                 $.ajax({
                     url: setReviewerUrl,
@@ -233,9 +236,12 @@
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
                 .done(function (res) {
+                    $labelProses.addClass('d-none');
                     Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
                 })
                 .fail(function (xhr) {
+                    $labelProses.addClass('d-none');
+
                     var res = xhr.responseJSON || {};
                     var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
                     if (xhr.status === 0) {
