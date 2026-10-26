@@ -15,24 +15,18 @@
         .dataTables_wrapper .page-item.first .page-link,
         .dataTables_wrapper .page-item.last .page-link {
             width: auto;
-            /* white-space: nowrap; */
+            white-space: nowrap;
             padding: 0 12px;
         }
 
         .table-narasumber-reviewer {
             width: 100% !important;
             max-width: 100%;
-            table-layout: fixed;
         }
 
-        .table-narasumber-reviewer td,
-        .table-narasumber-reviewer th {
+        .table-narasumber-reviewer td {
             white-space: normal;
             word-break: break-word;
-        }
-
-        .table-narasumber-reviewer .select-set-reviewer {
-            max-width: 100%;
         }
     </style>
 @endsection
