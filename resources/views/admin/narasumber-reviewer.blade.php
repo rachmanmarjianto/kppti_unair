@@ -111,6 +111,11 @@
                     @endif
                 </p>
 
+                <div class="form-check mb-3" style="margin:15px">
+                    <input type="checkbox" class="form-check-input" id="input-sertakan-subtema" checked>
+                    <label class="form-check-label" for="input-sertakan-subtema">Sertakan subtema</label>
+                </div>
+
                 <div class="table-responsive">
                     <table id="table-narasumber-reviewer" class="table table-hover table-bordered table-narasumber-reviewer">
                         <thead>
@@ -168,7 +173,7 @@
             var setReviewerUrl = '{{ route('admin.narasumber.reviewer.set') }}';
             var keteranganFilterExcel = {!! json_encode($keteranganFilterExcel) !!};
 
-            $('#table-narasumber-reviewer').DataTable({
+            var tableNarasumberReviewer = $('#table-narasumber-reviewer').DataTable({
                 dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6 d-flex align-items-center gap-2'Bl><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
                     "<'table-responsive'tr>" +
                     "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>",
@@ -207,6 +212,10 @@
                 },
                 lengthMenu: [10, 25, 50],
                 pageLength: 10,
+            });
+
+            $('#input-sertakan-subtema').on('change', function () {
+                tableNarasumberReviewer.column(2).visible(this.checked);
             });
 
             $('.select-set-reviewer').on('change', function () {
