@@ -896,21 +896,6 @@ class Controller extends BaseController
     }
 
     /**
-     * Daftar pengguna ber-role SC — dipakai untuk pilihan di select
-     * "Petakan Reviewer" (Pameran & Narasumber).
-     */
-    protected function scOptions()
-    {
-        return DB::table('pengguna as p')
-            ->join('role_pengguna as rp', 'rp.idpengguna', '=', 'p.idpengguna')
-            ->where('rp.idrole', 4)
-            ->where('p.is_deleted', false)
-            ->select('p.idpengguna', 'p.nama')
-            ->orderBy('p.nama')
-            ->get();
-    }
-
-    /**
      * Baris tagihan paling baru milik satu pameran — relasi pameran→tagihan
      * one-to-many (satu pameran bisa punya beberapa baris tagihan berturutan,
      * baik karena VA sebelumnya expired dan diganti lewat requestVaBaru(),

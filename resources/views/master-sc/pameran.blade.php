@@ -98,10 +98,15 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/jszip.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/buttons.html5.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
 
     <script>
         $(function () {
+            var namaFileExcel = {!! json_encode($klusterTerpilih ? 'Kluster '.$klusterTerpilih->nomor_kluster.' - '.$klusterTerpilih->tema_kluster : 'Semua Kluster') !!};
+
             var bahasaDataTable = {
                 search: 'Cari:',
                 lengthMenu: 'Tampilkan _MENU_ baris',
@@ -112,12 +117,23 @@
                 paginate: { previous: 'Sebelumnya', next: 'Berikutnya' },
             };
 
-            var domLayout = "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
+            var domLayout = "<'dt--top-section'<'row'<'col-sm-12 col-md-6 d-flex align-items-center gap-2'Bl><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
                 "<'table-responsive'tr>" +
                 "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>";
 
             $('#table-master-sc-pameran').DataTable({
                 dom: domLayout,
+                buttons: {
+                    buttons: [
+                        {
+                            extend: 'excelHtml5',
+                            className: 'btn btn-outline-success btn-sm',
+                            text: '<i class="fa-solid fa-file-excel me-1"></i>Excel',
+                            filename: namaFileExcel,
+                            exportOptions: { columns: [0, 1, 2, 3] },
+                        },
+                    ],
+                },
                 language: $.extend({}, bahasaDataTable, { emptyTable: 'Tidak ada pengajuan yang menunggu keputusan.' }),
                 lengthMenu: [10, 25, 50],
                 pageLength: 10,

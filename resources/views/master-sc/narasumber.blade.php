@@ -30,6 +30,18 @@
     <li class="breadcrumb-item active" aria-current="page">Narasumber</li>
 @endsection
 
+@php
+    // Dipakai sebagai baris keterangan di dalam file Excel yang diunduh
+    // (lewat opsi `title` tombol excelHtml5), sama seperti admin.narasumber.
+    if ($acaraTerpilih) {
+        $keteranganFilterExcel = 'Sub Tema: '.($acaraTerpilih->parent_tema ?? '-').' — Sesi: '.$acaraTerpilih->tema;
+    } elseif ($parentTerpilih) {
+        $keteranganFilterExcel = 'Sub Tema: '.$parentTerpilih->parent_tema.' — Sesi: Semua Sesi';
+    } else {
+        $keteranganFilterExcel = 'Sub Tema: Semua Sub Tema — Sesi: Semua Sesi';
+    }
+@endphp
+
 @section('content')
     <div class="col-lg-12 col-md-12 layout-spacing">
         <div class="statbox widget box box-shadow">
@@ -90,6 +102,7 @@
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
+                                <th>Subtema</th>
                                 <th class="text-center">Nilai Akhir</th>
                                 <th>Catatan SC</th>
                                 <th class="text-center">Aksi</th>
@@ -100,6 +113,7 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
+                                    <td>{{ $baris->subtema ?? '-' }}</td>
                                     <td class="text-center">{{ $baris->nilai_akhir ?? '-' }}</td>
                                     <td>{{ $baris->catatan ?? '-' }}</td>
                                     <td class="text-center">
@@ -125,10 +139,15 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/jszip.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/buttons.html5.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
 
     <script>
         $(function () {
+            var keteranganFilterExcel = {!! json_encode($keteranganFilterExcel) !!};
+
             var bahasaDataTable = {
                 search: 'Cari:',
                 lengthMenu: 'Tampilkan _MENU_ baris',
@@ -139,12 +158,24 @@
                 paginate: { previous: 'Sebelumnya', next: 'Berikutnya' },
             };
 
-            var domLayout = "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
+            var domLayout = "<'dt--top-section'<'row'<'col-sm-12 col-md-6 d-flex align-items-center gap-2'Bl><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
                 "<'table-responsive'tr>" +
                 "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>";
 
             $('#table-master-sc-narasumber').DataTable({
                 dom: domLayout,
+                buttons: {
+                    buttons: [
+                        {
+                            extend: 'excelHtml5',
+                            className: 'btn btn-outline-success btn-sm',
+                            text: '<i class="fa-solid fa-file-excel me-1"></i>Excel',
+                            filename: 'List Narasumber Proses Seleksi',
+                            title: keteranganFilterExcel,
+                            exportOptions: { columns: [0, 1, 2, 3, 4] },
+                        },
+                    ],
+                },
                 language: $.extend({}, bahasaDataTable, { emptyTable: 'Tidak ada pengajuan yang menunggu keputusan.' }),
                 lengthMenu: [10, 25, 50],
                 pageLength: 10,

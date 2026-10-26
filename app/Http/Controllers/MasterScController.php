@@ -65,7 +65,7 @@ class MasterScController extends Controller
             ->whereIn('n.status_ajuan', ['5', '7', '8'])
             ->when($idacara, fn ($query) => $query->where('n.idacara', $idacara))
             ->when(! $idacara && $idparent, fn ($query) => $query->where('a.idparent_acara', $idparent))
-            ->select('n.idnarasumber', 'n.status_ajuan', 'p.nama', 'i.nama_institusi', 'r.idreview_narasumber', 'r.nilai_akhir', 'r.catatan')
+            ->select('n.idnarasumber', 'n.status_ajuan', 'n.subtema', 'p.nama', 'i.nama_institusi', 'r.idreview_narasumber', 'r.nilai_akhir', 'r.catatan')
             ->orderBy('n.idnarasumber')
             ->get()
             ->map(function ($row) {
@@ -157,6 +157,7 @@ class MasterScController extends Controller
 
         $klusterOptions = DB::table('kluster_pameran')->where('status', true)->orderBy('nomor_kluster')->get();
         $idkluster = $request->query('idkluster');
+        $klusterTerpilih = $idkluster ? $klusterOptions->firstWhere('idkluster_pameran', (int) $idkluster) : null;
 
         $pameran = DB::table('pameran as p')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
@@ -171,7 +172,7 @@ class MasterScController extends Controller
                 return $row;
             });
 
-        return view('master-sc.pameran', compact('menu', 'submenu', 'klusterOptions', 'idkluster', 'pameran'));
+        return view('master-sc.pameran', compact('menu', 'submenu', 'klusterOptions', 'idkluster', 'klusterTerpilih', 'pameran'));
     }
 
     /**
