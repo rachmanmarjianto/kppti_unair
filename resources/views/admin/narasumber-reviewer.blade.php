@@ -112,6 +112,7 @@
                             <tr>
                                 <th>Nama Pengaju</th>
                                 <th>Institusi Asal</th>
+                                <th>Subtema</th>
                                 <th>Status</th>
                                 <th>Reviewer SC</th>
                             </tr>
@@ -121,6 +122,7 @@
                                 <tr>
                                     <td>{{ $baris->nama }}</td>
                                     <td>{{ $baris->nama_institusi ?? '-' }}</td>
+                                    <td>{{ $baris->subtema ?? '-' }}</td>
                                     <td>
                                         <span class="badge {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
@@ -174,10 +176,10 @@
                             filename: 'List Set Reviewer Narasumber',
                             title: keteranganFilterExcel,
                             exportOptions: {
-                                columns: [0, 1, 2, 3],
+                                columns: [0, 1, 2, 3, 4],
                                 format: {
                                     body: function (data, row, column, node) {
-                                        if (column === 3) {
+                                        if (column === 4) {
                                             return $(node).find('select option:selected').text().trim();
                                         }
 

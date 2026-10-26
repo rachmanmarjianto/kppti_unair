@@ -170,7 +170,7 @@ class NarasumberAdminController extends Controller
             ->where('n.status_ajuan', '!=', '1')
             ->when($idacara, fn ($query) => $query->where('n.idacara', $idacara))
             ->when(! $idacara && $idparentAcara, fn ($query) => $query->where('a.idparent_acara', $idparentAcara))
-            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.status_ajuan', 'n.reviewer_sc', 'sc.nama as nama_reviewer')
+            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'n.subtema', 'n.status_ajuan', 'n.reviewer_sc', 'sc.nama as nama_reviewer')
             ->orderBy('n.idnarasumber')
             ->get();
 
