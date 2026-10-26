@@ -22,11 +22,17 @@
         .table-narasumber-reviewer {
             width: 100% !important;
             max-width: 100%;
+            table-layout: fixed;
         }
 
-        .table-narasumber-reviewer td {
+        .table-narasumber-reviewer td,
+        .table-narasumber-reviewer th {
             white-space: normal;
             word-break: break-word;
+        }
+
+        .table-narasumber-reviewer .select-set-reviewer {
+            max-width: 100%;
         }
     </style>
 @endsection
