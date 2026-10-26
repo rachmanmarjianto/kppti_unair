@@ -368,8 +368,6 @@ class Controller extends BaseController
             }
 
             $token = str_replace('"', '', $response);
-            var_dump('Token H2H: '.$token);
-            die;
         } catch (\Throwable $e) {
             Log::error('Gagal mengambil token H2H: '.$e->getMessage());
 
