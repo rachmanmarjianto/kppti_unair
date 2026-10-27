@@ -59,6 +59,30 @@
 @endphp
 
 @section('content')
+    <div class="col-lg-12 col-md-12 layout-spacing">
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">
+                <div class="row align-items-center">
+                    <div class="col-12">
+                        <h4>Dashboard</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="widget-content widget-content-area">
+                <ul class="list-group">
+                    @forelse($dashboardReviewer as $baris)
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ $baris->nama }}
+                            <span class="badge bg-primary rounded-pill">{{ $baris->jumlah }}</span>
+                        </li>
+                    @empty
+                        <li class="list-group-item text-center text-muted">Belum ada SC yang terdaftar.</li>
+                    @endforelse
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <form method="GET" action="{{ route('admin.narasumber.reviewer') }}" id="form-filter-acara-narasumber-reviewer">
     <div class="col-lg-12 col-md-12 layout-spacing">
         <div class="statbox widget box box-shadow">

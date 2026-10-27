@@ -176,9 +176,16 @@ class NarasumberAdminController extends Controller
 
         $scOptions = $this->scOptions();
 
+        $dashboardReviewer = $scOptions->map(function ($sc) use ($narasumber) {
+            return (object) [
+                'nama' => $sc->nama,
+                'jumlah' => $narasumber->where('reviewer_sc', $sc->idpengguna)->count(),
+            ];
+        })->sortByDesc('jumlah')->values();
+
         return view('admin.narasumber-reviewer', compact(
             'menu', 'submenu', 'narasumber', 'scOptions', 'acaraParentOptions', 'acaraOptionsFilter',
-            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih'
+            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih', 'dashboardReviewer'
         ));
     }
 

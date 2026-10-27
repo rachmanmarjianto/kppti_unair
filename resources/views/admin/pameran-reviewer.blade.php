@@ -64,6 +64,11 @@
                     <label class="form-check-label" for="input-sertakan-tema">Sertakan tema</label>
                 </div>
 
+                <div class="form-check mb-3" style="margin:15px">
+                    <input type="checkbox" class="form-check-input" id="input-filter-belum-reviewer">
+                    <label class="form-check-label" for="input-filter-belum-reviewer">Tampilkan hanya yang reviewernya belum lengkap</label>
+                </div>
+
                 <div class="table-responsive">
                     <table id="table-pameran-reviewer" class="table table-hover table-bordered table-pameran-reviewer">
                         <thead>
@@ -192,6 +197,22 @@
 
             $('#input-sertakan-tema').on('change', function () {
                 tablePameranReviewer.column(1).visible(this.checked);
+            });
+
+            $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+                if (settings.nTable.id !== 'table-pameran-reviewer') {
+                    return true;
+                }
+
+                if (! $('#input-filter-belum-reviewer').is(':checked')) {
+                    return true;
+                }
+
+                return searchData[2] === '-' || searchData[3] === '-';
+            });
+
+            $('#input-filter-belum-reviewer').on('change', function () {
+                tablePameranReviewer.draw();
             });
 
             function tampilkanError($form, xhr) {
