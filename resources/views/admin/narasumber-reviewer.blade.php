@@ -69,16 +69,28 @@
                 </div>
             </div>
             <div class="widget-content widget-content-area">
-                <ul class="list-group">
-                    @forelse($dashboardReviewer as $baris)
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ $baris->nama }}
-                            <span class="badge bg-primary rounded-pill">{{ $baris->jumlah }}</span>
-                        </li>
-                    @empty
-                        <li class="list-group-item text-center text-muted">Belum ada SC yang terdaftar.</li>
-                    @endforelse
-                </ul>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Nama Reviewer</th>
+                                <th class="text-center">Jumlah Ajuan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($dashboardReviewer as $baris)
+                                <tr>
+                                    <td>{{ $baris->nama }}</td>
+                                    <td class="text-center">{{ $baris->jumlah }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">Belum ada SC yang terdaftar.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
