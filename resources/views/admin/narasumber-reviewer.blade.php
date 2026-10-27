@@ -116,6 +116,11 @@
                     <label class="form-check-label" for="input-sertakan-subtema">Sertakan subtema</label>
                 </div>
 
+                <div class="form-check mb-3" style="margin:15px">
+                    <input type="checkbox" class="form-check-input" id="input-filter-belum-reviewer">
+                    <label class="form-check-label" for="input-filter-belum-reviewer">Tampilkan hanya yang belum ada reviewernya</label>
+                </div>
+
                 <div class="table-responsive">
                     <table id="table-narasumber-reviewer" class="table table-hover table-bordered table-narasumber-reviewer">
                         <thead>
@@ -219,6 +224,24 @@
                 tableNarasumberReviewer.column(2).visible(this.checked);
             });
 
+            $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+                if (settings.nTable.id !== 'table-narasumber-reviewer') {
+                    return true;
+                }
+
+                if (! $('#input-filter-belum-reviewer').is(':checked')) {
+                    return true;
+                }
+
+                var row = tableNarasumberReviewer.row(index).node();
+
+                return $(row).find('.select-set-reviewer').val() === '';
+            });
+
+            $('#input-filter-belum-reviewer').on('change', function () {
+                tableNarasumberReviewer.draw();
+            });
+
             $('#table-narasumber-reviewer').on('change', '.select-set-reviewer', function () {
                 var $select = $(this);
                 var $labelProses = $select.siblings('.label-proses-reviewer');
@@ -237,6 +260,7 @@
                 })
                 .done(function (res) {
                     $labelProses.addClass('d-none');
+                    tableNarasumberReviewer.draw(false);
                     Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false });
                 })
                 .fail(function (xhr) {
