@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Storage;
 
 class PameranAdminController extends Controller
 {
+    // Samakan dengan PameranController::IDKLUSTER_BERBAYAR.
+    private const IDKLUSTER_BERBAYAR = 5;
+
     /**
      * Daftar semua pengajuan pameran — admin punya visibilitas paling luas
      * di aplikasi ini, jadi ditampilkan tanpa kecuali (termasuk yang masih
@@ -87,7 +90,76 @@ class PameranAdminController extends Controller
         $reviewer1 = $this->riwayatReviewerPameranAdmin($idpameran, 1);
         $reviewer2 = $this->riwayatReviewerPameranAdmin($idpameran, 2);
 
-        return view('admin.pameran-ajuan-detail', compact('menu', 'submenu', 'pameran', 'token', 'reviewer1', 'reviewer2'));
+        $klusterOptions = DB::table('kluster_pameran')->where('status', true)->orderBy('nomor_kluster')->get();
+
+        return view('admin.pameran-ajuan-detail', compact('menu', 'submenu', 'pameran', 'token', 'reviewer1', 'reviewer2', 'klusterOptions'));
+    }
+
+    /**
+     * Admin mengoreksi kluster yang sudah dipilih peserta. Tagihan lama
+     * dibatalkan (status 4, sama seperti PameranController::batalkanAjuan())
+     * walau sudah Lunas/Tertagih, lalu tagihan baru dibuat sesuai aturan
+     * kluster baru (pola identik PameranController::ajukan()) — tidak
+     * menyentuh VA BNI sama sekali di langkah ini.
+     */
+    public function ubahKluster(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpameran' => ['required', 'integer', 'exists:pameran,idpameran'],
+            'idkluster_pameran' => ['required', 'integer', 'exists:kluster_pameran,idkluster_pameran'],
+        ]);
+
+        $pameran = DB::table('pameran')->where('idpameran', $validated['idpameran'])->first();
+
+        if ((int) $pameran->idkluster_pameran === $validated['idkluster_pameran']) {
+            return $this->jsonResponse(422, 'Kluster yang dipilih sama dengan kluster saat ini.');
+        }
+
+        $kluster = DB::table('kluster_pameran')->where('idkluster_pameran', $validated['idkluster_pameran'])->first();
+
+        try {
+            DB::transaction(function () use ($pameran, $validated, $kluster, $userdata) {
+                DB::table('pameran')->where('idpameran', $pameran->idpameran)
+                    ->update(['idkluster_pameran' => $validated['idkluster_pameran']]);
+
+                $tagihanLama = $this->tagihanTerbaru($pameran->idpameran);
+
+                if ($tagihanLama && (int) $tagihanLama->status !== 4) {
+                    DB::table('tagihan')->where('idtagihan', $tagihanLama->idtagihan)->update(['status' => 4]);
+
+                    DB::table('log_ubah_status_by_pengguna')->insert([
+                        'done_at' => now(),
+                        'done_by' => $userdata['idpengguna'],
+                        'idtagihan' => $tagihanLama->idtagihan,
+                        'status_awal' => $tagihanLama->status,
+                        'status_akhir' => 4,
+                    ]);
+                }
+
+                $berbayar = (int) $validated['idkluster_pameran'] === self::IDKLUSTER_BERBAYAR;
+
+                DB::table('tagihan')->insert([
+                    'idinstitusi_asal' => $pameran->idinstitusi_asal,
+                    'idpameran' => $pameran->idpameran,
+                    'created_at' => now(),
+                    'created_by' => $userdata['idpengguna'],
+                    'status' => $berbayar ? 6 : 3,
+                    'tagihan' => $berbayar ? config('services.biaya_pameran') : 0,
+                    'sisa_tagihan' => $berbayar ? config('services.biaya_pameran') : 0,
+                ]);
+
+                $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'],
+                    "Admin mengubah kluster pameran '{$pameran->tema}' menjadi Kluster {$kluster->nomor_kluster} — {$kluster->tema_kluster}");
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengubah kluster pameran.');
+        }
+
+        return $this->jsonResponse(200, 'Kluster pameran berhasil diubah. Tagihan lama dibatalkan dan tagihan baru dibuat.');
     }
 
     /**

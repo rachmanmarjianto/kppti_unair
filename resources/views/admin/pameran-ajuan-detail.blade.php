@@ -4,6 +4,26 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
+    <style>
+        #modal-ubah-kluster .modal-content {
+            background-color: #ffffff !important;
+            color: #0e1726 !important;
+        }
+
+        #modal-ubah-kluster .form-label,
+        #modal-ubah-kluster .text-muted {
+            color: #0e1726 !important;
+        }
+
+        #modal-ubah-kluster .form-select {
+            background-color: #ffffff !important;
+            color: #0e1726 !important;
+            border-color: #e0e6ed !important;
+        }
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -60,7 +80,12 @@
                 </div>
                 <div class="row mb-2">
                     <div class="col-12 col-sm-3 fw-bold">Kluster Pameran</div>
-                    <div class="col-12 col-sm-9">{{ $pameran->nomor_kluster ? 'Kluster '.$pameran->nomor_kluster.' — '.$pameran->tema_kluster : '-' }}</div>
+                    <div class="col-12 col-sm-9">
+                        {{ $pameran->nomor_kluster ? 'Kluster '.$pameran->nomor_kluster.' — '.$pameran->tema_kluster : '-' }}
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#modal-ubah-kluster">
+                            <i class="fa-solid fa-pen"></i> Ubah
+                        </button>
+                    </div>
                 </div>
                 <div class="row mb-2">
                     <div class="col-12 col-sm-3 fw-bold">Risalah Singkat Pameran</div>
@@ -179,4 +204,87 @@
             </div>
         </div>
     @endforeach
+
+    {{-- Modal: ubah kluster pameran --}}
+    <div class="modal fade" id="modal-ubah-kluster" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ubah Kluster Pameran</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Mengubah kluster akan membatalkan tagihan saat ini (walau sudah Lunas) dan membuat tagihan baru sesuai kluster yang dipilih.</p>
+                    <label for="input-ubah-kluster" class="form-label">Kluster Baru</label>
+                    <select id="input-ubah-kluster" class="form-select">
+                        @foreach($klusterOptions as $k)
+                            <option value="{{ $k->idkluster_pameran }}" @selected((int) $pameran->idkluster_pameran === $k->idkluster_pameran)>
+                                Kluster {{ $k->nomor_kluster }} &mdash; {{ $k->tema_kluster }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-outline-primary" id="btn-simpan-ubah-kluster">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('page-js')
+    <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
+
+    <script>
+        $(function () {
+            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+            var ubahKlusterUrl = '{{ route('admin.pameran.ajuan.ubah-kluster') }}';
+            var idpameran = {{ $pameran->idpameran }};
+
+            $('#btn-simpan-ubah-kluster').on('click', function () {
+                var idklusterBaru = $('#input-ubah-kluster').val();
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Kluster akan diubah, tagihan lama (walau sudah Lunas) akan dibatalkan dan tagihan baru dibuat sesuai kluster baru. Lanjutkan?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, ubah',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var $btn = $('#btn-simpan-ubah-kluster');
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+
+                    $.ajax({
+                        url: ubahKlusterUrl,
+                        method: 'POST',
+                        data: { idpameran: idpameran, idkluster_pameran: idklusterBaru },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        }
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
+        });
+    </script>
 @endsection

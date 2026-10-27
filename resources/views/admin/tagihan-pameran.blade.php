@@ -72,7 +72,7 @@
                         <thead>
                             <tr>
                                 <th>Institusi</th>
-                                <th>Tema Pameran</th>
+                                <th>Kluster</th>
                                 <th>Nominal</th>
                                 <th>Sisa</th>
                                 <th>Status</th>
@@ -83,7 +83,7 @@
                             @foreach($tagihan as $baris)
                                 <tr>
                                     <td>{{ $baris->nama_institusi }}</td>
-                                    <td>{{ $baris->tema }}</td>
+                                    <td>{{ $baris->nomor_kluster ? 'Kluster '.$baris->nomor_kluster.' — '.$baris->tema_kluster : '-' }}</td>
                                     <td>{{ number_format($baris->tagihan ?? 0, 0, ',', '.') }}</td>
                                     <td>{{ number_format($baris->sisa_tagihan ?? 0, 0, ',', '.') }}</td>
                                     <td>

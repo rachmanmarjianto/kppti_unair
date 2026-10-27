@@ -51,6 +51,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-pameran/ajuan/detail', [PameranAdminController::class, 'detail'])->name('admin.pameran.ajuan.detail');
     Route::get('/admin-pameran/ajuan/portofolio', [PameranAdminController::class, 'tampilPortofolio'])->name('admin.pameran.ajuan.portofolio');
     Route::get('/admin-pameran/ajuan/file-pertama', [PameranAdminController::class, 'tampilFilePertama'])->name('admin.pameran.ajuan.file-pertama');
+    Route::post('/admin-pameran/ajuan/ubah-kluster', [PameranAdminController::class, 'ubahKluster'])->name('admin.pameran.ajuan.ubah-kluster');
     Route::get('/admin-pameran/nomor-stand', [PameranAdminController::class, 'nomorStand'])->name('admin.pameran.nomor-stand');
     Route::post('/admin-pameran/nomor-stand/update', [PameranAdminController::class, 'updateNomorStand'])->name('admin.pameran.nomor-stand.update');
     Route::post('/admin-pameran/penjaga/tambah', [PameranAdminController::class, 'tambahPenjaga'])->name('admin.pameran.penjaga.tambah');

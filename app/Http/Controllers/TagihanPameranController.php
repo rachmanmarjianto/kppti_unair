@@ -17,11 +17,22 @@ class TagihanPameranController extends Controller
         $menu = 'pameran';
         $submenu = 'tagihan-pameran';
 
+        // Satu pameran bisa punya lebih dari satu baris tagihan (ajuan ulang
+        // setelah dibatalkan, atau kluster diubah Admin — lihat
+        // PameranAdminController::ubahKluster()); di sini hanya tagihan
+        // terakhir per pameran yang ditampilkan.
         $tagihan = DB::table('tagihan as t')
             ->join('pameran as p', 'p.idpameran', '=', 't.idpameran')
             ->join('institusi_asal as i', 'i.idinstitusi_asal', '=', 't.idinstitusi_asal')
+            ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->whereNotNull('t.idpameran')
-            ->select('t.idtagihan', 't.status', 't.tagihan', 't.sisa_tagihan', 'p.tema', 'i.nama_institusi')
+            ->whereIn('t.idtagihan', function ($query) {
+                $query->selectRaw('MAX(idtagihan)')
+                    ->from('tagihan')
+                    ->whereNotNull('idpameran')
+                    ->groupBy('idpameran');
+            })
+            ->select('t.idtagihan', 't.status', 't.tagihan', 't.sisa_tagihan', 'i.nama_institusi', 'k.nomor_kluster', 'k.tema_kluster')
             ->orderBy('t.idtagihan')
             ->get()
             ->map(function ($row) {
