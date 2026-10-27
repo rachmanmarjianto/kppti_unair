@@ -31,7 +31,23 @@ class PameranAdminController extends Controller
                 return $row;
             });
 
-        return view('admin.pameran-ajuan', compact('menu', 'submenu', 'pameran'));
+        // Dashboard jumlah mengajukan & terpilih per kluster — "mengajukan"
+        // tidak menghitung baris yang masih Draft (status '1', belum benar-
+        // benar diajukan peserta), "terpilih" = status '9', satu-satunya
+        // keputusan akhir positif pameran (lihat MasterScController::pameranPutuskan()).
+        $dashboardKluster = DB::table('kluster_pameran as k')
+            ->where('k.status', true)
+            ->leftJoin('pameran as p', function ($join) {
+                $join->on('p.idkluster_pameran', '=', 'k.idkluster_pameran')->where('p.status_ajuan', '!=', '1');
+            })
+            ->select('k.idkluster_pameran', 'k.nomor_kluster', 'k.tema_kluster')
+            ->selectRaw('count(p.idpameran) as jumlah_mengajukan')
+            ->selectRaw("count(case when p.status_ajuan = '9' then 1 end) as jumlah_terpilih")
+            ->groupBy('k.idkluster_pameran', 'k.nomor_kluster', 'k.tema_kluster')
+            ->orderBy('k.nomor_kluster')
+            ->get();
+
+        return view('admin.pameran-ajuan', compact('menu', 'submenu', 'pameran', 'dashboardKluster'));
     }
 
     /**

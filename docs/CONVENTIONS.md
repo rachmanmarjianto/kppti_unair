@@ -182,6 +182,25 @@ Pola baku (satu `row` per pasangan label–nilai):
 - Label pakai `fw-bold`, bukan elemen `<th>`.
 - Lihat `resources/views/sc/narasumber-detail.blade.php` dan `resources/views/admin/narasumber-detail.blade.php` sebagai contoh pola ini diterapkan konsisten.
 
+### 6.8 Event JavaScript selalu lewat delegation
+**Setiap** `.on(...)` jQuery untuk event (klik, `change`, `submit`, dst) **wajib** pakai bentuk delegation — menempel ke elemen induk yang permanen, dengan selector id/class spesifik sebagai argumen kedua:
+
+```js
+// BENAR — delegation: listener nempel ke induk permanen (#table-x, document,
+// atau wrapper yang pasti selalu ada), dicek per elemen yang cocok selector
+// setiap event terjadi.
+$('#table-x').on('change', '.select-y', function () { ... });
+$(document).on('click', '.btn-z', function () { ... });
+
+// SALAH — direct binding: jQuery mencari elemen SAAT baris ini dieksekusi,
+// lalu nempel listener ke elemen-elemen itu saja.
+$('.select-y').on('change', function () { ... });
+```
+
+**Kenapa:** direct binding gagal diam-diam untuk elemen yang *belum ada di DOM* saat baris itu dijalankan, atau yang *dicopot-pasang lagi* dari DOM sesudahnya — kasus nyata: baris tabel di halaman 2+ pada DataTables client-side dicopot dari DOM sampai halaman itu dibuka, jadi elemen di baris tersebut tidak pernah kebagian listener kalau dipasang langsung (lihat insiden `select-set-reviewer` di `admin/narasumber-reviewer.blade.php` — select Reviewer SC di halaman 2 tidak merespons `change` sama sekali karena memakai direct binding). Delegation aman dari masalah ini karena pengecekan "elemen mana yang cocok" dilakukan **saat event terjadi**, bukan saat kode pertama kali dibaca — jadi otomatis berlaku untuk elemen yang baru dirender, dipindah, atau dipasang ulang ke DOM kapan pun, termasuk lewat AJAX, modal, atau tabel berpaginasi.
+
+**Berlaku untuk semua event**, bukan cuma yang di dalam tabel DataTables — termasuk tombol di dalam modal yang dirender berulang (`@foreach`), konten yang baru disisipkan lewat AJAX, dan elemen apa pun yang jumlah/keberadaannya bisa berubah setelah load awal. Induk yang dipakai untuk delegation harus elemen yang **pasti selalu ada** sepanjang hidup halaman (wrapper card, `<table>`-nya sendiri, atau `document` kalau tidak ada pembungkus yang lebih spesifik) — jangan delegation ke elemen yang ikut dibuat ulang/dihapus juga.
+
 ## 7. Keamanan dasar
 
 - CSRF: semua `POST` (termasuk AJAX) menyertakan token.
