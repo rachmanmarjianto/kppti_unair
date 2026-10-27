@@ -118,6 +118,12 @@ class NarasumberAdminController extends Controller
             ->get()
             ->map(function ($baris) {
                 $baris->token = $this->encryptRouteValue($baris->idreview_narasumber);
+                // Sama seperti NarasumberReviewController::detail() — '5' (Diterima)
+                // di sini berarti baris yang sama sudah pernah '7' (Proses Seleksi)
+                // lalu diputuskan Master SC, skornya tetap melekat di baris yang sama.
+                $baris->kriteria = in_array($baris->status_ajuan, ['4', '5', '6', '7', '8'], true)
+                    ? $this->kriteriaUntukReviewNarsum($baris->idreview_narasumber)
+                    : collect();
 
                 $infoReviewer = $this->reviewerTerakhirUntukReviewNarasumber($baris->idreview_narasumber);
                 $baris->nama_sc = $infoReviewer->nama ?? null;

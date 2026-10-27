@@ -128,6 +128,30 @@
                                             <p><strong>Catatan:</strong><br>{{ $baris->catatan }}</p>
                                         @endif
 
+                                        @if($baris->kriteria->isNotEmpty())
+                                            <table class="table table-sm table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Topik</th>
+                                                        <th>Komentar</th>
+                                                        <th class="text-center">Bobot</th>
+                                                        <th class="text-center">Nilai</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($baris->kriteria as $k)
+                                                        <tr>
+                                                            <td>{{ $k->nama_topik }}</td>
+                                                            <td>{{ $k->isi_review ?? '-' }}</td>
+                                                            <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
+                                                            <td class="text-center">{{ $k->nilai ?? '-' }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                            <p class="fw-bold mb-2">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
+                                        @endif
+
                                         @if($baris->nama_sc)
                                             <p class="text-muted mb-0" style="font-size: 12.5px;">
                                                 Direview oleh {{ $baris->nama_sc }}
