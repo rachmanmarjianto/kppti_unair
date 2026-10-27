@@ -4,6 +4,19 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        .table-komponen-penilaian {
+            width: 100% !important;
+            max-width: 100%;
+            table-layout: fixed;
+        }
+
+        .table-komponen-penilaian td,
+        .table-komponen-penilaian th {
+            white-space: normal;
+            word-break: break-word;
+        }
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -129,7 +142,7 @@
                                         @endif
 
                                         @if($baris->kriteria->isNotEmpty())
-                                            <table class="table table-sm table-bordered">
+                                            <table class="table table-sm table-bordered table-komponen-penilaian">
                                                 <thead>
                                                     <tr>
                                                         <th>Topik</th>
