@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['akses:1'])->group(function () {
     Route::get('/home_admin', [AdminController::class, 'index'])->name('admin.home');
+    Route::get('/home_admin/institusi-ajuan', [AdminController::class, 'detailInstitusiAjuan'])->name('admin.home.institusi-ajuan');
     Route::get('/admin-acara', [AcaraController::class, 'index'])->name('admin.acara');
     Route::post('/admin-acara/tambah', [AcaraController::class, 'store'])->name('admin.acara.tambah');
     Route::post('/admin-acara/update', [AcaraController::class, 'update'])->name('admin.acara.update');

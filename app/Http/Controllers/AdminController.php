@@ -37,7 +37,81 @@ class AdminController extends Controller
         $menu = 'home';
         $submenu = '';
 
-        return view('admin.home', compact('menu', 'submenu'));
+        $institusiDashboard = DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->orderBy('i.nama_institusi')
+            ->get();
+
+        $jumlahNarasumberPerInstitusi = DB::table('narasumber as n')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->where('n.status_ajuan', '!=', '1')
+            ->select('p.idinstitusi_asal')
+            ->selectRaw('count(*) as jumlah')
+            ->groupBy('p.idinstitusi_asal')
+            ->pluck('jumlah', 'idinstitusi_asal');
+
+        $institusiDenganPameran = DB::table('pameran')->whereNotNull('idinstitusi_asal')->pluck('idinstitusi_asal')->unique();
+
+        $institusiDashboard = $institusiDashboard->map(function ($institusi) use ($jumlahNarasumberPerInstitusi, $institusiDenganPameran) {
+            $institusi->jumlah_narasumber = $jumlahNarasumberPerInstitusi->get($institusi->idinstitusi_asal, 0);
+            $institusi->ada_pameran = $institusiDenganPameran->contains($institusi->idinstitusi_asal);
+            $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
+
+            return $institusi;
+        });
+
+        return view('admin.home', compact('menu', 'submenu', 'institusiDashboard'));
+    }
+
+    /**
+     * Detail semua ajuan (narasumber + pameran) milik satu institusi asal,
+     * diakses lewat klik baris di dashboard institusi pada Home — murni
+     * halaman tautan ke halaman detail yang sudah ada, tidak menduplikasi
+     * kriteria/reviewer/riwayat lengkapnya.
+     */
+    public function detailInstitusiAjuan(Request $request)
+    {
+        $idinstitusiAsal = $this->decryptRouteValue($request->query('token'));
+
+        if ($idinstitusiAsal === null) {
+            abort(404);
+        }
+
+        $idinstitusiAsal = (int) $idinstitusiAsal;
+
+        $institusi = DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->where('i.idinstitusi_asal', $idinstitusiAsal)
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->first();
+
+        if (! $institusi) {
+            abort(404);
+        }
+
+        $menu = 'home';
+        $submenu = '';
+
+        $narasumberList = DB::table('narasumber as n')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->where('p.idinstitusi_asal', $idinstitusiAsal)
+            ->select('n.idnarasumber', 'p.nama', 'n.status_ajuan')
+            ->orderBy('n.idnarasumber')
+            ->get()
+            ->map(function ($row) {
+                $row->token = $this->encryptRouteValue($row->idnarasumber);
+
+                return $row;
+            });
+
+        $pameran = DB::table('pameran')->where('idinstitusi_asal', $idinstitusiAsal)->first();
+
+        if ($pameran) {
+            $pameran->token = $this->encryptRouteValue($pameran->idpameran);
+        }
+
+        return view('admin.institusi-ajuan-detail', compact('menu', 'submenu', 'institusi', 'narasumberList', 'pameran'));
     }
 
     public function adminusers()
