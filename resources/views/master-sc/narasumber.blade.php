@@ -190,7 +190,7 @@
                 Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
             }
 
-            $('.btn-putuskan').on('click', function () {
+            $('#table-master-sc-narasumber').on('click', '.btn-putuskan', function () {
                 var $btn = $(this);
                 var idreviewNarasumber = $btn.data('idreview');
                 var keputusan = $btn.data('keputusan');
