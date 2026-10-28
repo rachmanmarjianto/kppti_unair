@@ -4,19 +4,6 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
-    <style>
-        .table-komponen-penilaian {
-            width: 100% !important;
-            max-width: 100%;
-            table-layout: fixed;
-        }
-
-        .table-komponen-penilaian td,
-        .table-komponen-penilaian th {
-            white-space: normal;
-            word-break: break-word;
-        }
-    </style>
 @endsection
 
 @section('breadcrumb')
@@ -142,26 +129,28 @@
                                         @endif
 
                                         @if($baris->kriteria->isNotEmpty())
-                                            <table class="table table-sm table-bordered table-komponen-penilaian">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Topik</th>
-                                                        <th>Komentar</th>
-                                                        <th class="text-center">Bobot</th>
-                                                        <th class="text-center">Nilai</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($baris->kriteria as $k)
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered">
+                                                    <thead>
                                                         <tr>
-                                                            <td>{{ $k->nama_topik }}</td>
-                                                            <td>{{ $k->isi_review ?? '-' }}</td>
-                                                            <td class="text-center">{{ $k->bobot_dlm_persen }}%</td>
-                                                            <td class="text-center">{{ $k->nilai ?? '-' }}</td>
+                                                            <th>Topik</th>
+                                                            <th>Komentar</th>
+                                                            <th class="text-center">Bobot</th>
+                                                            <th class="text-center">Nilai</th>
                                                         </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($baris->kriteria as $k)
+                                                            <tr>
+                                                                <td class="text-nowrap">{{ $k->nama_topik }}</td>
+                                                                <td class="text-nowrap">{{ $k->isi_review ?? '-' }}</td>
+                                                                <td class="text-center text-nowrap">{{ $k->bobot_dlm_persen }}%</td>
+                                                                <td class="text-center text-nowrap">{{ $k->nilai ?? '-' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                             <p class="fw-bold mb-2">Nilai Akhir: {{ $baris->nilai_akhir ?? '-' }}</p>
                                         @endif
 
