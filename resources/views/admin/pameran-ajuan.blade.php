@@ -63,6 +63,7 @@
                             <tr>
                                 <th>Kluster</th>
                                 <th class="text-center">Jumlah Mengajukan</th>
+                                <th class="text-center">Proses Seleksi</th>
                                 <th class="text-center">Terpilih</th>
                             </tr>
                         </thead>
@@ -71,11 +72,12 @@
                                 <tr>
                                     <td>Kluster {{ $baris->nomor_kluster }} &mdash; {{ $baris->tema_kluster }}</td>
                                     <td class="text-center">{{ $baris->jumlah_mengajukan }}</td>
+                                    <td class="text-center">{{ $baris->jumlah_proses_seleksi }}</td>
                                     <td class="text-center">{{ $baris->jumlah_terpilih }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="text-center text-muted">Belum ada kluster pameran yang aktif.</td>
+                                    <td colspan="4" class="text-center text-muted">Belum ada kluster pameran yang aktif.</td>
                                 </tr>
                             @endforelse
                         </tbody>

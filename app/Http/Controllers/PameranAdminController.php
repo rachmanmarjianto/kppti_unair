@@ -45,6 +45,7 @@ class PameranAdminController extends Controller
             })
             ->select('k.idkluster_pameran', 'k.nomor_kluster', 'k.tema_kluster')
             ->selectRaw('count(p.idpameran) as jumlah_mengajukan')
+            ->selectRaw("count(case when p.status_ajuan = '7' then 1 end) as jumlah_proses_seleksi")
             ->selectRaw("count(case when p.status_ajuan = '9' then 1 end) as jumlah_terpilih")
             ->groupBy('k.idkluster_pameran', 'k.nomor_kluster', 'k.tema_kluster')
             ->orderBy('k.nomor_kluster')

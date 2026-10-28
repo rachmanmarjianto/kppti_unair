@@ -68,6 +68,7 @@ class NarasumberAdminController extends Controller
             ->where('acara.perlu_narsum', true)
             ->select('acara.idacara', 'acara.tema', 'parent.tema as parent_tema')
             ->selectRaw('count(n.idnarasumber) as jumlah_pengajuan')
+            ->selectRaw("count(case when n.status_ajuan = '7' then 1 end) as jumlah_proses_seleksi")
             ->selectRaw("count(case when n.status_ajuan = '5' then 1 end) as jumlah_lolos")
             ->groupBy('acara.idacara', 'acara.tema', 'parent.tema')
             ->orderBy('acara.tema')

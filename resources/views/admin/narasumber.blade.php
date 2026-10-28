@@ -78,6 +78,7 @@
                                                 <tr>
                                                     <th>Sesi</th>
                                                     <th class="text-center">Jumlah Pengajuan</th>
+                                                    <th class="text-center">Proses Seleksi</th>
                                                     <th class="text-center">Lolos</th>
                                                 </tr>
                                             </thead>
@@ -86,6 +87,7 @@
                                                     <tr>
                                                         <td>{{ $baris->tema }}</td>
                                                         <td class="text-center">{{ $baris->jumlah_pengajuan }}</td>
+                                                        <td class="text-center">{{ $baris->jumlah_proses_seleksi }}</td>
                                                         <td class="text-center">{{ $baris->jumlah_lolos }}</td>
                                                     </tr>
                                                 @endforeach
