@@ -112,6 +112,20 @@ class NarasumberAdminController extends Controller
         $menu = 'narasumber';
         $submenu = 'ajuan';
 
+        // Opsi sesi 2 jenjang untuk modal ubah sesi, pola identik index().
+        $acaraOptions = $this->acaraAktifQuery()
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
+            ->where('acara.perlu_narsum', true)
+            ->select('acara.idacara', 'acara.tema', 'acara.idparent_acara', 'parent.tema as parent_tema')
+            ->orderBy('acara.tema')
+            ->get();
+
+        $acaraParentOptions = $acaraOptions
+            ->unique('idparent_acara')
+            ->map(fn ($a) => (object) ['idparent_acara' => $a->idparent_acara, 'parent_tema' => $a->parent_tema])
+            ->sortBy('parent_tema')
+            ->values();
+
         $riwayat = DB::table('review_narasumber as r')
             ->where('r.idnarasumber', $idnarasumber)
             ->orderBy('r.idreview_narasumber')
@@ -133,7 +147,51 @@ class NarasumberAdminController extends Controller
                 return $baris;
             });
 
-        return view('admin.narasumber-detail', compact('menu', 'submenu', 'narasumber', 'riwayat'));
+        return view('admin.narasumber-detail', compact('menu', 'submenu', 'narasumber', 'riwayat', 'acaraOptions', 'acaraParentOptions'));
+    }
+
+    /**
+     * Admin mengoreksi sesi (`idacara`) yang dipilih peserta — murni
+     * perubahan klasifikasi, tidak seperti kluster pameran tidak ada
+     * implikasi tagihan/kapasitas (tabel acara tidak punya kolom kapasitas,
+     * review_narasumber tidak menyimpan idacara), jadi tidak dibatasi
+     * status_ajuan dan tidak menyentuh field lain.
+     */
+    public function ubahSesi(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idnarasumber' => ['required', 'integer', 'exists:narasumber,idnarasumber'],
+            'idacara' => ['required', 'integer'],
+        ]);
+
+        $narasumber = DB::table('narasumber')->where('idnarasumber', $validated['idnarasumber'])->first();
+
+        if ((int) $narasumber->idacara === $validated['idacara']) {
+            return $this->jsonResponse(422, 'Sesi yang dipilih sama dengan sesi saat ini.');
+        }
+
+        $acaraLama = DB::table('acara')->where('idacara', $narasumber->idacara)->first();
+        $acaraBaru = $this->acaraAktifQuery()
+            ->where('idacara', $validated['idacara'])
+            ->where('perlu_narsum', true)
+            ->first();
+
+        if (! $acaraBaru) {
+            return $this->jsonResponse(422, 'Sesi acara yang dipilih tidak valid.');
+        }
+
+        DB::table('narasumber')->where('idnarasumber', $narasumber->idnarasumber)->update(['idacara' => $validated['idacara']]);
+
+        $idpeserta = DB::table('peserta')->where('idpengguna', $narasumber->idpengguna)->value('idpeserta');
+
+        if ($idpeserta) {
+            $this->logPeserta((int) $idpeserta, $userdata['idpengguna'],
+                "Admin mengubah sesi pengajuan narasumber dari '{$acaraLama->tema}' menjadi '{$acaraBaru->tema}'.");
+        }
+
+        return $this->jsonResponse(200, 'Sesi pengajuan narasumber berhasil diubah.');
     }
 
     /**

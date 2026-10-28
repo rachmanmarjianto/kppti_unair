@@ -4,6 +4,14 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
+    <style>
+        #modal-ubah-sesi .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-ubah-sesi .form-label, #modal-ubah-sesi .text-muted { color: #0e1726 !important; }
+        #modal-ubah-sesi .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -79,6 +87,9 @@
                         @if($narasumber->acara_hari_ke)
                             (Hari {{ $narasumber->acara_hari_ke }}, {{ substr($narasumber->acara_jam_mulai, 0, 5) }}–{{ substr($narasumber->acara_jam_akhir, 0, 5) }}, {{ $narasumber->acara_ruang ?? '-' }})
                         @endif
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#modal-ubah-sesi">
+                            <i class="fa-solid fa-pen"></i> Ubah
+                        </button>
                     </div>
                 </div>
                 <div class="row mb-2">
@@ -171,4 +182,137 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: ubah sesi (acara) pengajuan narasumber --}}
+    <div class="modal fade" id="modal-ubah-sesi" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ubah Sesi Pengajuan Narasumber</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @php
+                        $idparentAcaraSaatIni = $acaraOptions->firstWhere('idacara', $narasumber->idacara)->idparent_acara ?? null;
+                    @endphp
+                    <div class="mb-3">
+                        <label for="input-ubah-sesi-parent" class="form-label">Sub Tema</label>
+                        <select id="input-ubah-sesi-parent" class="form-select">
+                            @foreach($acaraParentOptions as $parent)
+                                <option value="{{ $parent->idparent_acara }}" @selected((string) $idparentAcaraSaatIni === (string) $parent->idparent_acara)>
+                                    {{ $parent->parent_tema }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="input-ubah-sesi-acara" class="form-label">Sesi</label>
+                        <select id="input-ubah-sesi-acara" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btn-simpan-ubah-sesi">
+                        <span class="btn-label">Simpan</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('page-js')
+    <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
+
+    <script>
+        $(function () {
+            var acaraOptions = {!! json_encode($acaraOptions->map(fn ($a) => [
+                'idacara' => $a->idacara,
+                'tema' => $a->tema,
+                'idparent_acara' => $a->idparent_acara,
+            ])->values()) !!};
+            var idacaraSaatIni = {{ $narasumber->idacara ?? 'null' }};
+            var idnarasumber = {{ $narasumber->idnarasumber }};
+            var csrfToken = '{{ csrf_token() }}';
+            var ubahSesiUrl = '{{ route('admin.narasumber.ubah-sesi') }}';
+
+            function isiSelectSesi(idacaraTerpilih) {
+                var idparent = $('#input-ubah-sesi-parent').val();
+                var $selectSesi = $('#input-ubah-sesi-acara');
+
+                $selectSesi.empty();
+
+                acaraOptions
+                    .filter(function (a) { return String(a.idparent_acara) === String(idparent); })
+                    .forEach(function (a) {
+                        $selectSesi.append($('<option>', { value: a.idacara, text: a.tema }));
+                    });
+
+                if (idacaraTerpilih) {
+                    $selectSesi.val(idacaraTerpilih);
+                }
+            }
+
+            $('#modal-ubah-sesi').on('show.bs.modal', function () {
+                isiSelectSesi(idacaraSaatIni);
+            });
+
+            $('#input-ubah-sesi-parent').on('change', function () {
+                isiSelectSesi(null);
+            });
+
+            function tampilkanError(xhr) {
+                var pesan = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Terjadi kesalahan, silakan coba lagi.';
+                Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+            }
+
+            $('#btn-simpan-ubah-sesi').on('click', function () {
+                var $btn = $(this);
+                var idacaraBaru = $('#input-ubah-sesi-acara').val();
+
+                if (! idacaraBaru) {
+                    Swal.fire({ icon: 'warning', title: 'Pilih sesi', text: 'Pilih Sub Tema dan Sesi terlebih dahulu.' });
+
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Ubah sesi pengajuan narasumber ini?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, ubah',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (! result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
+
+                    $.ajax({
+                        url: ubahSesiUrl,
+                        method: 'POST',
+                        data: {
+                            idnarasumber: idnarasumber,
+                            idacara: idacaraBaru,
+                        },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanError(xhr);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
+        });
+    </script>
 @endsection
