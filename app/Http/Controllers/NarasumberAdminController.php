@@ -9,6 +9,15 @@ use Illuminate\Support\Facades\Storage;
 class NarasumberAdminController extends Controller
 {
     /**
+     * Status yang berhak dikirimi notifikasi manual lewat tombol "Kirim
+     * Notif" di halaman Ajuan — Diterima (kirim file presentasi & video)
+     * dan Tidak Terpilih (kirim poster), dua keputusan akhir narasumber.
+     */
+    private const STATUS_DITERIMA = '5';
+
+    private const STATUS_TIDAK_TERPILIH = '8';
+
+    /**
      * Daftar semua pengajuan narasumber — admin punya visibilitas paling
      * luas di aplikasi ini, jadi ditampilkan tanpa kecuali (termasuk yang
      * masih Draft), sama seperti pola `PameranAdminController::index()`.
@@ -41,6 +50,16 @@ class NarasumberAdminController extends Controller
         $acaraTerpilih = $idacara ? $acaraOptions->firstWhere('idacara', (int) $idacara) : null;
         $parentTerpilih = $idparentAcara ? $acaraParentOptions->firstWhere('idparent_acara', (int) $idparentAcara) : null;
 
+        // Jumlah notifikasi WA yang sudah dikirim per narasumber, untuk
+        // kolom "Log WA" — dihitung terpisah (bukan leftJoin+groupBy pada
+        // query utama) supaya tidak perlu groupBy semua kolom lain yang
+        // dipilih.
+        $jumlahLogWaPerNarasumber = DB::table('log_notifikasi_narasumber')
+            ->select('idnarasumber')
+            ->selectRaw('count(*) as jumlah')
+            ->groupBy('idnarasumber')
+            ->pluck('jumlah', 'idnarasumber');
+
         $narasumber = DB::table('narasumber as n')
             ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
             ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
@@ -50,8 +69,9 @@ class NarasumberAdminController extends Controller
             ->select('n.idnarasumber', 'p.nama', 'n.status_ajuan', 'i.nama_institusi')
             ->orderBy('n.idnarasumber')
             ->get()
-            ->map(function ($row) {
+            ->map(function ($row) use ($jumlahLogWaPerNarasumber) {
                 $row->token = $this->encryptRouteValue($row->idnarasumber);
+                $row->jumlah_log_wa = $jumlahLogWaPerNarasumber->get($row->idnarasumber, 0);
 
                 return $row;
             });
@@ -79,6 +99,101 @@ class NarasumberAdminController extends Controller
             'menu', 'submenu', 'narasumber', 'acaraParentOptions', 'acaraOptionsFilter',
             'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih', 'dashboardSesi'
         ));
+    }
+
+    /**
+     * Kirim (ulang) notifikasi WA manual ke narasumber yang statusnya
+     * Diterima atau Tidak Terpilih — isi pesan beda per status (lihat
+     * pesanNotifikasiUntukStatus()). Setiap pengiriman yang BERHASIL
+     * dicatat ke `log_notifikasi_narasumber`; gagal kirim tidak dicatat
+     * supaya "Log WA" hanya menghitung yang benar-benar terkirim.
+     */
+    public function kirimNotifikasi(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idnarasumber' => ['required', 'integer', 'exists:narasumber,idnarasumber'],
+        ]);
+
+        $narasumber = DB::table('narasumber as n')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->where('n.idnarasumber', $validated['idnarasumber'])
+            ->select('n.idnarasumber', 'n.status_ajuan', 'p.nama', 'p.no_wa')
+            ->first();
+
+        if (! in_array($narasumber->status_ajuan, [self::STATUS_DITERIMA, self::STATUS_TIDAK_TERPILIH], true)) {
+            return $this->jsonResponse(422, 'Notifikasi hanya bisa dikirim untuk status Diterima atau Tidak Terpilih.');
+        }
+
+        if (! $narasumber->no_wa) {
+            return $this->jsonResponse(422, 'Pengaju ini belum memiliki nomor WhatsApp.');
+        }
+
+        [$pesan1, $pesan2, $pesan3] = $this->pesanNotifikasiUntukStatus($narasumber->status_ajuan, $narasumber->nama);
+
+        try {
+            $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $narasumber->no_wa);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp.');
+        }
+
+        DB::table('log_notifikasi_narasumber')->insert([
+            'idnarasumber' => $narasumber->idnarasumber,
+            'pesan_1' => $pesan1,
+            'pesan_2' => $pesan2,
+            'pesan_3' => $pesan3,
+            'no_wa' => $narasumber->no_wa,
+            'created_at' => now(),
+            'created_by' => $userdata['idpengguna'],
+        ]);
+
+        $jumlahLogWa = DB::table('log_notifikasi_narasumber')->where('idnarasumber', $narasumber->idnarasumber)->count();
+
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['jumlah_log_wa' => $jumlahLogWa]);
+    }
+
+    /**
+     * Riwayat notifikasi WA yang sudah dikirim ke satu narasumber, untuk
+     * modal yang dibuka lewat klik angka di kolom "Log WA" — diurutkan dari
+     * yang paling lama ke paling baru (created_at).
+     */
+    public function logNotifikasi(Request $request)
+    {
+        $validated = $request->validate([
+            'idnarasumber' => ['required', 'integer', 'exists:narasumber,idnarasumber'],
+        ]);
+
+        $logs = DB::table('log_notifikasi_narasumber as l')
+            ->leftJoin('pengguna as p', 'p.idpengguna', '=', 'l.created_by')
+            ->where('l.idnarasumber', $validated['idnarasumber'])
+            ->select('l.pesan_1', 'l.pesan_2', 'l.pesan_3', 'l.no_wa', 'l.created_at', 'p.nama as nama_pengirim')
+            ->orderBy('l.created_at')
+            ->get();
+
+        return $this->jsonResponse(200, 'Berhasil.', ['logs' => $logs]);
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function pesanNotifikasiUntukStatus(string $statusAjuan, string $nama): array
+    {
+        if ($statusAjuan === self::STATUS_DITERIMA) {
+            return [
+                "Selamat {$nama},",
+                'Anda terpilih menjadi Narasumber KPPTI 2026. Silakan kirim file presentasi dan link video presentasi Anda melalui portal.',
+                'Perhatikan ada batas waktu pengiriman yang telah ditentukan panitia.',
+            ];
+        }
+
+        return [
+            "Selamat {$nama},",
+            'Anda terpilih untuk mengirimkan Poster di KPPTI 2026 sesuai dengan Extended Abstract yang Anda ajukan sebagai Narasumber.',
+            'Perhatikan ada batas waktu pengiriman yang telah ditentukan panitia.',
+        ];
     }
 
     /**
