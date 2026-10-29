@@ -3,6 +3,7 @@
 use App\Http\Controllers\NarasumberController;
 use App\Http\Controllers\PameranController;
 use App\Http\Controllers\PesertaController;
+use App\Http\Controllers\PosterController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['akses:2'])->group(function () {
@@ -28,6 +29,11 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/narasumber/batalkan-ajuan', [NarasumberController::class, 'batalkanAjuan'])->name('peserta.narasumber.batalkan-ajuan');
     Route::get('/narasumber/berkas', [NarasumberController::class, 'tampilBerkas'])->name('peserta.narasumber.berkas');
     Route::get('/narasumber/pedoman', [NarasumberController::class, 'unduhPedoman'])->name('peserta.narasumber.pedoman');
+    Route::get('/poster', [PosterController::class, 'index'])->name('peserta.poster');
+    Route::post('/poster/simpan', [PosterController::class, 'simpan'])->name('peserta.poster.simpan');
+    Route::post('/poster/hapus', [PosterController::class, 'hapus'])->name('peserta.poster.hapus');
+    Route::get('/poster/berkas', [PosterController::class, 'tampilBerkas'])->name('peserta.poster.berkas');
+    Route::get('/poster/template', [PosterController::class, 'unduhTemplate'])->name('peserta.poster.template');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');

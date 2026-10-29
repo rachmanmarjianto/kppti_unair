@@ -91,6 +91,9 @@
                             <li @if($submenu == 'reviewer') class="active" @endif>
                                 <a href="{{ route('admin.narasumber.reviewer') }}"> Set Reviewer </a>
                             </li>
+                            <li @if($submenu == 'poster') class="active" @endif>
+                                <a href="{{ route('admin.narasumber.poster') }}"> Poster </a>
+                            </li>
                         </ul>
                     </li>
 

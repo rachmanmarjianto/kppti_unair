@@ -7,6 +7,7 @@ use App\Http\Controllers\JadwalPentingController;
 use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
 use App\Http\Controllers\PesertaAdminController;
+use App\Http\Controllers\PosterAdminController;
 use App\Http\Controllers\SeminarKitController;
 use App\Http\Controllers\TagihanPameranController;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,8 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-narasumber/reviewer', [NarasumberAdminController::class, 'reviewerIndex'])->name('admin.narasumber.reviewer');
     Route::post('/admin-narasumber/reviewer/set', [NarasumberAdminController::class, 'setReviewer'])->name('admin.narasumber.reviewer.set');
     Route::post('/admin-narasumber/ubah-sesi', [NarasumberAdminController::class, 'ubahSesi'])->name('admin.narasumber.ubah-sesi');
+    Route::get('/admin-narasumber/poster', [PosterAdminController::class, 'index'])->name('admin.narasumber.poster');
+    Route::get('/admin-narasumber/poster/unduh', [PosterAdminController::class, 'unduh'])->name('admin.narasumber.poster.unduh');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');
