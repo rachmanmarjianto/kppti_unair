@@ -10,6 +10,24 @@ use Illuminate\Support\Facades\Storage;
 class NarasumberController extends Controller
 {
     /**
+     * Status ajuan "Diterima" — satu-satunya status yang berhak mengirim
+     * file presentasi & video (lihat narasumber.status_ajuan comment).
+     */
+    private const STATUS_DITERIMA = '5';
+
+    /**
+     * idref_tabel di tabel `file` untuk baris yang menunjuk langsung ke
+     * `narasumber` (bukan lewat tabel perantara seperti `poster`).
+     */
+    private const IDREF_TABEL_NARASUMBER = 1;
+
+    /**
+     * idjadwal_penting untuk periode pengiriman file presentasi & video
+     * ("Pengiriman File Presentasi dan Video").
+     */
+    private const IDJADWAL_PRESENTASI_VIDEO = 5;
+
+    /**
      * Show the pengguna's own narasumber submission — one per pengguna, only
      * visible to the pengguna who submitted it (unlike pameran, this is not
      * shared across a kontingen). Shows an editable form when there's no
@@ -74,8 +92,39 @@ class NarasumberController extends Controller
 
         $bisaEdit = ! $narasumber || in_array($narasumber->status_ajuan, ['1', '4'], true);
 
+        $fileAktifPresentasi = null;
+        $videoAktif = null;
+        $jadwalPresentasiVideo = null;
+        $jadwalPresentasiVideoSedangBuka = false;
+
+        if ($narasumber && $narasumber->status_ajuan === self::STATUS_DITERIMA) {
+            $fileAktifPresentasi = DB::table('file')
+                ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+                ->where('idref', $narasumber->idnarasumber)
+                ->where('jenis', 1)
+                ->where('status', true)
+                ->orderByDesc('idfile')
+                ->first();
+
+            if ($fileAktifPresentasi) {
+                $fileAktifPresentasi->token = $this->encryptRouteValue($fileAktifPresentasi->idfile);
+            }
+
+            $videoAktif = DB::table('file')
+                ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+                ->where('idref', $narasumber->idnarasumber)
+                ->where('jenis', 2)
+                ->where('status', true)
+                ->orderByDesc('idfile')
+                ->first();
+
+            $jadwalPresentasiVideo = DB::table('jadwal_penting')->where('idjadwal_penting', self::IDJADWAL_PRESENTASI_VIDEO)->first();
+            $jadwalPresentasiVideoSedangBuka = $this->jadwalSedangBuka(self::IDJADWAL_PRESENTASI_VIDEO);
+        }
+
         return view('peserta.narasumber', compact(
-            'menu', 'submenu', 'narasumber', 'riwayat', 'sedangDireview', 'draftSaatIni', 'bisaEdit', 'acaraOptions'
+            'menu', 'submenu', 'narasumber', 'riwayat', 'sedangDireview', 'draftSaatIni', 'bisaEdit', 'acaraOptions',
+            'fileAktifPresentasi', 'videoAktif', 'jadwalPresentasiVideo', 'jadwalPresentasiVideoSedangBuka'
         ));
     }
 
@@ -276,6 +325,255 @@ class NarasumberController extends Controller
         }
 
         return $this->jsonResponse(200, 'Pengajuan berhasil dikembalikan ke Draft.');
+    }
+
+    /**
+     * Simpan (atau ganti) file presentasi — narasumber yang statusnya
+     * Diterima saja yang berhak, dan hanya selama jadwal(5) masih buka.
+     * Re-upload menandai `file` aktif sebelumnya `status=false` (bukan
+     * dihapus), sama pola dengan PosterController::simpan().
+     */
+    public function simpanPresentasi(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $narasumber = $this->narasumberDiterima($userdata['idpengguna']);
+
+        if (! $narasumber) {
+            abort(403);
+        }
+
+        if (! $this->jadwalSedangBuka(self::IDJADWAL_PRESENTASI_VIDEO)) {
+            return $this->jsonResponse(422, 'Periode pengiriman file presentasi sedang ditutup.');
+        }
+
+        $validated = $request->validate([
+            'berkas' => ['required', 'file', 'mimes:pptx,pdf', 'max:20480'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($narasumber, $validated, $userdata) {
+                DB::table('file')
+                    ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+                    ->where('idref', $narasumber->idnarasumber)
+                    ->where('jenis', 1)
+                    ->where('status', true)
+                    ->update(['status' => false]);
+
+                $path = $this->simpanBerkasPresentasi($narasumber->idnarasumber, $validated['berkas']);
+
+                DB::table('file')->insert([
+                    'path_file' => $path,
+                    'status' => true,
+                    'jenis' => 1,
+                    'idref_tabel' => self::IDREF_TABEL_NARASUMBER,
+                    'idref' => $narasumber->idnarasumber,
+                    'created_at' => now(),
+                ]);
+
+                $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
+
+                if ($idpeserta) {
+                    $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], 'Mengunggah file presentasi');
+                }
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal menyimpan file presentasi.');
+        }
+
+        return $this->jsonResponse(200, 'File presentasi berhasil disimpan.');
+    }
+
+    /**
+     * Hapus file presentasi yang sudah dikirim (status=false, bukan
+     * dihapus fisik), sehingga narasumber bisa mengunggah lagi.
+     */
+    public function hapusPresentasi(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $narasumber = $this->narasumberDiterima($userdata['idpengguna']);
+
+        if (! $narasumber) {
+            abort(403);
+        }
+
+        if (! $this->jadwalSedangBuka(self::IDJADWAL_PRESENTASI_VIDEO)) {
+            return $this->jsonResponse(422, 'Periode pengiriman file presentasi sedang ditutup.');
+        }
+
+        $diperbarui = DB::table('file')
+            ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+            ->where('idref', $narasumber->idnarasumber)
+            ->where('jenis', 1)
+            ->where('status', true)
+            ->update(['status' => false]);
+
+        if ($diperbarui === 0) {
+            return $this->jsonResponse(422, 'Tidak ada file presentasi yang bisa dihapus.');
+        }
+
+        $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
+
+        if ($idpeserta) {
+            $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], 'Menghapus file presentasi');
+        }
+
+        return $this->jsonResponse(200, 'File presentasi berhasil dihapus.');
+    }
+
+    /**
+     * Simpan (atau ganti) link video presentasi — URL disimpan di
+     * `file.keterangan` (tidak ada file fisik, `path_file` kosong), pola
+     * sama dengan simpanPresentasi() tapi tanpa upload.
+     */
+    public function simpanVideo(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $narasumber = $this->narasumberDiterima($userdata['idpengguna']);
+
+        if (! $narasumber) {
+            abort(403);
+        }
+
+        if (! $this->jadwalSedangBuka(self::IDJADWAL_PRESENTASI_VIDEO)) {
+            return $this->jsonResponse(422, 'Periode pengiriman video sedang ditutup.');
+        }
+
+        $validated = $request->validate([
+            'url_video' => ['required', 'url', 'max:2048'],
+        ]);
+
+        DB::transaction(function () use ($narasumber, $validated, $userdata) {
+            DB::table('file')
+                ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+                ->where('idref', $narasumber->idnarasumber)
+                ->where('jenis', 2)
+                ->where('status', true)
+                ->update(['status' => false]);
+
+            DB::table('file')->insert([
+                'keterangan' => $validated['url_video'],
+                'status' => true,
+                'jenis' => 2,
+                'idref_tabel' => self::IDREF_TABEL_NARASUMBER,
+                'idref' => $narasumber->idnarasumber,
+                'created_at' => now(),
+            ]);
+
+            $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
+
+            if ($idpeserta) {
+                $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], 'Menyimpan link video presentasi');
+            }
+        });
+
+        return $this->jsonResponse(200, 'Link video berhasil disimpan.');
+    }
+
+    /**
+     * Hapus link video yang sudah dikirim (status=false, bukan dihapus).
+     */
+    public function hapusVideo(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $narasumber = $this->narasumberDiterima($userdata['idpengguna']);
+
+        if (! $narasumber) {
+            abort(403);
+        }
+
+        if (! $this->jadwalSedangBuka(self::IDJADWAL_PRESENTASI_VIDEO)) {
+            return $this->jsonResponse(422, 'Periode pengiriman video sedang ditutup.');
+        }
+
+        $diperbarui = DB::table('file')
+            ->where('idref_tabel', self::IDREF_TABEL_NARASUMBER)
+            ->where('idref', $narasumber->idnarasumber)
+            ->where('jenis', 2)
+            ->where('status', true)
+            ->update(['status' => false]);
+
+        if ($diperbarui === 0) {
+            return $this->jsonResponse(422, 'Tidak ada link video yang bisa dihapus.');
+        }
+
+        $idpeserta = DB::table('peserta')->where('idpengguna', $userdata['idpengguna'])->value('idpeserta');
+
+        if ($idpeserta) {
+            $this->logPeserta((int) $idpeserta, $userdata['idpengguna'], 'Menghapus link video presentasi');
+        }
+
+        return $this->jsonResponse(200, 'Link video berhasil dihapus.');
+    }
+
+    /**
+     * Serve file presentasi — hanya bisa diakses oleh pemilik narasumber-nya
+     * sendiri, pola identik `tampilBerkas()`.
+     */
+    public function tampilBerkasPresentasi(Request $request)
+    {
+        $userdata = session('userdata');
+        $idfile = $this->decryptRouteValue($request->query('token'));
+
+        if ($idfile === null) {
+            abort(404);
+        }
+
+        $file = DB::table('file as f')
+            ->join('narasumber as n', 'n.idnarasumber', '=', 'f.idref')
+            ->where('f.idfile', (int) $idfile)
+            ->where('f.idref_tabel', self::IDREF_TABEL_NARASUMBER)
+            ->where('f.jenis', 1)
+            ->where('n.idpengguna', $userdata['idpengguna'])
+            ->select('f.path_file')
+            ->first();
+
+        if (! $file || ! $file->path_file || ! Storage::disk('local')->exists($file->path_file)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($file->path_file);
+    }
+
+    /**
+     * Narasumber milik pengguna ini, hanya kalau statusnya Diterima —
+     * dipakai sebagai gate di setiap method presentasi/video.
+     */
+    private function narasumberDiterima(int $idpengguna): ?object
+    {
+        return DB::table('narasumber')
+            ->where('idpengguna', $idpengguna)
+            ->where('status_ajuan', self::STATUS_DITERIMA)
+            ->first();
+    }
+
+    /**
+     * Disk `local` dikonfigurasi dengan `throw => false` (config/filesystems.php),
+     * jadi `put()` TIDAK melempar exception kalau penulisan gagal — cukup
+     * mengembalikan `false` secara diam-diam. Kalau tidak dicek manual di
+     * sini, baris `file` di DB tetap ter-insert seolah berhasil padahal
+     * berkas fisiknya tidak ada, dan tombol Unduh berakhir 404 baik di sisi
+     * admin maupun peserta (insiden nyata yang ditemukan di narasumber
+     * idnarasumber=38 — berhasil disimpan ke baris, tapi berkas fisiknya
+     * kosong).
+     */
+    private function simpanBerkasPresentasi(int $idnarasumber, UploadedFile $file): string
+    {
+        $ext = strtolower($file->getClientOriginalExtension());
+        $path = "presentasi/presentasi-{$idnarasumber}-".time().".{$ext}";
+
+        $berhasil = Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+
+        if (! $berhasil) {
+            throw new \RuntimeException('Gagal menyimpan berkas presentasi ke storage.');
+        }
+
+        return $path;
     }
 
     /**

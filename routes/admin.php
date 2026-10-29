@@ -34,6 +34,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-peserta/reset-password', [PesertaAdminController::class, 'resetPassword'])->name('admin.peserta.reset-password');
     Route::post('/admin-peserta/email/update', [PesertaAdminController::class, 'updateEmail'])->name('admin.peserta.email.update');
     Route::post('/admin-peserta/pindah-kontingen', [PesertaAdminController::class, 'pindahKontingen'])->name('admin.peserta.pindah-kontingen');
+    Route::post('/admin-peserta/hapus-role', [PesertaAdminController::class, 'hapusRolePeserta'])->name('admin.peserta.hapus-role');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
     Route::get('/admin-peserta/acara', [PesertaAdminController::class, 'acara'])->name('admin.peserta.acara');
     Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');
@@ -47,6 +48,8 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-narasumber/ubah-sesi', [NarasumberAdminController::class, 'ubahSesi'])->name('admin.narasumber.ubah-sesi');
     Route::get('/admin-narasumber/poster', [PosterAdminController::class, 'index'])->name('admin.narasumber.poster');
     Route::get('/admin-narasumber/poster/unduh', [PosterAdminController::class, 'unduh'])->name('admin.narasumber.poster.unduh');
+    Route::get('/admin-narasumber/terpilih', [NarasumberAdminController::class, 'terpilihIndex'])->name('admin.narasumber.terpilih');
+    Route::get('/admin-narasumber/terpilih/unduh-presentasi', [NarasumberAdminController::class, 'unduhPresentasiTerpilih'])->name('admin.narasumber.terpilih.unduh-presentasi');
     Route::get('/admin-jadwal-penting', [JadwalPentingController::class, 'index'])->name('admin.jadwal-penting');
     Route::post('/admin-jadwal-penting/update', [JadwalPentingController::class, 'update'])->name('admin.jadwal-penting.update');
     Route::get('/admin-tagihan-pameran', [TagihanPameranController::class, 'index'])->name('admin.tagihan-pameran');

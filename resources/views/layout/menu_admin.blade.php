@@ -94,6 +94,9 @@
                             <li @if($submenu == 'poster') class="active" @endif>
                                 <a href="{{ route('admin.narasumber.poster') }}"> Poster </a>
                             </li>
+                            <li @if($submenu == 'terpilih') class="active" @endif>
+                                <a href="{{ route('admin.narasumber.terpilih') }}"> File Presentasi </a>
+                            </li>
                         </ul>
                     </li>
 

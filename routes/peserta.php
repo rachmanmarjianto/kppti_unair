@@ -29,6 +29,11 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/narasumber/batalkan-ajuan', [NarasumberController::class, 'batalkanAjuan'])->name('peserta.narasumber.batalkan-ajuan');
     Route::get('/narasumber/berkas', [NarasumberController::class, 'tampilBerkas'])->name('peserta.narasumber.berkas');
     Route::get('/narasumber/pedoman', [NarasumberController::class, 'unduhPedoman'])->name('peserta.narasumber.pedoman');
+    Route::post('/narasumber/presentasi/simpan', [NarasumberController::class, 'simpanPresentasi'])->name('peserta.narasumber.presentasi.simpan');
+    Route::post('/narasumber/presentasi/hapus', [NarasumberController::class, 'hapusPresentasi'])->name('peserta.narasumber.presentasi.hapus');
+    Route::get('/narasumber/presentasi/berkas', [NarasumberController::class, 'tampilBerkasPresentasi'])->name('peserta.narasumber.presentasi.berkas');
+    Route::post('/narasumber/video/simpan', [NarasumberController::class, 'simpanVideo'])->name('peserta.narasumber.video.simpan');
+    Route::post('/narasumber/video/hapus', [NarasumberController::class, 'hapusVideo'])->name('peserta.narasumber.video.hapus');
     Route::get('/poster', [PosterController::class, 'index'])->name('peserta.poster');
     Route::post('/poster/simpan', [PosterController::class, 'simpan'])->name('peserta.poster.simpan');
     Route::post('/poster/hapus', [PosterController::class, 'hapus'])->name('peserta.poster.hapus');

@@ -300,6 +300,108 @@ class NarasumberAdminController extends Controller
     }
 
     /**
+     * Monitor narasumber yang Terpilih (status_ajuan = '5', Diterima) beserta
+     * status pengiriman file presentasi & link video yang mereka kirim lewat
+     * halaman peserta (lihat NarasumberController::simpanPresentasi() /
+     * simpanVideo()) — keduanya tersimpan di `file` dengan idref_tabel=1
+     * (idref=idnarasumber langsung, tanpa tabel perantara), dibedakan lewat
+     * `jenis` (1=file presentasi, 2=link video). Filter Sub Tema/Sesi sama
+     * dengan pola index()/reviewerIndex().
+     */
+    public function terpilihIndex(Request $request)
+    {
+        $menu = 'narasumber';
+        $submenu = 'terpilih';
+
+        $acaraOptions = $this->acaraAktifQuery()
+            ->leftJoin('acara as parent', 'parent.idacara', '=', 'acara.idparent_acara')
+            ->where('acara.perlu_narsum', true)
+            ->select('acara.idacara', 'acara.tema', 'acara.idparent_acara', 'parent.tema as parent_tema')
+            ->orderBy('acara.tema')
+            ->get();
+
+        $acaraParentOptions = $acaraOptions
+            ->unique('idparent_acara')
+            ->map(fn ($a) => (object) ['idparent_acara' => $a->idparent_acara, 'parent_tema' => $a->parent_tema])
+            ->sortBy('parent_tema')
+            ->values();
+
+        $idparentAcara = $request->query('idparent_acara');
+        $idacara = $request->query('idacara');
+
+        $acaraOptionsFilter = $idparentAcara ? $acaraOptions->where('idparent_acara', $idparentAcara)->values() : collect();
+        $acaraTerpilih = $idacara ? $acaraOptions->firstWhere('idacara', (int) $idacara) : null;
+        $parentTerpilih = $idparentAcara ? $acaraParentOptions->firstWhere('idparent_acara', (int) $idparentAcara) : null;
+
+        $narasumber = DB::table('narasumber as n')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('acara as a', 'a.idacara', '=', 'n.idacara')
+            ->leftJoin('file as fp', function ($join) {
+                $join->on('fp.idref', '=', 'n.idnarasumber')
+                    ->where('fp.idref_tabel', 1)
+                    ->where('fp.jenis', 1)
+                    ->where('fp.status', true);
+            })
+            ->leftJoin('file as fv', function ($join) {
+                $join->on('fv.idref', '=', 'n.idnarasumber')
+                    ->where('fv.idref_tabel', 1)
+                    ->where('fv.jenis', 2)
+                    ->where('fv.status', true);
+            })
+            ->where('n.status_ajuan', '5')
+            ->when($idacara, fn ($query) => $query->where('n.idacara', $idacara))
+            ->when(! $idacara && $idparentAcara, fn ($query) => $query->where('a.idparent_acara', $idparentAcara))
+            ->select('n.idnarasumber', 'p.nama', 'i.nama_institusi', 'fp.idfile as idfile_presentasi', 'fv.keterangan as url_video')
+            ->orderBy('p.nama')
+            ->get()
+            ->map(function ($row) {
+                if ($row->idfile_presentasi) {
+                    $row->token_presentasi = $this->encryptRouteValue($row->idfile_presentasi);
+                }
+
+                return $row;
+            });
+
+        return view('admin.narasumber-terpilih', compact(
+            'menu', 'submenu', 'narasumber', 'acaraParentOptions', 'acaraOptionsFilter',
+            'idparentAcara', 'idacara', 'acaraTerpilih', 'parentTerpilih'
+        ));
+    }
+
+    /**
+     * Unduh file presentasi milik satu narasumber Terpilih — pola sama
+     * dengan `PosterAdminController::unduh()` (forced download, bukan
+     * inline).
+     */
+    public function unduhPresentasiTerpilih(Request $request)
+    {
+        $idfile = $this->decryptRouteValue($request->query('token'));
+
+        if ($idfile === null) {
+            abort(404);
+        }
+
+        $file = DB::table('file as f')
+            ->join('narasumber as n', 'n.idnarasumber', '=', 'f.idref')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->where('f.idfile', (int) $idfile)
+            ->where('f.idref_tabel', 1)
+            ->where('f.jenis', 1)
+            ->select('f.path_file', 'p.nama')
+            ->first();
+
+        if (! $file || ! $file->path_file || ! Storage::disk('local')->exists($file->path_file)) {
+            abort(404);
+        }
+
+        $ext = strtolower(pathinfo($file->path_file, PATHINFO_EXTENSION));
+        $namaFile = 'Presentasi-'.str_replace(' ', '-', $file->nama).'.'.$ext;
+
+        return Storage::disk('local')->download($file->path_file, $namaFile);
+    }
+
+    /**
      * Serve a berkas file — never exposed as a static public URL
      * (CONVENTIONS.md §7). Admin boleh akses kapan pun termasuk saat baris
      * masih Draft (beda dari SC yang menolak status Draft).

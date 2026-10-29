@@ -43,6 +43,123 @@
 @endphp
 
 @section('content')
+    @if($narasumber && $narasumber->status_ajuan === '5')
+        <div class="col-lg-12 col-md-12 layout-spacing">
+            <div class="statbox widget box box-shadow">
+                <div class="widget-header">
+                    <div class="row">
+                        <div class="col-12">
+                            <h4>Pengiriman File Presentasi &amp; Video</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="widget-content widget-content-area">
+                    <div class="page-alert-presentasi alert alert-danger d-none mb-3" role="alert"></div>
+
+                    <p style="font-size: 16px;">
+                        Selamat, pengajuan Anda sebagai Narasumber <strong>Diterima</strong>. Mohon kirimkan file presentasi dan link video presentasi Anda di bawah ini.
+                    </p>
+
+                    @if($jadwalPresentasiVideo)
+                        <div class="row mb-3">
+                            <div class="col-12 col-sm-3 fw-bold">Batas Waktu Pengiriman</div>
+                            <div class="col-12 col-sm-9">
+                                @if($jadwalPresentasiVideo->timestamp_buka)
+                                    {{ \Illuminate\Support\Carbon::parse($jadwalPresentasiVideo->timestamp_buka)->format('d/m/Y H:i') }} &mdash;
+                                @endif
+                                {{ $jadwalPresentasiVideo->timestamp_tutup ? \Illuminate\Support\Carbon::parse($jadwalPresentasiVideo->timestamp_tutup)->format('d/m/Y H:i') : '-' }}
+                                @if(! $jadwalPresentasiVideoSedangBuka)
+                                    <span class="badge bg-danger ms-1">Ditutup</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    <hr>
+
+                    <h6 class="fw-bold">1. File Presentasi</h6>
+                    <p class="text-muted mb-3" style="font-size: 12.5px;">
+                        Format <strong>PPTX</strong> atau <strong>PDF</strong>, maksimal <strong>25 slide</strong>, ukuran file maks. 20 MB.
+                    </p>
+
+                    @if($fileAktifPresentasi)
+                        <div class="card border mb-4">
+                            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <div class="fw-bold"><i class="fa-solid fa-file-powerpoint text-danger"></i> File Presentasi Terkirim</div>
+                                    <div class="text-muted" style="font-size: 12.5px;">
+                                        Diunggah pada {{ \Illuminate\Support\Carbon::parse($fileAktifPresentasi->created_at)->format('d/m/Y H:i') }}
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('peserta.narasumber.presentasi.berkas') }}?token={{ $fileAktifPresentasi->token }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fa-solid fa-download"></i> Unduh
+                                    </a>
+                                    @if($jadwalPresentasiVideoSedangBuka)
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="btn-hapus-presentasi">
+                                            <i class="fa-solid fa-trash"></i> Hapus
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($jadwalPresentasiVideoSedangBuka)
+                        <form id="form-presentasi" class="mb-4">
+                            <div class="mb-2">
+                                <input type="file" name="berkas" id="input-berkas-presentasi" class="form-control" accept=".pptx,.pdf" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btn-simpan-presentasi">
+                                <span class="btn-label">Unggah File Presentasi</span>
+                            </button>
+                        </form>
+                    @else
+                        <div class="alert alert-warning">
+                            Periode pengiriman sudah ditutup dan Anda belum mengirimkan file presentasi.
+                        </div>
+                    @endif
+
+                    <hr>
+
+                    <h6 class="fw-bold">2. Link Video Presentasi</h6>
+                    <p class="text-muted mb-3" style="font-size: 12.5px;">
+                        Durasi video antara <strong>2&ndash;3 menit</strong>. Unggah video Anda ke YouTube/Google Drive/media lain, lalu kirimkan link-nya di sini.
+                    </p>
+
+                    @if($videoAktif)
+                        <div class="card border mb-2">
+                            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <div class="fw-bold"><i class="fa-solid fa-video text-danger"></i> Link Video Terkirim</div>
+                                    <div style="font-size: 13px; word-break: break-all;">
+                                        <a href="{{ $videoAktif->keterangan }}" target="_blank" rel="noopener">{{ $videoAktif->keterangan }}</a>
+                                    </div>
+                                </div>
+                                @if($jadwalPresentasiVideoSedangBuka)
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="btn-hapus-video">
+                                        <i class="fa-solid fa-trash"></i> Hapus
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    @elseif($jadwalPresentasiVideoSedangBuka)
+                        <form id="form-video">
+                            <div class="mb-2">
+                                <input type="url" name="url_video" id="input-url-video" class="form-control" placeholder="https://..." required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btn-simpan-video">
+                                <span class="btn-label">Simpan Link Video</span>
+                            </button>
+                        </form>
+                    @else
+                        <div class="alert alert-warning">
+                            Periode pengiriman sudah ditutup dan Anda belum mengirimkan link video.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="col-lg-12 col-md-12 layout-spacing">
         <div class="statbox widget box box-shadow">
             <div class="widget-header">
@@ -287,6 +404,10 @@
             var simpanDraftUrl = '{{ route('peserta.narasumber.simpan-draft') }}';
             var ajukanUrl = '{{ route('peserta.narasumber.ajukan') }}';
             var batalkanAjuanUrl = '{{ route('peserta.narasumber.batalkan-ajuan') }}';
+            var simpanPresentasiUrl = '{{ route('peserta.narasumber.presentasi.simpan') }}';
+            var hapusPresentasiUrl = '{{ route('peserta.narasumber.presentasi.hapus') }}';
+            var simpanVideoUrl = '{{ route('peserta.narasumber.video.simpan') }}';
+            var hapusVideoUrl = '{{ route('peserta.narasumber.video.hapus') }}';
 
             function tampilkanError(xhr) {
                 var res = xhr.responseJSON || {};
@@ -442,6 +563,149 @@
                     })
                     .fail(function (xhr) {
                         tampilkanError(xhr);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
+
+            function tampilkanErrorPresentasi(xhr) {
+                var res = xhr.responseJSON || {};
+                var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                if (xhr.status === 0) {
+                    pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                } else if (res.errors) {
+                    pesan = Object.values(res.errors).flat().join('\n');
+                }
+                $('.page-alert-presentasi').removeClass('d-none').text(pesan);
+            }
+
+            $('#form-presentasi').on('submit', function (e) {
+                e.preventDefault();
+
+                $('.page-alert-presentasi').addClass('d-none').text('');
+
+                var $btn = $('#btn-simpan-presentasi');
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Mengunggah...');
+
+                var formData = new FormData(document.getElementById('form-presentasi'));
+
+                $.ajax({
+                    url: simpanPresentasiUrl,
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                        location.reload();
+                    });
+                })
+                .fail(function (xhr) {
+                    tampilkanErrorPresentasi(xhr);
+                    $btn.prop('disabled', false).html(teksAwal);
+                });
+            });
+
+            $('#btn-hapus-presentasi').on('click', function () {
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'File presentasi yang sudah dikirim akan dihapus. Lanjutkan?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus',
+                    cancelButtonText: 'Tidak',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $('.page-alert-presentasi').addClass('d-none').text('');
+
+                    var $btn = $('#btn-hapus-presentasi');
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menghapus...');
+
+                    $.ajax({
+                        url: hapusPresentasiUrl,
+                        method: 'POST',
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanErrorPresentasi(xhr);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
+
+            $('#form-video').on('submit', function (e) {
+                e.preventDefault();
+
+                $('.page-alert-presentasi').addClass('d-none').text('');
+
+                var $btn = $('#btn-simpan-video');
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
+
+                $.ajax({
+                    url: simpanVideoUrl,
+                    method: 'POST',
+                    data: { url_video: $('#input-url-video').val() },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                        location.reload();
+                    });
+                })
+                .fail(function (xhr) {
+                    tampilkanErrorPresentasi(xhr);
+                    $btn.prop('disabled', false).html(teksAwal);
+                });
+            });
+
+            $('#btn-hapus-video').on('click', function () {
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Link video yang sudah dikirim akan dihapus. Lanjutkan?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus',
+                    cancelButtonText: 'Tidak',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $('.page-alert-presentasi').addClass('d-none').text('');
+
+                    var $btn = $('#btn-hapus-video');
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menghapus...');
+
+                    $.ajax({
+                        url: hapusVideoUrl,
+                        method: 'POST',
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanErrorPresentasi(xhr);
                         $btn.prop('disabled', false).html(teksAwal);
                     });
                 });

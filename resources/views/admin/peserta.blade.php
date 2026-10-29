@@ -368,6 +368,9 @@
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning btn-pindah-kontingen" title="Pindah Kontingen" data-idpeserta="{{ $peserta->idpeserta }}" data-nama="{{ $peserta->nama }}" data-idinstitusi-asal="{{ $institusi->idinstitusi_asal }}">
                                                         <i class="fa-solid fa-right-left"></i>
                                                     </a>
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-danger btn-hapus-role-peserta" title="Hapus Role Peserta" data-idpeserta="{{ $peserta->idpeserta }}" data-nama="{{ $peserta->nama }}">
+                                                        <i class="fa-solid fa-user-slash"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -557,6 +560,7 @@
             var detailUrl = '{{ route('admin.peserta.detail') }}';
             var fotoUrl = '{{ route('admin.peserta.foto') }}';
             var updateEmailUrl = '{{ route('admin.peserta.email.update') }}';
+            var hapusRolePesertaUrl = '{{ route('admin.peserta.hapus-role') }}';
 
             $('[data-bs-toggle="collapse"]').on('click', function () {
                 $(this).toggleClass('expanded');
@@ -693,6 +697,52 @@
                             pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
                         }
                         Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                    });
+                });
+            });
+
+            // ------- Hapus role Peserta (hapus baris role_pengguna, atau nonaktifkan -------
+            // akun kalau Peserta adalah satu-satunya role, ditentukan oleh server) -------
+            $('.btn-hapus-role-peserta').on('click', function () {
+                var $btn = $(this);
+                var idpeserta = $btn.data('idpeserta');
+                var nama = $btn.data('nama');
+                var teksAsli = $btn.html();
+
+                Swal.fire({
+                    title: 'Hapus Role Peserta?',
+                    text: 'Role Peserta akan dihapus dari ' + nama + '. Jika Peserta adalah satu-satunya role yang dimiliki, akun ini akan dinonaktifkan. Lanjutkan?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+                    $.ajax({
+                        url: hapusRolePesertaUrl,
+                        method: 'POST',
+                        data: { idpeserta: idpeserta },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        }
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                        $btn.prop('disabled', false).html(teksAsli);
                     });
                 });
             });

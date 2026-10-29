@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Storage;
 
 class PesertaAdminController extends Controller
 {
+    /**
+     * Role ID Peserta, per tabel referensi `role`.
+     */
+    private const ROLE_PESERTA = 2;
+
     public function index()
     {
         $menu = 'users';
@@ -266,6 +271,74 @@ class PesertaAdminController extends Controller
         $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], "Email diubah oleh admin dari {$peserta->email} menjadi {$emailBaru}");
 
         return $this->jsonResponse(200, 'Email peserta berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus role Peserta dari seorang pengguna (pola sama seperti
+     * AdminController::hapusRole() untuk box admin/sc/dst, tapi role-nya
+     * tetap Peserta dan ada aturan tambahan): kalau pengguna itu punya role
+     * lain, baris `role_pengguna` untuk Peserta dihapus — kalau role
+     * Peserta yang tadi aktif, satu role lain diaktifkan supaya pengguna
+     * tidak ditinggal tanpa role aktif. Kalau Peserta adalah satu-satunya
+     * role yang dia punya, baris `role_pengguna` TIDAK dihapus (sengaja —
+     * pengguna harus tetap punya minimal satu role), melainkan
+     * `pengguna.is_deleted` diset true supaya pengguna tersebut tidak lagi
+     * dianggap aktif di seluruh aplikasi.
+     */
+    public function hapusRolePeserta(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+        ]);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $rolePengguna = DB::table('role_pengguna')
+            ->where('idpengguna', $peserta->idpengguna)
+            ->where('idrole', self::ROLE_PESERTA)
+            ->first();
+
+        if (! $rolePengguna) {
+            return $this->jsonResponse(404, 'Pengguna tidak memiliki role Peserta.');
+        }
+
+        $jumlahRole = DB::table('role_pengguna')->where('idpengguna', $peserta->idpengguna)->count();
+
+        DB::transaction(function () use ($peserta, $rolePengguna, $jumlahRole, $userdata) {
+            if ($jumlahRole <= 1) {
+                DB::table('pengguna')->where('idpengguna', $peserta->idpengguna)->update(['is_deleted' => true]);
+
+                $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Role Peserta adalah satu-satunya role, akun dinonaktifkan (is_deleted) oleh admin');
+
+                return;
+            }
+
+            DB::table('role_pengguna')->where('idrole_pengguna', $rolePengguna->idrole_pengguna)->delete();
+
+            $masihAdaAktif = DB::table('role_pengguna')->where('idpengguna', $peserta->idpengguna)->where('status', true)->exists();
+
+            if (! $masihAdaAktif) {
+                $roleLain = DB::table('role_pengguna')->where('idpengguna', $peserta->idpengguna)->first();
+
+                if ($roleLain) {
+                    DB::table('role_pengguna')->where('idrole_pengguna', $roleLain->idrole_pengguna)->update(['status' => true]);
+                }
+            }
+
+            $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Role Peserta dihapus oleh admin');
+        });
+
+        $pesan = $jumlahRole <= 1
+            ? 'Peserta ini hanya memiliki role Peserta, sehingga akun dinonaktifkan.'
+            : 'Role Peserta berhasil dihapus dari pengguna ini.';
+
+        return $this->jsonResponse(200, $pesan);
     }
 
     /**

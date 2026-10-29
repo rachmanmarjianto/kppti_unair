@@ -291,12 +291,23 @@ class PosterController extends Controller
             ->exists();
     }
 
+    /**
+     * Disk `local` dikonfigurasi dengan `throw => false` (config/filesystems.php),
+     * jadi `put()` tidak melempar exception kalau penulisan gagal — hanya
+     * mengembalikan `false`. Dicek manual supaya baris `file` tidak ikut
+     * tersimpan seolah berhasil padahal berkas fisiknya tidak ada (lihat
+     * catatan yang sama di NarasumberController::simpanBerkasPresentasi()).
+     */
     private function simpanBerkasPoster(int $idnarasumber, int $idposter, UploadedFile $file): string
     {
         $ext = strtolower($file->getClientOriginalExtension());
         $path = "poster/poster-{$idnarasumber}-{$idposter}-".time().".{$ext}";
 
-        Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+        $berhasil = Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+
+        if (! $berhasil) {
+            throw new \RuntimeException('Gagal menyimpan berkas poster ke storage.');
+        }
 
         return $path;
     }
