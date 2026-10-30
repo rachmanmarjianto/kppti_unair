@@ -23,6 +23,11 @@
         .dt--bottom-section {
             padding: 0 15px;
         }
+
+        #modal-log-notif .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-log-notif .text-muted { color: #6c757d !important; }
+        #modal-log-notif .table { color: #0e1726 !important; }
+        #modal-log-notif .table thead th { background-color: #f1f2f3 !important; color: #0e1726 !important; }
     </style>
 @endsection
 
@@ -66,6 +71,7 @@
                                 <th class="text-center">Nilai Final</th>
                                 <th class="text-center">Selisih Nilai</th>
                                 <th>PIC</th>
+                                <th class="text-center">Juml Not</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -80,6 +86,9 @@
                                     </td>
                                     <td>{{ $baris->nama_pic ?? '-' }}</td>
                                     <td class="text-center">
+                                        <a href="javascript:void(0);" class="cell-log-notif btn-lihat-log-notif" data-idpameran="{{ $baris->idpameran }}" data-tema="{{ $baris->tema }}">{{ $baris->jumlah_log_notif }}</a>
+                                    </td>
+                                    <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-primary btn-kirim-wa" data-idpameran="{{ $baris->idpameran }}" @disabled(! $baris->no_wa_pic)>
                                             Kirim WA
                                         </button>
@@ -88,6 +97,44 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: riwayat log notifikasi WA --}}
+    <div class="modal fade" id="modal-log-notif" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Riwayat Notifikasi WA &mdash; <span id="judul-log-notif-tema"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                    <div class="log-notif-loading text-center py-4">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
+                    </div>
+
+                    <div class="table-responsive log-notif-content d-none">
+                        <table class="table table-sm table-bordered" style="white-space: nowrap;">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Pesan 1</th>
+                                    <th>Pesan 2</th>
+                                    <th>Pesan 3</th>
+                                    <th>No. WA</th>
+                                    <th>Dikirim Oleh</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-log-notif"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -103,6 +150,7 @@
         $(function () {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var kirimWaUrl = '{{ route('admin.pameran.terpilih.kirim-wa') }}';
+            var logNotifikasiUrl = '{{ route('admin.pameran.terpilih.log-notifikasi') }}';
 
             $('#table-pameran-terpilih').DataTable({
                 dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
@@ -150,6 +198,7 @@
                         headers: { 'X-CSRF-TOKEN': csrfToken },
                     })
                     .done(function (res) {
+                        $('.cell-log-notif[data-idpameran="' + idpameran + '"]').text(res.data.jumlah_log_notif);
                         Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message });
                     })
                     .fail(function (xhr) {
@@ -160,6 +209,67 @@
                     .always(function () {
                         $btn.prop('disabled', false).html(teksAwal);
                     });
+                });
+            });
+
+            // ------- Riwayat log notifikasi WA (modal, dimuat lewat AJAX) -------
+            var $modalLogNotif = $('#modal-log-notif');
+            var $logNotifLoading = $modalLogNotif.find('.log-notif-loading');
+            var $logNotifContent = $modalLogNotif.find('.log-notif-content');
+            var $tbodyLogNotif = $('#tbody-log-notif');
+
+            function escapeHtml(teks) {
+                return $('<div>').text(teks == null ? '' : teks).html();
+            }
+
+            $('#table-pameran-terpilih').on('click', '.btn-lihat-log-notif', function () {
+                var idpameran = $(this).data('idpameran');
+
+                $('#judul-log-notif-tema').text($(this).data('tema'));
+                $logNotifLoading.removeClass('d-none');
+                $logNotifContent.addClass('d-none');
+                $modalLogNotif.find('.modal-alert').addClass('d-none').text('');
+                $tbodyLogNotif.empty();
+                $modalLogNotif.modal('show');
+
+                $.ajax({
+                    url: logNotifikasiUrl,
+                    method: 'GET',
+                    data: { idpameran: idpameran },
+                    dataType: 'json',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                })
+                .done(function (res) {
+                    var logs = res.data.logs;
+
+                    if (logs.length === 0) {
+                        $tbodyLogNotif.html('<tr><td colspan="6" class="text-center text-muted">Belum ada notifikasi yang dikirim.</td></tr>');
+                    } else {
+                        $.each(logs, function (i, log) {
+                            $tbodyLogNotif.append(
+                                '<tr>' +
+                                '<td>' + escapeHtml(log.created_at) + '</td>' +
+                                '<td>' + escapeHtml(log.pesan_1) + '</td>' +
+                                '<td>' + escapeHtml(log.pesan_2) + '</td>' +
+                                '<td>' + escapeHtml(log.pesan_3) + '</td>' +
+                                '<td>' + escapeHtml(log.no_wa) + '</td>' +
+                                '<td>' + escapeHtml(log.nama_pengirim) + '</td>' +
+                                '</tr>'
+                            );
+                        });
+                    }
+
+                    $logNotifLoading.addClass('d-none');
+                    $logNotifContent.removeClass('d-none');
+                })
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    }
+                    $logNotifLoading.addClass('d-none');
+                    $modalLogNotif.find('.modal-alert').removeClass('d-none').text(pesan);
                 });
             });
         });

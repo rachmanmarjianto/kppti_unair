@@ -584,12 +584,20 @@ class PameranAdminController extends Controller
             ->when($idkluster, fn ($query) => $query->where('p.idkluster_pameran', $idkluster))
             ->select('p.idpameran', 'p.tema', 'p.nilai_final', 'p.selisih_nilai', 'i.nama_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic')
             ->orderBy('p.idpameran')
-            ->get()
-            ->map(function ($row) {
-                $row->token = $this->encryptRouteValue($row->idpameran);
+            ->get();
 
-                return $row;
-            });
+        $jumlahLogNotifPerPameran = DB::table('log_notif_pameran')
+            ->select('idpameran')
+            ->selectRaw('count(*) as jumlah')
+            ->groupBy('idpameran')
+            ->pluck('jumlah', 'idpameran');
+
+        $pameran = $pameran->map(function ($row) use ($jumlahLogNotifPerPameran) {
+            $row->token = $this->encryptRouteValue($row->idpameran);
+            $row->jumlah_log_notif = $jumlahLogNotifPerPameran[$row->idpameran] ?? 0;
+
+            return $row;
+        });
 
         return view('admin.pameran-terpilih', compact('menu', 'submenu', 'klusterOptions', 'idkluster', 'pameran'));
     }
@@ -619,6 +627,29 @@ class PameranAdminController extends Controller
             return $this->jsonResponse(422, $hasil['message']);
         }
 
-        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $hasil['response']]);
+        $jumlahLogNotif = DB::table('log_notif_pameran')->where('idpameran', $validated['idpameran'])->count();
+
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['jumlah_log_notif' => $jumlahLogNotif]);
+    }
+
+    /**
+     * Riwayat notifikasi WA yang sudah dikirim untuk satu pengajuan pameran
+     * Terpilih — dipakai modal "Juml Not" di `admin.pameran-terpilih`,
+     * pola identik `NarasumberAdminController::logNotifikasi()`.
+     */
+    public function logNotifikasiTerpilih(Request $request)
+    {
+        $validated = $request->validate([
+            'idpameran' => ['required', 'integer', 'exists:pameran,idpameran'],
+        ]);
+
+        $logs = DB::table('log_notif_pameran as l')
+            ->leftJoin('pengguna as p', 'p.idpengguna', '=', 'l.sent_by')
+            ->where('l.idpameran', $validated['idpameran'])
+            ->select('l.pesan_1', 'l.pesan_2', 'l.pesan_3', 'l.no_wa', 'l.created_at', 'p.nama as nama_pengirim')
+            ->orderBy('l.created_at')
+            ->get();
+
+        return $this->jsonResponse(200, 'Berhasil.', ['logs' => $logs]);
     }
 }

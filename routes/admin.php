@@ -71,6 +71,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-pameran/reviewer/hapus', [PameranAdminController::class, 'hapusReviewer'])->name('admin.pameran.reviewer.hapus');
     Route::get('/admin-pameran/terpilih', [PameranAdminController::class, 'terpilihIndex'])->name('admin.pameran.terpilih');
     Route::post('/admin-pameran/terpilih/kirim-wa', [PameranAdminController::class, 'kirimWaTerpilih'])->name('admin.pameran.terpilih.kirim-wa');
+    Route::get('/admin-pameran/terpilih/log-notifikasi', [PameranAdminController::class, 'logNotifikasiTerpilih'])->name('admin.pameran.terpilih.log-notifikasi');
     Route::get('/admin-seminar-kit/master', [SeminarKitController::class, 'index'])->name('admin.seminar-kit.master');
     Route::post('/admin-seminar-kit/master/tambah', [SeminarKitController::class, 'store'])->name('admin.seminar-kit.master.tambah');
     Route::post('/admin-seminar-kit/master/update', [SeminarKitController::class, 'update'])->name('admin.seminar-kit.master.update');

@@ -973,13 +973,24 @@ class Controller extends BaseController
             return ['sent' => false, 'message' => 'PIC pengajuan ini belum memiliki nomor WhatsApp.'];
         }
 
+        $pesan1 = "Selamat {$pameran->nama_pic},";
+        $pesan2 = "Pengajuan pameran Anda dengan tema \"{$pameran->tema}\" dinyatakan TERPILIH.";
+        $pesan3 = 'Silakan login ke portal KPPTI untuk melengkapi informasi stand (penjaga stand & jadwal loading).';
+
         try {
-            $res = $this->kirim_wa_oca_token_3(
-                "Selamat {$pameran->nama_pic},",
-                "Pengajuan pameran Anda dengan tema \"{$pameran->tema}\" dinyatakan TERPILIH.",
-                'Silakan login ke portal KPPTI untuk melengkapi informasi stand (penjaga stand & jadwal loading).',
-                $pameran->no_wa_pic
-            );
+            $res = $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $pameran->no_wa_pic);
+
+            $userdata = session('userdata');
+
+            DB::table('log_notif_pameran')->insert([
+                'idpameran' => $idpameran,
+                'pesan_1' => $pesan1,
+                'pesan_2' => $pesan2,
+                'pesan_3' => $pesan3,
+                'no_wa' => $pameran->no_wa_pic,
+                'created_at' => now(),
+                'sent_by' => $userdata['idpengguna'] ?? null,
+            ]);
 
             return ['sent' => true, 'response' => $res];
         } catch (\Throwable $e) {
