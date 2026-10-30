@@ -259,6 +259,7 @@
                     <th>Jenis Institusi</th>
                     <th>Institusi Asal</th>
                     <th>Nama Peserta</th>
+                    <th>No. WA</th>
                     <th>Status</th>
                     <th>City Tour</th>
                 </tr>
@@ -271,6 +272,7 @@
                                 <td>{{ $jenis->nama_jenis_institusi }}</td>
                                 <td>{{ $institusi->nama_institusi }}</td>
                                 <td>{{ $peserta->nama }}</td>
+                                <td>{{ $peserta->no_wa ?? '-' }}</td>
                                 <td>{{ $peserta->lengkap ? 'Lengkap' : 'Belum Lengkap' }}</td>
                                 <td>{{ $peserta->city_tour ? 'Ya' : 'Tidak' }}</td>
                             </tr>
