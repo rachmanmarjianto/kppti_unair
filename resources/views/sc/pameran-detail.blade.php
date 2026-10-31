@@ -26,6 +26,13 @@
         '8' => ['Tidak Terpilih', 'bg-danger'],
         '9' => ['Terpilih', 'bg-success'],
     ];
+
+    // Baris terakhir thread SC ini sendiri — "Kembali ke Review" hanya
+    // tersedia kalau baris terakhir itu Revisi/Tidak Memenuhi (lihat
+    // PameranReviewController::kembaliKeReview() untuk validasi ulang di
+    // server, termasuk cek baris ini masih benar-benar baris terakhir).
+    $statusTerakhirSaya = $riwayat->last();
+    $bisaKembaliKeReview = $statusTerakhirSaya && in_array($statusTerakhirSaya->status_ajuan, ['4', '6'], true);
 @endphp
 
 @section('content')
@@ -113,13 +120,18 @@
                         @foreach($riwayat as $i => $baris)
                             @php $iniAktif = $reviewAktif && $baris->idreview === $reviewAktif->idreview; @endphp
                             <div class="accordion-item">
-                                <h2 class="accordion-header">
+                                <h2 class="accordion-header d-flex align-items-stretch">
                                     <button class="accordion-button @if(! $iniAktif) collapsed @endif" type="button" data-bs-toggle="collapse" data-bs-target="#riwayat-{{ $i }}">
                                         #{{ $i + 1 }} &mdash;
                                         <span class="badge ms-2 {{ $labelStatus[$baris->status_ajuan][1] ?? 'bg-secondary' }}">
                                             {{ $labelStatus[$baris->status_ajuan][0] ?? '-' }}
                                         </span>
                                     </button>
+                                    @if($loop->last && $bisaKembaliKeReview)
+                                        <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 m-2" id="btn-kembali-review" data-idreview="{{ $baris->idreview }}">
+                                            Kembali ke Review
+                                        </button>
+                                    @endif
                                 </h2>
                                 <div id="riwayat-{{ $i }}" class="accordion-collapse collapse @if($iniAktif) show @endif" data-bs-parent="#accordion-riwayat">
                                     <div class="accordion-body">
@@ -232,6 +244,7 @@
             var mulaiReviewUrl = '{{ route('sc.pameran.mulai-review') }}';
             var simpanReviewUrl = '{{ route('sc.pameran.simpan-review') }}';
             var kirimKeputusanUrl = '{{ route('sc.pameran.kirim-keputusan') }}';
+            var kembaliReviewUrl = '{{ route('sc.pameran.kembali-review') }}';
             var idreview = {{ $reviewAktif->idreview ?? 'null' }};
 
             function tampilkanError(xhr) {
@@ -398,6 +411,45 @@
                     });
                 });
             }
+
+            $(document).on('click', '#btn-kembali-review', function () {
+                var $btn = $(this);
+                var idreview = $btn.data('idreview');
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Kembalikan status review ini ke Review? Anda akan bisa menilai ulang pengajuan ini.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, kembalikan',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                    $('.page-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: kembaliReviewUrl,
+                        method: 'POST',
+                        data: { idreview: idreview },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        tampilkanError(xhr);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
 
             $('#btn-revisi').on('click', function () {
                 kirimKeputusan('4', 'Revisi', 'Kirim keputusan Revisi untuk pengajuan ini? Pastikan semua topik sudah diisi lengkap.');

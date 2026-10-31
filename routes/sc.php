@@ -13,6 +13,7 @@ Route::middleware(['akses:4'])->group(function () {
     Route::post('/sc/pameran/mulai-review', [PameranReviewController::class, 'mulaiReview'])->name('sc.pameran.mulai-review');
     Route::post('/sc/pameran/simpan-review', [PameranReviewController::class, 'simpanReview'])->name('sc.pameran.simpan-review');
     Route::post('/sc/pameran/kirim-keputusan', [PameranReviewController::class, 'kirimKeputusan'])->name('sc.pameran.kirim-keputusan');
+    Route::post('/sc/pameran/kembali-review', [PameranReviewController::class, 'kembaliKeReview'])->name('sc.pameran.kembali-review');
     Route::get('/sc/pameran/portofolio', [PameranReviewController::class, 'tampilPortofolio'])->name('sc.pameran.portofolio');
     Route::get('/sc/pameran/file-pertama', [PameranReviewController::class, 'tampilFilePertama'])->name('sc.pameran.file-pertama');
 

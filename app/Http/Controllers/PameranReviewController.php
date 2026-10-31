@@ -347,6 +347,55 @@ class PameranReviewController extends Controller
     }
 
     /**
+     * SC membatalkan keputusan Revisi/Tidak Memenuhi yang baru saja ia
+     * kirim sendiri, supaya bisa menilai ulang (status_ajuan baris itu
+     * kembali ke Review, 3). Hanya diizinkan kalau baris ini masih baris
+     * TERAKHIR di thread-nya — kalau peserta sudah membalas revisi
+     * (menambah baris baru lewat `PameranController::balasRevisi()`),
+     * baris terakhir bukan lagi baris ini, jadi dibatalkan supaya tidak
+     * menimpa balasan peserta yang sudah masuk (dikonfirmasi developer).
+     */
+    public function kembaliKeReview(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idreview' => ['required', 'integer'],
+        ]);
+
+        $review = $this->reviewPameranUntukPengguna((int) $validated['idreview'], (int) $userdata['idpengguna']);
+
+        if (! $review) {
+            return $this->jsonResponse(404, 'Review ini tidak ditemukan.');
+        }
+
+        if (! in_array($review->status_ajuan, ['4', '6'], true)) {
+            return $this->jsonResponse(422, 'Hanya status Revisi atau Tidak Memenuhi yang bisa dikembalikan ke Review.');
+        }
+
+        $barisTerakhir = DB::table('review_pameran')
+            ->where('created_by', $review->idreviewer_pameran)
+            ->orderByDesc('idreview')
+            ->first();
+
+        if ($barisTerakhir->idreview !== $review->idreview) {
+            return $this->jsonResponse(422, 'Peserta sudah mengirimkan revisi untuk pengajuan ini. Status tidak bisa dikembalikan.');
+        }
+
+        DB::transaction(function () use ($review) {
+            DB::table('review_pameran')->where('idreview', $review->idreview)->update(['status_ajuan' => '3']);
+
+            $this->syncPameranStatus($review->idpameran);
+        });
+
+        $pameran = DB::table('pameran')->where('idpameran', $review->idpameran)->first();
+        $labelAsal = self::LABEL_KEPUTUSAN[$review->status_ajuan];
+        $this->logInstitusi($pameran->idinstitusi_asal, $userdata['idpengguna'], "SC mengembalikan status review pameran '{$pameran->tema}' dari {$labelAsal} menjadi Review.");
+
+        return $this->jsonResponse(200, 'Status review berhasil dikembalikan ke Review.');
+    }
+
+    /**
      * Serve a portofolio file untuk satu giliran review — hanya reviewer
      * pemilik thread tersebut yang boleh akses (dikonfirmasi developer:
      * SC hanya melihat thread-nya sendiri).
