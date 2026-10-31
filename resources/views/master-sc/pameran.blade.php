@@ -148,7 +148,7 @@
                 Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
             }
 
-            $('.btn-putuskan').on('click', function () {
+            $('#table-master-sc-pameran').on('click', '.btn-putuskan', function () {
                 var $btn = $(this);
                 var idpameran = $btn.data('idpameran');
                 var keputusan = $btn.data('keputusan');
