@@ -430,6 +430,89 @@
 
         .invalid-feedback { display: block; }
 
+        .kppti-official-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            margin-bottom: 26px;
+            border-radius: 12px;
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--kppti-gold) 0%, var(--kppti-gold-light) 100%);
+            box-shadow: 0 8px 20px -6px rgba(212, 164, 55, 0.55);
+            position: relative;
+            overflow: hidden;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        .kppti-official-link::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -60%;
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+            transform: skewX(-20deg);
+            animation: kpptiShine 3.2s ease-in-out infinite;
+        }
+
+        .kppti-official-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 26px -6px rgba(212, 164, 55, 0.7);
+        }
+
+        .kppti-official-link .icon-badge {
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(11, 31, 75, 0.9);
+            color: var(--kppti-gold-light);
+        }
+
+        .kppti-official-link .link-text {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .kppti-official-link .link-text .eyebrow-link {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--kppti-navy-dark);
+            opacity: 0.75;
+        }
+
+        .kppti-official-link .link-text .title-link {
+            display: block;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--kppti-navy-dark);
+        }
+
+        .kppti-official-link .arrow-badge {
+            flex: none;
+            color: var(--kppti-navy-dark);
+            transition: transform .15s ease;
+        }
+
+        .kppti-official-link:hover .arrow-badge {
+            transform: translateX(4px);
+        }
+
+        @keyframes kpptiShine {
+            0% { left: -60%; }
+            55% { left: 120%; }
+            100% { left: 120%; }
+        }
+
         @media (max-width: 991.98px) {
             .kppti-brand { display: none; }
             .kppti-form-panel { flex: 1 1 100%; }
@@ -524,6 +607,19 @@
                         {{ session('status')['message'] }}
                     </div>
                 @endif
+
+                <a href="https://dikti.kemdiktisaintek.go.id/kppti-2026/" target="_blank" rel="noopener" class="kppti-official-link">
+                    <span class="icon-badge">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path></svg>
+                    </span>
+                    <span class="link-text">
+                        <span class="eyebrow-link">Situs Resmi</span>
+                        <span class="title-link">Kunjungi Halaman Official KPPTI 2026</span>
+                    </span>
+                    <span class="arrow-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                    </span>
+                </a>
 
                 <form id="formLoginKppti" method="POST" action="{{ Route::has('login') ? route('login') : url('/login') }}">
                     @csrf
