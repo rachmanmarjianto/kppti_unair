@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BniCallbackController;
+use App\Http\Controllers\DiagnostikServerController;
 use App\Http\Controllers\FaceRecognitionApiController;
 use App\Http\Controllers\PenggunaController;
 use Illuminate\Support\Facades\Route;
@@ -54,3 +55,8 @@ Route::get('/api/face-recognition/foto/{idpengguna}.jpg', [FaceRecognitionApiCon
     ->middleware('face-recognition.ip')
     ->whereNumber('idpengguna')
     ->name('api.face-recognition.foto');
+
+// Debug produksi — gerbangnya kolom `aktif` di tabel `php_info`, bukan
+// middleware akses. Lihat DiagnostikServerController::tampilkanInfoPhp().
+Route::get('/ruang-kendali/cermin-interpreter', [DiagnostikServerController::class, 'tampilkanInfoPhp'])
+    ->name('diagnostik.php-info');
