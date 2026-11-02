@@ -135,13 +135,27 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/jszip.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/table/datatable/button-ext/buttons.html5.min.js') }}"></script>
 
     <script>
         $(function () {
             $('#table-pameran-ajuan').DataTable({
-                dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
+                dom: "<'dt--top-section'<'row'<'col-sm-12 col-md-6 d-flex justify-content-md-start justify-content-center'B><'col-sm-12 col-md-6 d-flex justify-content-md-end justify-content-center mt-md-0 mt-3'f>>>" +
                     "<'table-responsive'tr>" +
                     "<'dt--bottom-section d-sm-flex justify-content-sm-between text-center'<'dt--pages-count mb-sm-0 mb-3'i><'dt--pagination'p>>",
+                buttons: {
+                    buttons: [
+                        {
+                            extend: 'excelHtml5',
+                            className: 'btn btn-outline-success btn-sm',
+                            text: '<i class="fa-solid fa-file-excel me-1"></i>Excel',
+                            filename: 'Ajuan Pameran',
+                            exportOptions: { columns: [0, 1, 2, 3] },
+                        },
+                    ],
+                },
                 language: {
                     search: 'Cari:',
                     lengthMenu: 'Tampilkan _MENU_ baris',
