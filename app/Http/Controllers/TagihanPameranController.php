@@ -105,16 +105,6 @@ class TagihanPameranController extends Controller
             return $this->jsonResponse(404, 'Tagihan tidak ditemukan.');
         }
 
-        $userdata = session('userdata');
-        $tagihan = $this->cekKadaluwarsaTagihan($tagihan, $userdata['idpengguna']);
-
-        if ((int) $tagihan->status === self::TAGIHAN_STATUS_EXPIRED) {
-            return $this->jsonResponse(200, 'Tagihan ini sudah expired.', [
-                'inquiry' => [],
-                'status_berubah' => true,
-            ]);
-        }
-
         try {
             $resp_inquiry = $this->prosesInquiryBillingTagihan($tagihan);
         } catch (\Throwable $e) {
@@ -124,6 +114,15 @@ class TagihanPameranController extends Controller
         }
 
         $tagihanTerbaru = DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->first();
+
+        $bankexpired_date = $resp_inquiry['data']['datetime_expired'] ?? null;
+        $isExpired = $bankexpired_date !== null && now()->greaterThan($bankexpired_date);
+
+        if($isExpired) {
+            DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                'status' => self::TAGIHAN_STATUS_EXPIRED,
+            ]);
+        }
 
         return $this->jsonResponse(200, $resp_inquiry['message'] ?? 'Pengecekan status pembayaran selesai.', [
             'inquiry' => $resp_inquiry['data'] ?? [],
