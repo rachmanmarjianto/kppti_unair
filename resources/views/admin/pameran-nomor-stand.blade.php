@@ -211,7 +211,7 @@
                 columnDefs: [{ orderable: false, targets: -1 }],
             });
 
-            $('.btn-nomor-stand').on('click', function () {
+            $('#table-pameran-nomor-stand').on('click', '.btn-nomor-stand', function () {
                 var $btn = $(this);
 
                 $modal.find('.modal-alert').addClass('d-none').text('');
