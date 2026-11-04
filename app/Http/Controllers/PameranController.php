@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Storage;
 
 class PameranController extends Controller
 {
-    private const TAGIHAN_STATUS_EXPIRED = 5;
-
     private const TAGIHAN_STATUS_DITANGGUHKAN = 6;
 
     private const IDKLUSTER_BERBAYAR = 5;
@@ -824,39 +822,6 @@ class PameranController extends Controller
         }
 
         return Storage::disk('local')->download($path, $namaFile);
-    }
-
-    /**
-     * Tandai tagihan expired kalau waktunya sudah lewat dan status masih
-     * tertagih/terbayar sebagian — dipanggil setiap halaman pameran/detail
-     * tagihan dibuka (bukan cuma sekali), jadi dijaga idempotent: status
-     * lunas/batal/sudah-expired tidak diproses ulang.
-     */
-    private function cekKadaluwarsaTagihan(object $tagihan, int $idpengguna): object
-    {
-        if (in_array((int) $tagihan->status, [3, 4, self::TAGIHAN_STATUS_EXPIRED], true)) {
-            return $tagihan;
-        }
-
-        if (! $tagihan->expired_date || now()->lessThanOrEqualTo($tagihan->expired_date)) {
-            return $tagihan;
-        }
-
-        DB::transaction(function () use ($tagihan, $idpengguna) {
-            DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
-                'status' => self::TAGIHAN_STATUS_EXPIRED,
-            ]);
-
-            DB::table('log_ubah_status_by_pengguna')->insert([
-                'done_at' => now(),
-                'done_by' => $idpengguna,
-                'idtagihan' => $tagihan->idtagihan,
-                'status_awal' => $tagihan->status,
-                'status_akhir' => self::TAGIHAN_STATUS_EXPIRED,
-            ]);
-        });
-
-        return DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->first();
     }
 
     /**

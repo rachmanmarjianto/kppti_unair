@@ -29,6 +29,11 @@ class Controller extends BaseController
     private const ROLE_PESERTA = 2;
 
     /**
+     * `tagihan.status` value for "Expired" (VA kadaluwarsa, belum lunas).
+     */
+    protected const TAGIHAN_STATUS_EXPIRED = 5;
+
+    /**
      * Redirect target (route name) per active role. Role 3 (Nara Sumber)
      * doesn't have an area built yet. Shared by LoginController (initial
      * redirect after login) and PenggunaController (switching active role
@@ -1018,6 +1023,41 @@ class Controller extends BaseController
      *
      * @return array{code: int, message: string, data: array}
      */
+    /**
+     * Tandai tagihan expired kalau waktunya sudah lewat dan status masih
+     * tertagih/terbayar sebagian — dipanggil setiap halaman pameran/detail
+     * tagihan dibuka maupun saat admin menekan "Status Bayar" (bukan cuma
+     * sekali), jadi dijaga idempotent: status lunas/batal/sudah-expired
+     * tidak diproses ulang. Dipakai bersama oleh PameranController dan
+     * TagihanPameranController.
+     */
+    protected function cekKadaluwarsaTagihan(object $tagihan, int $idpengguna): object
+    {
+        if (in_array((int) $tagihan->status, [3, 4, self::TAGIHAN_STATUS_EXPIRED], true)) {
+            return $tagihan;
+        }
+
+        if (! $tagihan->expired_date || now()->lessThanOrEqualTo($tagihan->expired_date)) {
+            return $tagihan;
+        }
+
+        DB::transaction(function () use ($tagihan, $idpengguna) {
+            DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->update([
+                'status' => self::TAGIHAN_STATUS_EXPIRED,
+            ]);
+
+            DB::table('log_ubah_status_by_pengguna')->insert([
+                'done_at' => now(),
+                'done_by' => $idpengguna,
+                'idtagihan' => $tagihan->idtagihan,
+                'status_awal' => $tagihan->status,
+                'status_akhir' => self::TAGIHAN_STATUS_EXPIRED,
+            ]);
+        });
+
+        return DB::table('tagihan')->where('idtagihan', $tagihan->idtagihan)->first();
+    }
+
     protected function prosesInquiryBillingTagihan(object $tagihan): array
     {
         $resp_inquiry = app(BniVirtualAccountService::class)->inquiryBilling($tagihan->idtagihan);
