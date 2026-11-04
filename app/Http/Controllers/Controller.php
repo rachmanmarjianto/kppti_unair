@@ -29,6 +29,12 @@ class Controller extends BaseController
     private const ROLE_PESERTA = 2;
 
     /**
+     * `tagihan.status` value for "Expired" (VA kadaluwarsa, belum lunas).
+     * Dipakai bersama oleh PameranController dan TagihanPameranController.
+     */
+    protected const TAGIHAN_STATUS_EXPIRED = 5;
+
+    /**
      * Redirect target (route name) per active role. Role 3 (Nara Sumber)
      * doesn't have an area built yet. Shared by LoginController (initial
      * redirect after login) and PenggunaController (switching active role

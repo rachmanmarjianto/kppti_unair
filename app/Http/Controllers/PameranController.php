@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Storage;
 
 class PameranController extends Controller
 {
-    private const TAGIHAN_STATUS_EXPIRED = 5;
-
     private const TAGIHAN_STATUS_DITANGGUHKAN = 6;
 
     private const IDKLUSTER_BERBAYAR = 5;
