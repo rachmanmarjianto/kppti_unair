@@ -75,6 +75,10 @@
                     <div class="col-12 col-sm-9">{{ $pameran->nama_pic }}</div>
                 </div>
                 <div class="row mb-2">
+                    <div class="col-12 col-sm-3 fw-bold">No. WA PIC</div>
+                    <div class="col-12 col-sm-9">{{ $pameran->no_wa_pic ?? '-' }}</div>
+                </div>
+                <div class="row mb-2">
                     <div class="col-12 col-sm-3 fw-bold">Tema</div>
                     <div class="col-12 col-sm-9">{{ $pameran->tema }}</div>
                 </div>

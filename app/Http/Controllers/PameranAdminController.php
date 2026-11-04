@@ -77,7 +77,7 @@ class PameranAdminController extends Controller
             ->leftJoin('pengguna as pic', 'pic.idpengguna', '=', 'pe.idpengguna')
             ->leftJoin('kluster_pameran as k', 'k.idkluster_pameran', '=', 'p.idkluster_pameran')
             ->where('p.idpameran', $idpameran)
-            ->select('p.*', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'k.nomor_kluster', 'k.tema_kluster')
+            ->select('p.*', 'i.nama_institusi', 'ji.nama_jenis_institusi', 'pic.nama as nama_pic', 'pic.no_wa as no_wa_pic', 'k.nomor_kluster', 'k.tema_kluster')
             ->first();
 
         if (! $pameran) {
