@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MouController;
 use App\Http\Controllers\NarasumberController;
 use App\Http\Controllers\PameranController;
 use App\Http\Controllers\PesertaController;
@@ -39,6 +40,9 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/poster/hapus', [PosterController::class, 'hapus'])->name('peserta.poster.hapus');
     Route::get('/poster/berkas', [PosterController::class, 'tampilBerkas'])->name('peserta.poster.berkas');
     Route::get('/poster/template', [PosterController::class, 'unduhTemplate'])->name('peserta.poster.template');
+    Route::get('/mou/list-peserta', [MouController::class, 'listPeserta'])->name('peserta.mou.list-peserta');
+    Route::get('/mou/list-peserta/peserta', [MouController::class, 'pesertaInstitusi'])->name('peserta.mou.list-peserta.peserta');
+    Route::get('/mou/pengajuan', [MouController::class, 'pengajuan'])->name('peserta.mou.pengajuan');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');
