@@ -498,8 +498,50 @@ class MouController extends Controller
         }
 
         $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Menerima pengajuan MoU untuk Temu Diskusi.');
+        $this->kirimWaTemuDiskusiKePengaju($pengajuan->idpengajuan_mou);
 
         return $this->jsonResponse(200, 'Pengajuan MoU berhasil diterima untuk Temu Diskusi.');
+    }
+
+    /**
+     * Kirim notifikasi WA ke PIC Pengaju begitu Mitra menyetujui Temu
+     * Diskusi — best-effort: kegagalan kirim WA dicatat ke log saja, tidak
+     * membatalkan keputusan Temu Diskusi yang sudah tersimpan (pola sama
+     * dengan Controller::kirimWaPameranTerpilih()).
+     */
+    private function kirimWaTemuDiskusiKePengaju(int $idpengajuanMou): void
+    {
+        $data = DB::table('pengajuan_mou as pm')
+            ->join('institusi_asal as ia_mitra', 'ia_mitra.idinstitusi_asal', '=', 'pm.idinstitusi_mitra')
+            ->leftJoin('pengguna as pic_pengaju', 'pic_pengaju.idpengguna', '=', 'pm.idpic_institusi_pengaju')
+            ->leftJoin('pertemuan_mou as pert', 'pert.idpengajuan_mou', '=', 'pm.idpengajuan_mou')
+            ->leftJoin('tanggal_mou as tgl', 'tgl.idtanggal_mou', '=', 'pert.idtanggal_mou')
+            ->leftJoin('sesi_mou as sesi', 'sesi.idsesi_mou', '=', 'pert.idsesi_mou')
+            ->leftJoin('ruang_mou as ruang', 'ruang.idruang_mou', '=', 'pert.idruang_mou')
+            ->where('pm.idpengajuan_mou', $idpengajuanMou)
+            ->select(
+                'ia_mitra.nama_institusi as nama_institusi_mitra',
+                'pic_pengaju.no_wa as no_wa_pic_pengaju',
+                'tgl.tanggal', 'sesi.jam_mulai', 'sesi.jam_akhir', 'ruang.nama_ruang'
+            )
+            ->first();
+
+        if (! $data || ! $data->no_wa_pic_pengaju) {
+            return;
+        }
+
+        $tanggalFormat = $data->tanggal ? Carbon::parse($data->tanggal)->translatedFormat('d M Y') : '-';
+        $jamRange = $data->jam_mulai ? substr($data->jam_mulai, 0, 5).'-'.substr($data->jam_akhir, 0, 5) : '-';
+
+        $pesan1 = 'Selamat, calon mitra MoU Anda,';
+        $pesan2 = "{$data->nama_institusi_mitra}, telah menentukan bertemu untuk diskusi pada tanggal {$tanggalFormat} jam {$jamRange} di ruang {$data->nama_ruang}.";
+        $pesan3 = 'Detail informasi silakan login di halaman KPPTI.';
+
+        try {
+            $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $data->no_wa_pic_pengaju);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
