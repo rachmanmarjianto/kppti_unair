@@ -12,6 +12,7 @@ include_once 'peserta.php';
 include_once 'sc.php';
 include_once 'petugas-kit.php';
 include_once 'master-sc.php';
+include_once 'petugas-ruang-mou.php';
 
 // Route::get('/', function () {
 //     return view('blank_page');

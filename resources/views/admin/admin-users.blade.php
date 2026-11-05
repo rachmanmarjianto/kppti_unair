@@ -1,6 +1,6 @@
 @extends('layout.layout')
 
-@section('title', 'Admin / SC / Petugas Kit / Master SC Users')
+@section('title', 'Admin / SC / Petugas Kit / Master SC / Petugas Ruang MoU Users')
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
@@ -21,6 +21,8 @@
         #modal-user-lama-sc .modal-content,
         #modal-user-baru-petugas-kit .modal-content,
         #modal-user-lama-petugas-kit .modal-content,
+        #modal-user-baru-petugas-ruang-mou .modal-content,
+        #modal-user-lama-petugas-ruang-mou .modal-content,
         #modal-detail-pengguna .modal-content,
         #modal-edit-pengguna .modal-content {
             background: #fff;
@@ -29,6 +31,7 @@
         #modal-user-lama-admin .form-control[readonly],
         #modal-user-lama-sc .form-control[readonly],
         #modal-user-lama-petugas-kit .form-control[readonly],
+        #modal-user-lama-petugas-ruang-mou .form-control[readonly],
         #modal-detail-pengguna .form-control[readonly],
         #modal-edit-pengguna .form-control[readonly] {
             color: #000;
@@ -52,7 +55,7 @@
 
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="#">Users</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Admin / SC / Petugas Kit / Master SC</li>
+    <li class="breadcrumb-item active" aria-current="page">Admin / SC / Petugas Kit / Master SC / Petugas Ruang MoU</li>
 @endsection
 
 @section('content')
@@ -78,6 +81,12 @@
         'boxId' => 'petugas-kit',
         'boxTitle' => 'Petugas Kit Users',
         'users' => $petugasKitUsers,
+    ])
+
+    @include('admin.partials.user-role-box', [
+        'boxId' => 'petugas-ruang-mou',
+        'boxTitle' => 'Petugas Ruang MoU Users',
+        'users' => $petugasRuangMouUsers,
     ])
 
     <div class="modal fade" id="modal-detail-pengguna" tabindex="-1" aria-hidden="true">
@@ -209,7 +218,7 @@
             var resetPasswordUrl = '{{ route('admin.admin-users.reset-password') }}';
             var hapusRoleUrl = '{{ route('admin.admin-users.hapus-role') }}';
             var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            var boxIds = ['admin', 'sc', 'petugas-kit', 'master-sc'];
+            var boxIds = ['admin', 'sc', 'petugas-kit', 'master-sc', 'petugas-ruang-mou'];
             var dataTables = {};
 
             boxIds.forEach(function (boxId) {

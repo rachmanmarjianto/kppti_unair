@@ -42,7 +42,17 @@ Route::middleware(['akses:2'])->group(function () {
     Route::get('/poster/template', [PosterController::class, 'unduhTemplate'])->name('peserta.poster.template');
     Route::get('/mou/list-peserta', [MouController::class, 'listPeserta'])->name('peserta.mou.list-peserta');
     Route::get('/mou/list-peserta/peserta', [MouController::class, 'pesertaInstitusi'])->name('peserta.mou.list-peserta.peserta');
-    Route::get('/mou/pengajuan', [MouController::class, 'pengajuan'])->name('peserta.mou.pengajuan');
+    Route::get('/mou/pengajuan', [MouController::class, 'daftarPengajuan'])->name('peserta.mou.pengajuan');
+    Route::get('/mou/pengajuan/template', [MouController::class, 'unduhTemplate'])->name('peserta.mou.pengajuan.template');
+    Route::get('/mou/pengajuan/detail', [MouController::class, 'detailPengajuan'])->name('peserta.mou.pengajuan.detail');
+    Route::get('/mou/pengajuan/lampiran', [MouController::class, 'unduhLampiran'])->name('peserta.mou.pengajuan.lampiran');
+    Route::get('/mou/pengajuan/tambah', [MouController::class, 'tambahPengajuanForm'])->name('peserta.mou.pengajuan.tambah');
+    Route::get('/mou/pengajuan/opsi-mitra', [MouController::class, 'opsiMitraInstitusi'])->name('peserta.mou.pengajuan.opsi-mitra');
+    Route::post('/mou/pengajuan/simpan', [MouController::class, 'simpanPengajuan'])->name('peserta.mou.pengajuan.simpan');
+    Route::post('/mou/pengajuan/tunda', [MouController::class, 'tundaAjuan'])->name('peserta.mou.pengajuan.tunda');
+    Route::post('/mou/pengajuan/batalkan', [MouController::class, 'batalkanAjuan'])->name('peserta.mou.pengajuan.batalkan');
+    Route::get('/mou/pengajuan/opsi-sesi', [MouController::class, 'opsiSesiTersedia'])->name('peserta.mou.pengajuan.opsi-sesi');
+    Route::post('/mou/pengajuan/respon-temu-diskusi', [MouController::class, 'responTemuDiskusi'])->name('peserta.mou.pengajuan.respon-temu-diskusi');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');

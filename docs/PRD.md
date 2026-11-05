@@ -29,6 +29,7 @@ Event ini tidak bisa ditangani dengan Google Form karena:
 | **Peserta** | Perwakilan institusi/individu | Registrasi, isi data logistik, pilih acara, ajukan pameran, bayar tagihan |
 | **Narasumber** | Pembicara pada acara | Mengajukan diri sebagai narasumber (abstrak, berkas), mengikuti alur review |
 | **Petugas Kit** (`idrole` 5) | Panitia penyiap seminar kit | Setelah masa registrasi online ditutup, menyiapkan & mengelompokkan seminar kit sesuai jumlah peserta per kontingen (F18) |
+| **Petugas Ruang MoU** (`idrole` 7) | Panitia penjaga ruang pertemuan MoU | Pada hari pertemuan terjadwal, mencatat kehadiran PIC institusi pengaju dan PIC institusi mitra untuk sesi "Temu Diskusi" MoU (F20-F23) |
 
 - **Narasumber adalah role tersendiri**, terpisah dari Peserta. **Registrasi peserta dan registrasi narasumber memiliki alur yang berbeda** (dijelaskan per fitur).
 - Satu pengguna dapat **memiliki** lebih dari satu role (tabel `role_pengguna`), misalnya Peserta sekaligus Narasumber, tetapi **hanya satu role yang aktif pada satu waktu** (kolom `status`). Pengecekan akses dilakukan oleh middleware `akses:{idrole}` terhadap role yang sedang aktif. Pengguna berpindah antar role dengan mengganti role aktif.
@@ -70,6 +71,11 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F17 | Portal registrasi peserta (gerbang buka/tutup sesi registrasi berbasis jadwal master `jadwal_penting`) | P0 | Selesai |
 | F18 | Persiapan seminar kit per kontingen oleh Petugas Kit, setelah masa registrasi online ditutup (lihat §6.3) | P1 | Belum |
 | F19 | Registrasi kontingen di lokasi acara pada hari kedatangan, dengan sistem antrian — **ID dipesan lebih dulu**, detail alur/sistem antrian menyusul `[TBD]` (lihat §6.3) | P1 | Belum |
+| F20 | Pengajuan MoU antar institusi — peserta (sebagai perwakilan institusi) mengajukan MoU ke institusi lain; institusi yang dituju memilih **Temu Diskusi** atau **Tunda lain waktu** (lihat §6.4) | P2 | Selesai |
+| F21 | Penjadwalan pertemuan MoU — saat disepakati Temu Diskusi, tentukan tanggal, sesi jam, dan ruang pertemuan (lihat §6.4) | P2 | Belum |
+| F22 | Konfirmasi kehadiran pertemuan MoU oleh **Petugas Ruang MoU** (role baru, `idrole` 7) pada hari pertemuan terjadwal (lihat §6.4) | P2 | Belum |
+| F23 | Rekap jumlah kerjasama (MoU) yang terjalin, untuk kebutuhan panitia (lihat §6.4) | P2 | Belum |
+| F24 | Manajemen MoU oleh Admin — menu "Pengajuan MoU" dengan submenu **Sesi MoU** (lihat data master), **Ruang MoU** (lihat data master), **Tanggal MoU** (lihat, tambah, soft delete), dan **Pertemuan MoU** (matrix slot per tanggal+ruang, tombol "Sesuaikan Slot" mengisi otomatis sesuai kapasitas ruang) (lihat §6.4) | P2 | **Parsial** (generator slot `pertemuan_mou` sudah ada sebagai Artisan command, belum ada halaman admin) |
 
 > Urutan pengerjaan yang disarankan: **F01 → F03 → F04 → F05/F06 → F07/F08 → sisanya**.
 > Ini mengikuti kebutuhan minimum agar pendaftaran bisa dibuka.
@@ -102,6 +108,34 @@ Alur (F18 sudah dirancang di bawah; F19 baru dipesan ID-nya, detail menyusul):
 1. Setelah masa registrasi online ditutup, **Petugas Kit** (role baru, `idrole` 5) menyiapkan seminar kit dan **mengelompokkannya per kontingen** — jumlah kit per kontingen mengikuti jumlah peserta terdaftar di kontingen tersebut. (**F18**)
 2. Pada hari kedatangan, ada sesi **registrasi kontingen di lokasi acara**. Satu kontingen cukup diwakili **satu peserta**; perwakilan ini menerima sekaligus seluruh seminar kit untuk kontingennya (sejumlah peserta di kontingen itu). Sesi ini akan memakai **sistem antrian** — alur dan desain antrian ini **dibahas menyusul**, untuk sekarang hanya ID fitur (F19) yang dipesan agar tidak bertabrakan dengan fitur lain. (**F19**, `[TBD]`)
 3. Tujuan pengelompokan di langkah 1: begitu perwakilan kontingen registrasi di lokasi (langkah 2), seminar kit kontingen itu sudah siap sejumlah pas, sehingga proses registrasi lokasi berjalan lebih lancar/cepat.
+
+### 6.4 Pengajuan MoU antar institusi
+
+Tujuan: memberi kesempatan bagi institusi yang terdaftar di KPPTI untuk saling menjajaki kerja sama (MoU), dan memudahkan panitia menghitung berapa kerja sama yang terjalin selama event.
+
+Peserta bertindak **sebagai perwakilan institusinya** — MoU terjadi antar institusi (`institusi_asal`), bukan antar individu. Tabel terkait: `pengajuan_mou`, `log_status_mou`, `lampiran_mou`, `sesi_mou`, `ruang_mou`, `tanggal_mou`, `pertemuan_mou` (lihat migrasi terbaru di `database/migrations/`).
+
+**Status pengajuan** (`pengajuan_mou.status_ajuan`):
+
+`1 Ajuan` → `2 Temu diskusi` **atau** `3 Tunda lain waktu` → ... → `4 Terjalin` / `5 Dibatalkan`
+
+Alur:
+
+1. Peserta (mewakili institusi pengaju, `idinstitusi_pengaju`) memilih institusi lain yang terdaftar sebagai mitra (`idinstitusi_mitra`) dan mengajukan MoU, dengan PIC dari masing-masing pihak (`idpic_institusi_pengaju`, `idpic_institusi_mitra`). Bisa melampirkan berkas/catatan pendukung (`lampiran_mou`, `jenis_lampiran`: 1 file, 2 catatan).
+2. Peserta yang mewakili institusi mitra menerima ajuan ini, lalu memilih: **Temu Diskusi** atau **Tunda lain waktu**.
+3. Bila **Temu Diskusi** dipilih, pengajuan berlanjut ke penjadwalan: pilih tanggal (`tanggal_mou`), sesi jam (`sesi_mou`), dan ruang (`ruang_mou`) → tercatat sebagai satu `pertemuan_mou`.
+4. Pada hari pertemuan, **Petugas Ruang MoU** (role baru, `idrole` 7) bertugas di ruang yang dijadwalkan, mencatat kehadiran PIC pengaju dan PIC mitra (`pic_pengaju_hadir_at`/`pic_mitra_hadir_at`, distempel oleh petugas lewat `pic_pengaju_stamp_by`/`pic_mitra_stamp_by`).
+5. Setiap perubahan status dicatat di `log_status_mou` (audit trail, siapa & kapan).
+6. Hasil akhir pengajuan: `4 Terjalin` (kerja sama disepakati) atau `5 Dibatalkan`. Panitia (Admin) dapat merekap jumlah MoU yang terjalin selama event (F23).
+
+**Sisi Admin (F24)** — master data dan slot pertemuan dikelola lewat menu "Pengajuan MoU" tersendiri, 4 submenu:
+
+- **Sesi MoU**: lihat isi `sesi_mou` (jam mulai/akhir tiap sesi).
+- **Ruang MoU**: lihat isi `ruang_mou` (nama ruang + kapasitas meja).
+- **Tanggal MoU**: lihat isi `tanggal_mou`, bisa **menambah tanggal baru** dan **soft delete** (kolom `status`).
+- **Pertemuan MoU**: halaman paling kompleks — filter **Tanggal MoU** dan **Ruang** (wajib pilih satu ruang, tidak ada opsi "semua ruang"), lalu tampilan **matrix**: kolom = nomor meja (`pertemuan_mou.isi_ke`), baris = sesi (`sesi_mou.jam_mulai`-`jam_akhir`, format jam:menit saja). Tombol **"Sesuaikan Slot"** di atas matrix — mengisi otomatis slot yang belum ada untuk kombinasi tanggal+ruang itu sampai tiap sesi punya slot sejumlah kapasitas meja ruang tersebut (idempoten — kalau sudah penuh/sesuai, tidak menambah apa pun). Setelah proses, tampilkan notifikasi jumlah slot yang ditambahkan (bisa `0` kalau sudah lengkap). Generator slot (logika "Sesuaikan Slot") sudah ada sebagai Artisan command `app:generate-slot-pertemuan-mou` (lihat `app/Console/Commands/GenerateSlotPertemuanMou.php`) — tinggal dipanggil dari halaman admin, bukan dibangun ulang dari nol.
+
+`[TBD: detail lanjutan menyusul didiskusikan — lihat §11]`
 
 ## 7. Integrasi eksternal
 
@@ -140,3 +174,4 @@ Alur (F18 sudah dirancang di bawah; F19 baru dipesan ID-nya, detail menyusul):
 4. Tanggal dan lokasi pasti event?
 5. Apakah SC juga bisa memiliki role narasumber?
 6. F19 (registrasi kontingen di lokasi + sistem antrian): bagaimana alur antriannya persis (nomor antrian, display, dsb)? Menyusul dari developer.
+7. F21-F23 (Pengajuan MoU, lihat §6.4): rincian alur UI Peserta memilih tanggal/sesi/ruang pertemuan (F21, memanfaatkan slot `pertemuan_mou` yang disiapkan F24), alur Petugas Ruang MoU (F22), dan tampilan rekap F23 untuk Admin — menyusul didiskusikan dengan developer. (Catatan: F20 sudah selesai, dan F24 — siapa mengelola master data `sesi_mou`/`ruang_mou`/`tanggal_mou`/`pertemuan_mou` — sudah terjawab: **Admin**, lewat menu tersendiri.)

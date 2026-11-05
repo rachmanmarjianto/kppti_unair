@@ -201,6 +201,22 @@ $('.select-y').on('change', function () { ... });
 
 **Berlaku untuk semua event**, bukan cuma yang di dalam tabel DataTables — termasuk tombol di dalam modal yang dirender berulang (`@foreach`), konten yang baru disisipkan lewat AJAX, dan elemen apa pun yang jumlah/keberadaannya bisa berubah setelah load awal. Induk yang dipakai untuk delegation harus elemen yang **pasti selalu ada** sepanjang hidup halaman (wrapper card, `<table>`-nya sendiri, atau `document` kalau tidak ada pembungkus yang lebih spesifik) — jangan delegation ke elemen yang ikut dibuat ulang/dihapus juga.
 
+### 6.9 Padding pada field input dan field yang berkaitan
+
+Field input (`<select>`, `<input>`, dst) **tidak boleh menempel langsung ke garis tepi** (sisi kiri/kanan container, card, atau kolom). Beri padding — bukan cuma pada field itu sendiri, tapi juga field lain yang berkaitan/berdekatan dalamnya (mis. baris filter yang berisi beberapa `<select>` sejajar).
+
+Pola yang dipakai (lihat `resources/views/peserta/mou-pengajuan.blade.php`, `resources/views/peserta/mou-list-peserta.blade.php`):
+
+```blade
+<div class="row mb-3" style="padding-left:30px">
+    <div class="col-md-4 col-sm-6 col-12">
+        <label class="form-label" for="...">Label</label>
+        <select id="..." class="form-select">...</select>
+    </div>
+    ...
+</div>
+```
+
 ## 7. Keamanan dasar
 
 - CSRF: semua `POST` (termasuk AJAX) menyertakan token.

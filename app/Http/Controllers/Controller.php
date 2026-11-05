@@ -48,6 +48,7 @@ class Controller extends BaseController
         4 => 'sc.pameran',
         5 => 'petugas-kit.home',
         6 => 'master-sc.narasumber',
+        7 => 'petugas-ruang-mou.pengajuan',
     ];
 
     /**
