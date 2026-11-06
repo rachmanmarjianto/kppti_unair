@@ -46,7 +46,7 @@ class PesertaAdminController extends Controller
 
         $dashboard = [
             'totalPeserta' => $pesertaList->count(),
-            'totalInstitusi' => $institusiList->count(),
+            'totalInstitusi' => $institusiList->where('jumlahPeserta', '>', 0)->count(),
             'jumlahCityTour' => $pesertaList->where('city_tour', true)->count(),
             'jumlahLengkap' => $pesertaList->where('lengkap', true)->count(),
             'jumlahBelumLengkap' => $pesertaList->where('lengkap', false)->count(),
