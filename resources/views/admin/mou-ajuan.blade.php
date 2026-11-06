@@ -161,12 +161,12 @@
                             </tr>
                             <tr>
                                 <th class="col-grup-batas">Total</th>
-                                <th>Belum Respon</th>
+                                <th>Belum Direspon</th>
                                 <th>Ditunda</th>
                                 <th>Temu Diskusi</th>
                                 <th>Terjalin</th>
                                 <th class="col-grup-batas">Total</th>
-                                <th>Belum Respon</th>
+                                <th>Belum Merespon</th>
                                 <th>Ditunda</th>
                                 <th>Temu Diskusi</th>
                                 <th>Terjalin</th>
