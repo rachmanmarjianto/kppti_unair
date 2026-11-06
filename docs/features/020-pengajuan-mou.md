@@ -90,7 +90,7 @@ Berbeda dari asumsi sebelumnya (PIC Pengaju otomatis = pengguna yang submit) —
 Setelah Mitra dipilih, peserta bisa melampirkan catatan dan/atau file pendukung:
 
 - **Catatan** (maksimal 1 per pengajuan, sesuai §2 `lampiran_mou`): menambahkan card baru berisi **WYSIWYG editor** (pola Quill, sama seperti `isi_review_pameran.isi_review` di F07/F08) untuk mengisi `catatan`.
-- **File** (boleh berulang, banyak per pengajuan): menambahkan card baru berisi field teks **"Tujuan File"** (keterangan/judul lampiran) + field unggah file. Validasi: **hanya PDF**, maksimal **5 MB** per berkas.
+- **File** (boleh berulang, banyak per pengajuan): menambahkan card baru berisi field teks **"Tujuan File"** (keterangan/judul lampiran) + field unggah file. Validasi: **PDF atau DOCX**, maksimal **5 MB** per berkas.
 
 `[TBD]` mekanisme UI tepatnya menambahkan card-card ini — asumsi **[USULAN AI]**: dua tombol terpisah di bawah Card 1, **"+ Tambah Catatan"** (hilang/disabled setelah dipakai sekali, karena maksimal 1) dan **"+ Tambah File"** (tetap bisa diklik berulang, tiap klik menambah satu card file baru yang bisa dihapus individual sebelum submit).
 
@@ -106,7 +106,7 @@ Saat form disubmit, dalam satu `DB::transaction` (CONVENTIONS.md §2):
 
 ## 5. Validasi
 
-- File lampiran: **tipe PDF saja**, maksimal **5 MB** per berkas (`mimes:pdf`, `max:5120` di `$request->validate`).
+- File lampiran: **tipe PDF atau DOCX**, maksimal **5 MB** per berkas (`mimes:pdf,docx`, `max:5120` di `$request->validate`).
 - Mitra wajib dipilih sebelum submit (tidak bisa mengajukan MoU tanpa Mitra).
 - Duplikat pasangan institusi (lihat §4.4) — ditolak kalau ada pengajuan lama yang belum Dibatalkan.
 - **Dikonfirmasi developer**: Catatan dan file keduanya **opsional** — pengajuan tetap valid hanya dengan Mitra + PIC terisi, tanpa catatan maupun file.

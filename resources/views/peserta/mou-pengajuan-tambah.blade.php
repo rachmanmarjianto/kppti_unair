@@ -105,8 +105,8 @@
                 <input type="text" class="form-control input-tujuan-file" maxlength="255" placeholder="Contoh: Draf naskah MoU">
             </div>
             <div class="mb-0">
-                <label class="form-label fw-bold">Berkas (PDF, maks. 5 MB)</label>
-                <input type="file" class="form-control input-berkas-file" accept="application/pdf">
+                <label class="form-label fw-bold">Berkas (PDF/DOCX, maks. 5 MB)</label>
+                <input type="file" class="form-control input-berkas-file" accept=".pdf,.docx">
             </div>
         </div>
     </template>

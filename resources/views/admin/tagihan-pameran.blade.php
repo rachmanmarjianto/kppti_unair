@@ -151,7 +151,7 @@
                 }
             });
 
-            $('.btn-status-bayar').on('click', function () {
+            $('#table-tagihan-pameran').on('click', '.btn-status-bayar', function () {
                 var $btn = $(this);
                 var idtagihan = $btn.data('idtagihan');
                 var teksAwal = $btn.html();
@@ -217,7 +217,7 @@
                 columnDefs: [{ orderable: false, targets: -1 }],
             });
 
-            $('.btn-tandai-lunas').on('click', function () {
+            $('#table-tagihan-pameran').on('click', '.btn-tandai-lunas', function () {
                 var $btn = $(this);
                 var idtagihan = $btn.data('idtagihan');
 

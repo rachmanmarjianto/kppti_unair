@@ -61,7 +61,7 @@ class MouController extends Controller
             ->join('institusi_asal as ia_lawan', 'ia_lawan.idinstitusi_asal', '=', 'pm.idinstitusi_mitra')
             ->join('jenis_institusi as ji_lawan', 'ji_lawan.idjenis_institusi', '=', 'ia_lawan.idjenis_institusi')
             ->where('pm.idinstitusi_pengaju', $idInstitusiAsal)
-            ->selectRaw("pm.idpengajuan_mou, pm.status_ajuan, 'Pengaju' as posisi, pic_sendiri.nama as nama_pic_sendiri, pic_sendiri.no_wa as no_wa_pic_sendiri, ia_lawan.nama_institusi as nama_institusi_lawan, pic_lawan.nama as nama_pic_lawan, ji_lawan.nama_jenis_institusi as nama_jenis_institusi");
+            ->selectRaw("pm.idpengajuan_mou, pm.status_ajuan, 'Pengaju' as posisi, pic_sendiri.nama as nama_pic_sendiri, pic_sendiri.no_wa as no_wa_pic_sendiri, ia_lawan.nama_institusi as nama_institusi_lawan, pic_lawan.nama as nama_pic_lawan, pic_lawan.no_wa as no_wa_pic_lawan, ji_lawan.nama_jenis_institusi as nama_jenis_institusi");
 
         $sebagaiMitra = DB::table('pengajuan_mou as pm')
             ->leftJoin('pengguna as pic_sendiri', 'pic_sendiri.idpengguna', '=', 'pm.idpic_institusi_mitra')
@@ -69,7 +69,7 @@ class MouController extends Controller
             ->join('institusi_asal as ia_lawan', 'ia_lawan.idinstitusi_asal', '=', 'pm.idinstitusi_pengaju')
             ->join('jenis_institusi as ji_lawan', 'ji_lawan.idjenis_institusi', '=', 'ia_lawan.idjenis_institusi')
             ->where('pm.idinstitusi_mitra', $idInstitusiAsal)
-            ->selectRaw("pm.idpengajuan_mou, pm.status_ajuan, 'Penerima' as posisi, pic_sendiri.nama as nama_pic_sendiri, pic_sendiri.no_wa as no_wa_pic_sendiri, ia_lawan.nama_institusi as nama_institusi_lawan, pic_lawan.nama as nama_pic_lawan, ji_lawan.nama_jenis_institusi as nama_jenis_institusi");
+            ->selectRaw("pm.idpengajuan_mou, pm.status_ajuan, 'Penerima' as posisi, pic_sendiri.nama as nama_pic_sendiri, pic_sendiri.no_wa as no_wa_pic_sendiri, ia_lawan.nama_institusi as nama_institusi_lawan, pic_lawan.nama as nama_pic_lawan, pic_lawan.no_wa as no_wa_pic_lawan, ji_lawan.nama_jenis_institusi as nama_jenis_institusi");
 
         $gabungan = $sebagaiPengaju->unionAll($sebagaiMitra);
 
@@ -631,7 +631,7 @@ class MouController extends Controller
             'catatan' => ['nullable', 'string'],
             'files' => ['nullable', 'array'],
             'files.*.tujuan' => ['nullable', 'string', 'max:255'],
-            'files.*.berkas' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
+            'files.*.berkas' => ['nullable', 'file', 'mimes:pdf,docx', 'max:5120'],
         ]);
 
         if ((int) $validated['idinstitusi_mitra'] === (int) $idInstitusiAsal) {

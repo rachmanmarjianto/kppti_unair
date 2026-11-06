@@ -157,7 +157,7 @@
                                 <th rowspan="2">Nama Institusi</th>
                                 <th rowspan="2">Jenis Institusi</th>
                                 <th colspan="5" class="col-grup-batas">Ajuan (sebagai Pengaju)</th>
-                                <th colspan="5" class="col-grup-batas">Permintaan (sebagai Mitra)</th>
+                                <th colspan="5" class="col-grup-batas">Penerima (sebagai Mitra)</th>
                             </tr>
                             <tr>
                                 <th class="col-grup-batas">Total</th>

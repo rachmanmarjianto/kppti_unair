@@ -111,7 +111,7 @@
                                 <tr>
                                     <td>{{ $baris->nama_pic_sendiri ?? '-' }}@if($baris->no_wa_pic_sendiri) <br><span class="text-muted" style="font-size: 12px;">{{ $baris->no_wa_pic_sendiri }}</span>@endif</td>
                                     <td>{{ $baris->nama_institusi_lawan }}</td>
-                                    <td>{{ $baris->nama_pic_lawan ?? '-' }}</td>
+                                    <td>{{ $baris->nama_pic_lawan ?? '-' }}@if($baris->no_wa_pic_lawan) <br><span class="text-muted" style="font-size: 12px;">{{ $baris->no_wa_pic_lawan }}</span>@endif</td>
                                     <td>{{ $baris->nama_jenis_institusi }}</td>
                                     <td>
                                         <span class="badge {{ $baris->posisi === 'Pengaju' ? 'bg-danger' : 'bg-success' }}">
