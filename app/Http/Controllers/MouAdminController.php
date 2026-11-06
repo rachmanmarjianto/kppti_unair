@@ -10,8 +10,8 @@ class MouAdminController extends Controller
 {
     /**
      * Label status_ajuan (1-4) yang dipakai di rekap §ajuanIndex — status 5
-     * (Dibatalkan) sengaja tidak punya kolom breakdown sendiri, tapi tetap
-     * ikut dihitung di kolom Total.
+     * (Dibatalkan) sengaja dikecualikan dari semua hitungan (Total, dashboard,
+     * dan daftar modal "total"), bukan hanya dari kolom breakdown.
      */
     private const LABEL_STATUS_AJUAN = [
         1 => 'Ajuan',
@@ -35,6 +35,7 @@ class MouAdminController extends Controller
         $jenisInstitusiList = DB::table('jenis_institusi')->orderBy('nama_jenis_institusi')->get();
 
         $ajuanAgg = DB::table('pengajuan_mou')
+            ->where('status_ajuan', '!=', 5)
             ->selectRaw('
                 idinstitusi_pengaju as idinstitusi_asal,
                 COUNT(*) as ajuan_total,
@@ -46,6 +47,7 @@ class MouAdminController extends Controller
             ->groupBy('idinstitusi_pengaju');
 
         $permintaanAgg = DB::table('pengajuan_mou')
+            ->where('status_ajuan', '!=', 5)
             ->selectRaw('
                 idinstitusi_mitra as idinstitusi_asal,
                 COUNT(*) as permintaan_total,
@@ -82,7 +84,7 @@ class MouAdminController extends Controller
                 return $baris;
             });
 
-        $jumlahTotalMou = DB::table('pengajuan_mou')->count();
+        $jumlahTotalMou = DB::table('pengajuan_mou')->where('status_ajuan', '!=', 5)->count();
         $jumlahTerjalin = DB::table('pengajuan_mou')->where('status_ajuan', 4)->count();
         $jumlahInstitusiTerjalin = DB::table('pengajuan_mou')->where('status_ajuan', 4)->pluck('idinstitusi_pengaju')
             ->merge(DB::table('pengajuan_mou')->where('status_ajuan', 4)->pluck('idinstitusi_mitra'))
@@ -122,6 +124,8 @@ class MouAdminController extends Controller
 
         if ($validated['status'] !== 'total') {
             $query->where('pm.status_ajuan', (int) $validated['status']);
+        } else {
+            $query->where('pm.status_ajuan', '!=', 5);
         }
 
         $list = $query->select('ia_lawan.nama_institusi', 'pm.status_ajuan', 'pm.idpengajuan_mou')
