@@ -55,6 +55,13 @@
             text-align: center;
         }
 
+        .kotak-centang {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #0e1726;
+        }
+
         .area-tanda-tangan {
             margin-top: 50px;
             width: 260px;
@@ -85,7 +92,7 @@
                 <tr>
                     <td class="kolom-nomor">{{ $loop->iteration }}</td>
                     <td>{{ $peserta->nama }}</td>
-                    <td class="kolom-centang">&#9633;</td>
+                    <td class="kolom-centang"><span class="kotak-centang"></span></td>
                 </tr>
             @empty
                 <tr>

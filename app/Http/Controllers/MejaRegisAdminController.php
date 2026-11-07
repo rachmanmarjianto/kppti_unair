@@ -136,4 +136,57 @@ class MejaRegisAdminController extends Controller
             ->where('idrole', self::ROLE_PETUGAS_MEJA_REGIS)
             ->exists();
     }
+
+    /**
+     * Submenu "Kehadiran" (menu "Kedatangan Kontingen") — rekap institusi
+     * yang sudah punya minimal 1 peserta dengan `peserta.hadir = true`,
+     * beserta jumlah peserta hadirnya.
+     */
+    public function kehadiranIndex()
+    {
+        $menu = 'kedatangan-kontingen';
+        $submenu = 'kehadiran';
+
+        $jumlahHadirPerInstitusi = $this->pesertaAktifQuery()
+            ->where('pe.hadir', true)
+            ->select('p.idinstitusi_asal')
+            ->get()
+            ->countBy('idinstitusi_asal');
+
+        $kehadiranList = DB::table('institusi_asal as ia')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'ia.idjenis_institusi')
+            ->whereIn('ia.idinstitusi_asal', $jumlahHadirPerInstitusi->keys())
+            ->select('ia.idinstitusi_asal', 'ia.nama_institusi', 'ji.nama_jenis_institusi')
+            ->orderBy('ia.nama_institusi')
+            ->get()
+            ->map(function ($baris) use ($jumlahHadirPerInstitusi) {
+                $baris->jumlah_hadir = $jumlahHadirPerInstitusi->get($baris->idinstitusi_asal, 0);
+
+                return $baris;
+            });
+
+        $jenisInstitusiList = DB::table('jenis_institusi')->orderBy('nama_jenis_institusi')->get();
+
+        // Dashboard ini menghitung jumlah INSTITUSI yang minimal satu
+        // pesertanya hadir per jenis institusi — bukan total peserta hadir
+        // (itu sudah ada per-baris di $kehadiranList). Dasarnya SEMUA jenis
+        // institusi (bukan cuma yang muncul di $kehadiranList), supaya
+        // jenis yang belum ada satu pun perwakilannya hadir tetap tampil
+        // dengan angka 0.
+        $jumlahInstitusiPerJenis = $kehadiranList->groupBy('nama_jenis_institusi')
+            ->map(fn ($grup) => $grup->count());
+
+        $rekapJenisInstitusi = $jenisInstitusiList->map(function ($jenis) use ($jumlahInstitusiPerJenis) {
+            return (object) [
+                'nama_jenis_institusi' => $jenis->nama_jenis_institusi,
+                'jumlah_institusi' => $jumlahInstitusiPerJenis->get($jenis->nama_jenis_institusi, 0),
+            ];
+        });
+
+        $jumlahPesertaHadir = $jumlahHadirPerInstitusi->sum();
+
+        return view('admin.kehadiran-kontingen', compact(
+            'menu', 'submenu', 'kehadiranList', 'jenisInstitusiList', 'rekapJenisInstitusi', 'jumlahPesertaHadir'
+        ));
+    }
 }

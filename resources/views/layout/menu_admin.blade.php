@@ -212,6 +212,9 @@
                             <li @if($submenu == 'petugas-meja') class="active" @endif>
                                 <a href="{{ route('admin.kedatangan.petugas-meja') }}"> Petugas Meja </a>
                             </li>
+                            <li @if($submenu == 'kehadiran') class="active" @endif>
+                                <a href="{{ route('admin.kedatangan.kehadiran') }}"> Kehadiran </a>
+                            </li>
                         </ul>
                     </li>
 

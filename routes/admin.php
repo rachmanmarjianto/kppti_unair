@@ -99,4 +99,5 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-kedatangan/petugas-meja/tambah', [MejaRegisAdminController::class, 'tambah'])->name('admin.kedatangan.petugas-meja.tambah');
     Route::post('/admin-kedatangan/petugas-meja/ubah', [MejaRegisAdminController::class, 'ubah'])->name('admin.kedatangan.petugas-meja.ubah');
     Route::post('/admin-kedatangan/petugas-meja/hapus', [MejaRegisAdminController::class, 'hapus'])->name('admin.kedatangan.petugas-meja.hapus');
+    Route::get('/admin-kedatangan/kehadiran', [MejaRegisAdminController::class, 'kehadiranIndex'])->name('admin.kedatangan.kehadiran');
 });

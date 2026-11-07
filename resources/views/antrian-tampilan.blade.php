@@ -128,6 +128,15 @@
             color: var(--kppti-navy);
         }
 
+        .baris-dipanggil .status-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-top: 2px;
+        }
+
         .baris-dipanggil .meja {
             font-family: 'Poppins', sans-serif;
             font-weight: 800;
@@ -137,6 +146,10 @@
             border-radius: 10px;
             padding: 8px 18px;
             white-space: nowrap;
+        }
+
+        .baris-dipanggil.status-4 {
+            opacity: .55;
         }
 
         .baris-dipanggil.baris-blink {
@@ -318,7 +331,9 @@
 
             // ===== Render dari snapshot SSE =====
             var dipanggilSebelumnya = {};
+            var urutanDipanggil = [];
             var snapshotAntriSebelumnya = '';
+            var labelStatusDipanggil = { '2': 'Dipanggil', '3': 'Sedang Dilayani', '4': 'Terlayani' };
 
             function renderAntri(antri) {
                 var snapshotBaru = JSON.stringify(antri);
@@ -343,12 +358,20 @@
             }
 
             function renderDipanggil(dipanggil) {
+                var dataById = {};
                 var dipanggilBaru = {};
 
                 dipanggil.forEach(function (baris) {
+                    dataById[baris.idantrian_regis] = baris;
                     dipanggilBaru[baris.idantrian_regis] = baris.panggilan_ke;
                 });
 
+                // Tidak ada kolom timestamp "waktu dipanggil" di skema,
+                // jadi urutan "terbaru di atas" dijaga di sini (client),
+                // bukan dari ORDER BY server: baris yang baru dipanggil
+                // atau dipanggil ulang dipindah ke depan array urutan;
+                // baris yang cuma berubah status (mis. Dipanggil →
+                // Sedang Dilayani → Terlayani) tetap di posisinya.
                 dipanggil.forEach(function (baris) {
                     var sebelum = dipanggilSebelumnya[baris.idantrian_regis];
                     var baruDipanggil = typeof sebelum === 'undefined';
@@ -356,19 +379,37 @@
 
                     if (baruDipanggil || dipanggilUlang) {
                         antrikanEfek(baris);
+
+                        urutanDipanggil = urutanDipanggil.filter(function (id) {
+                            return id !== baris.idantrian_regis;
+                        });
+                        urutanDipanggil.unshift(baris.idantrian_regis);
+                    } else if (urutanDipanggil.indexOf(baris.idantrian_regis) === -1) {
+                        urutanDipanggil.push(baris.idantrian_regis);
                     }
                 });
 
                 dipanggilSebelumnya = dipanggilBaru;
 
-                if (dipanggil.length === 0) {
+                // Buang id yang sudah tidak ada di data terbaru — mis.
+                // berubah jadi Terlewat, sehingga pindah ke kolom bawah.
+                urutanDipanggil = urutanDipanggil.filter(function (id) {
+                    return typeof dataById[id] !== 'undefined';
+                });
+
+                if (urutanDipanggil.length === 0) {
                     $listDipanggil.innerHTML = '<p class="teks-kosong">Belum ada yang dipanggil.</p>';
                     return;
                 }
 
-                $listDipanggil.innerHTML = dipanggil.map(function (baris) {
-                    return '<div class="baris-dipanggil" data-idantrian-regis="' + baris.idantrian_regis + '">'
+                $listDipanggil.innerHTML = urutanDipanggil.map(function (id) {
+                    var baris = dataById[id];
+
+                    return '<div class="baris-dipanggil status-' + escapeHtml(baris.status) + '" data-idantrian-regis="' + baris.idantrian_regis + '">'
+                        + '<div>'
                         + '<div class="nama">' + escapeHtml(baris.nama_institusi) + '</div>'
+                        + '<div class="status-label">' + escapeHtml(labelStatusDipanggil[baris.status] || '-') + '</div>'
+                        + '</div>'
                         + '<div class="meja">Meja ' + escapeHtml(baris.nomor_meja || '-') + '</div>'
                         + '</div>';
                 }).join('');

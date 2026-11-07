@@ -44,17 +44,20 @@ class PetugasMejaRegisController extends Controller
 
         $mejaRegis = $this->mejaRegisUntukPetugas();
         $kartuAktif = $mejaRegis ? $this->dataKartuAktif($mejaRegis) : null;
-        $antrianList = ($mejaRegis && ! $kartuAktif) ? $this->dataAntrianList() : collect();
+        $listDepan = ($mejaRegis && ! $kartuAktif) ? $this->dataListDepan() : ['antrianList' => collect(), 'terlewatList' => collect()];
+        $antrianList = $listDepan['antrianList'];
+        $terlewatList = $listDepan['terlewatList'];
 
-        return view('petugas-meja-regis.index', compact('menu', 'submenu', 'mejaRegis', 'kartuAktif', 'antrianList'));
+        return view('petugas-meja-regis.index', compact('menu', 'submenu', 'mejaRegis', 'kartuAktif', 'antrianList', 'terlewatList'));
     }
 
     /**
      * Panggil antrian — tanpa `token` mengambil antrian teratas (nomor
      * terkecil berstatus Antri), dengan `token` memanggil institusi
-     * spesifik yang diklik dari list. Race-condition-safe: dua petugas
-     * tidak bisa memanggil antrian yang sama (lihat komentar di dalam
-     * transaksi untuk detail penguncian).
+     * spesifik yang diklik dari list Antri **atau** list Terlewat (baris
+     * Terlewat yang diklik lagi dipanggil ulang lewat jalur yang sama).
+     * Race-condition-safe: dua petugas tidak bisa memanggil antrian yang
+     * sama (lihat komentar di dalam transaksi untuk detail penguncian).
      */
     public function panggil(Request $request)
     {
@@ -118,7 +121,11 @@ class PetugasMejaRegisController extends Controller
                     return;
                 }
 
-                if ($baris->status !== self::STATUS_ANTRI) {
+                // Boleh mengklaim baris berstatus Antri (dari list biasa)
+                // maupun Terlewat (dipanggil ulang dari list Terlewat) —
+                // status lain (sudah dipanggil/dilayani/terlayani petugas
+                // lain) ditolak.
+                if (! in_array($baris->status, [self::STATUS_ANTRI, self::STATUS_TERLEWAT], true)) {
                     $error = 'Antrian ini sudah dipanggil petugas lain. Silakan pilih antrian lain.';
 
                     return;
@@ -206,7 +213,7 @@ class PetugasMejaRegisController extends Controller
             'status' => self::STATUS_TERLEWAT,
         ]);
 
-        return $this->jsonResponse(200, 'Antrian ditandai terlewat.', $this->dataAntrianList());
+        return $this->jsonResponse(200, 'Antrian ditandai terlewat.', $this->dataListDepan());
     }
 
     /**
@@ -298,12 +305,12 @@ class PetugasMejaRegisController extends Controller
             'status' => self::STATUS_TERLAYANI,
         ]);
 
-        return $this->jsonResponse(200, 'Layanan selesai.', $this->dataAntrianList());
+        return $this->jsonResponse(200, 'Layanan selesai.', $this->dataListDepan());
     }
 
     /**
-     * AJAX — daftar semua antrian hari ini yang pernah dipanggil petugas
-     * ini (semua status), untuk modal "Riwayat Dilayani".
+     * AJAX — daftar antrian hari ini yang sudah Terlayani oleh petugas
+     * ini, untuk modal "Riwayat Dilayani".
      */
     public function riwayatDilayani()
     {
@@ -316,6 +323,7 @@ class PetugasMejaRegisController extends Controller
         $riwayat = DB::table('antrian_regis as ar')
             ->join('institusi_asal as ia', 'ia.idinstitusi_asal', '=', 'ar.idinstitusi_asal')
             ->where('ar.dipanggil_oleh', $mejaRegis->idmeja_regis)
+            ->where('ar.status', self::STATUS_TERLAYANI)
             ->whereDate('ar.created_at', today())
             ->orderByDesc('ar.created_at')
             ->select('ar.idantrian_regis', 'ar.nomor_antrian', 'ar.status', 'ar.created_at', 'ia.nama_institusi')
@@ -330,9 +338,10 @@ class PetugasMejaRegisController extends Controller
     }
 
     /**
-     * Unduh PDF daftar hadir (nama institusi + list peserta + kolom
-     * centang kosong untuk ditandatangani manual), pola sama dengan
-     * `Controller::unduhKartuKontingenResponse()`.
+     * Preview PDF daftar hadir di tab baru (nama institusi + list peserta +
+     * kolom centang kosong untuk ditandatangani manual) — `stream()`, bukan
+     * `download()`, supaya tampil langsung di browser (link dibuka dengan
+     * `target="_blank"`), baru diunduh manual oleh petugas kalau perlu.
      */
     public function unduhPdfDaftarHadir(Request $request)
     {
@@ -358,7 +367,7 @@ class PetugasMejaRegisController extends Controller
         return Pdf::loadView('petugas-meja-regis.daftar-hadir-pdf', [
             'namaInstitusi' => $institusi->nama_institusi,
             'pesertaList' => $pesertaList,
-        ])->setPaper('a4', 'portrait')->download('daftar-hadir-'.$institusi->kode_kontingen.'.pdf');
+        ])->setPaper('a4', 'portrait')->stream('daftar-hadir-'.$institusi->kode_kontingen.'.pdf');
     }
 
     /**
@@ -429,16 +438,33 @@ class PetugasMejaRegisController extends Controller
     }
 
     /**
-     * List antrian berstatus Antri hari ini, untuk tampilan depan.
+     * Tampilan depan lengkap: list Antri + list Terlewat, dipakai index()
+     * dan dikembalikan ulang oleh terlewat()/selesaiLayani() supaya kedua
+     * list di layar langsung sinkron tanpa perlu reload.
+     *
+     * @return array{antrianList: Collection<int, object>, terlewatList: Collection<int, object>}
+     */
+    private function dataListDepan(): array
+    {
+        return [
+            'antrianList' => $this->dataAntrianAtauTerlewatList(self::STATUS_ANTRI),
+            'terlewatList' => $this->dataAntrianAtauTerlewatList(self::STATUS_TERLEWAT),
+        ];
+    }
+
+    /**
+     * List antrian hari ini dengan status tertentu (Antri atau Terlewat) —
+     * keduanya ditampilkan di tampilan depan dan baris mana pun di
+     * keduanya bisa diklik untuk dipanggil lewat panggil() dengan token.
      *
      * @return Collection<int, object>
      */
-    private function dataAntrianList(): Collection
+    private function dataAntrianAtauTerlewatList(string $status): Collection
     {
         return DB::table('antrian_regis as ar')
             ->join('institusi_asal as ia', 'ia.idinstitusi_asal', '=', 'ar.idinstitusi_asal')
             ->whereDate('ar.created_at', today())
-            ->where('ar.status', self::STATUS_ANTRI)
+            ->where('ar.status', $status)
             ->orderBy('ar.nomor_antrian')
             ->select('ar.idantrian_regis', 'ar.nomor_antrian', 'ia.nama_institusi')
             ->get()

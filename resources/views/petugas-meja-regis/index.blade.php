@@ -27,8 +27,19 @@
             font-size: 22px;
         }
 
-        #baris-antrian-list tr {
+        #baris-antrian-list tr,
+        #baris-terlewat-list tr {
             cursor: pointer;
+        }
+
+        .checkbox-hadir-peserta {
+            width: 1.3em;
+            height: 1.3em;
+        }
+
+        .checkbox-hadir-peserta:checked {
+            background-color: #4361ee;
+            border-color: #4361ee;
         }
     </style>
 @endsection
@@ -78,6 +89,18 @@
                             </tr>
                         </thead>
                         <tbody id="baris-antrian-list"></tbody>
+                    </table>
+
+                    <h5 class="mt-4 mb-3"><i class="fa-solid fa-ban me-1 text-danger"></i> Terlewat</h5>
+                    <p class="text-muted">Klik baris untuk memanggil ulang institusi yang terlewat.</p>
+                    <table class="table table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Nomor</th>
+                                <th>Institusi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="baris-terlewat-list"></tbody>
                     </table>
                 </div>
 
@@ -179,6 +202,7 @@
             var mejaRegis = {!! json_encode($mejaRegis) !!};
             var kartuAktifAwal = {!! json_encode($kartuAktif) !!};
             var antrianListAwal = {!! json_encode($antrianList) !!};
+            var terlewatListAwal = {!! json_encode($terlewatList) !!};
 
             var STATUS_DIPANGGIL = '2';
             var STATUS_DILAYANI = '3';
@@ -197,20 +221,26 @@
                 return $('<div>').text(teks == null ? '' : teks).html();
             }
 
-            function renderList(antrianList) {
-                var $tbody = $('#baris-antrian-list').empty();
+            function isiTabelAntrian($tbody, daftar, pesanKosong) {
+                $tbody.empty();
 
-                if (antrianList.length === 0) {
-                    $tbody.html('<tr><td colspan="2" class="text-center text-muted">Belum ada yang mengantri.</td></tr>');
-                } else {
-                    antrianList.forEach(function (baris) {
-                        $('<tr>')
-                            .attr('data-token', baris.token)
-                            .append($('<td>').text(baris.nomor_antrian))
-                            .append($('<td>').text(baris.nama_institusi))
-                            .appendTo($tbody);
-                    });
+                if (daftar.length === 0) {
+                    $tbody.html('<tr><td colspan="2" class="text-center text-muted">' + pesanKosong + '</td></tr>');
+                    return;
                 }
+
+                daftar.forEach(function (baris) {
+                    $('<tr>')
+                        .attr('data-token', baris.token)
+                        .append($('<td>').text(baris.nomor_antrian))
+                        .append($('<td>').text(baris.nama_institusi))
+                        .appendTo($tbody);
+                });
+            }
+
+            function renderList(data) {
+                isiTabelAntrian($('#baris-antrian-list'), data.antrianList, 'Belum ada yang mengantri.');
+                isiTabelAntrian($('#baris-terlewat-list'), data.terlewatList, 'Belum ada yang terlewat.');
 
                 tampilkanBagian($bagianList);
             }
@@ -228,8 +258,10 @@
                             var $checkbox = $('<input>').attr({ type: 'checkbox', 'data-idpeserta': peserta.idpeserta }).addClass('form-check-input checkbox-hadir-peserta');
                             $checkbox.prop('checked', !!peserta.hadir);
 
+                            var $status = $('<div>').addClass('status-hadir-peserta small mt-1');
+
                             $('<tr>')
-                                .append($('<td>').addClass('text-center').append($checkbox))
+                                .append($('<td>').addClass('text-center').append($checkbox).append($status))
                                 .append($('<td>').text(peserta.nama))
                                 .appendTo($tbodyPeserta);
                         });
@@ -260,7 +292,7 @@
             } else if (kartuAktifAwal) {
                 renderKartu(kartuAktifAwal);
             } else {
-                renderList(antrianListAwal);
+                renderList({ antrianList: antrianListAwal, terlewatList: terlewatListAwal });
             }
 
             // ===== Panggil Antrian (teratas atau spesifik) =====
@@ -276,14 +308,19 @@
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
+                // `.always()` didaftarkan SEBELUM `.done()`/`.fail()` supaya
+                // tombol pasti dikembalikan ke keadaan semula lebih dulu,
+                // sebelum renderKartu()/tampilkanErrorHalaman() dijalankan —
+                // kalau salah satu dari keduanya melempar error tak terduga,
+                // tombol tidak ikut tersangkut dalam keadaan disabled/loader.
+                .always(function () {
+                    $btn.prop('disabled', false).html(teksAwal);
+                })
                 .done(function (res) {
                     renderKartu(res.data);
                 })
                 .fail(function (xhr) {
                     tampilkanErrorHalaman(xhr);
-                })
-                .always(function () {
-                    $btn.prop('disabled', false).html(teksAwal);
                 });
             }
 
@@ -291,10 +328,11 @@
                 panggil(null, $(this));
             });
 
-            // Delegation ke #baris-antrian-list (tbody permanen), bukan ke
-            // baris <tr> yang dirender ulang tiap kali — sesuai
-            // CONVENTIONS.md §6.8.
-            $('#baris-antrian-list').on('click', 'tr', function () {
+            // Delegation ke #baris-antrian-list/#baris-terlewat-list (tbody
+            // permanen), bukan ke baris <tr> yang dirender ulang tiap kali —
+            // sesuai CONVENTIONS.md §6.8. Baris Terlewat yang diklik
+            // dipanggil lewat proses yang sama persis dengan baris Antri.
+            $('#baris-antrian-list, #baris-terlewat-list').on('click', 'tr', function () {
                 panggil($(this).data('token'), $(this));
             });
 
@@ -311,16 +349,19 @@
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
+                // `.always()` lebih dulu (lihat komentar di panggil()) —
+                // jadwal re-enable 5 detik tetap terpasang apa pun yang
+                // terjadi di render/error handler sesudahnya.
+                .always(function () {
+                    setTimeout(function () {
+                        $btn.prop('disabled', false).html(teksAwal);
+                    }, 5000);
+                })
                 .done(function (res) {
                     renderKartu(res.data);
                 })
                 .fail(function (xhr) {
                     tampilkanErrorHalaman(xhr);
-                })
-                .always(function () {
-                    setTimeout(function () {
-                        $btn.prop('disabled', false).html(teksAwal);
-                    }, 5000);
                 });
             });
 
@@ -368,34 +409,45 @@
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
+                // `.always()` lebih dulu (lihat komentar di panggil()).
+                .always(function () {
+                    $btn.prop('disabled', false).html(teksAwal);
+                })
                 .done(function (res) {
                     renderKartu(res.data);
                 })
                 .fail(function (xhr) {
                     tampilkanErrorHalaman(xhr);
-                })
-                .always(function () {
-                    $btn.prop('disabled', false).html(teksAwal);
                 });
             });
 
             // ===== Checkbox kehadiran — langsung AJAX per-item =====
             $('#baris-peserta-dilayani').on('change', '.checkbox-hadir-peserta', function () {
                 var $checkbox = $(this);
+                var $status = $checkbox.siblings('.status-hadir-peserta');
                 var idpeserta = $checkbox.data('idpeserta');
                 var checked = $checkbox.is(':checked');
 
                 $checkbox.prop('disabled', true);
+                $status.html('<span class="text-muted">Proses...</span>');
 
                 $.ajax({
                     url: toggleHadirUrl,
                     method: 'POST',
-                    data: { idpeserta: idpeserta, checked: checked },
+                    // boolean JS dikirim lewat form-encoding jadi string
+                    // "true"/"false" — rule `boolean` Laravel hanya
+                    // menerima true/false/1/0/"1"/"0", bukan string itu,
+                    // jadi dikonversi ke 1/0 dulu di sini.
+                    data: { idpeserta: idpeserta, checked: checked ? 1 : 0 },
                     dataType: 'json',
                     headers: { 'X-CSRF-TOKEN': csrfToken },
                 })
+                .done(function () {
+                    $status.html('<i class="fa-solid fa-circle-check text-success"></i>');
+                })
                 .fail(function (xhr) {
                     $checkbox.prop('checked', !checked);
+                    $status.html('<i class="fa-solid fa-circle-xmark text-danger"></i>');
                     tampilkanErrorHalaman(xhr);
                 })
                 .always(function () {

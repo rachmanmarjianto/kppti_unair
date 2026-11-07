@@ -17,6 +17,10 @@ class AntrianRegisController extends Controller
 
     private const STATUS_DIPANGGIL = '2';
 
+    private const STATUS_DILAYANI = '3';
+
+    private const STATUS_TERLAYANI = '4';
+
     private const STATUS_TERLEWAT = '5';
 
     /**
@@ -156,7 +160,12 @@ class AntrianRegisController extends Controller
 
     /**
      * Data hari ini untuk Halaman 2: list Antri (urut nomor), Dipanggil
-     * (terbaru dulu, dengan nomor meja lewat `meja_regis`), dan Terlewat.
+     * (institusi berstatus Dipanggil/Sedang Dilayani/Terlayani — tetap
+     * tampil di panel ini sampai dibatalkan jadi Terlewat, dengan nomor
+     * meja lewat `meja_regis`), dan Terlewat. Urutan tampil "terbaru di
+     * atas" untuk panel Dipanggil diatur di JS Halaman 2 (tidak ada kolom
+     * timestamp "waktu dipanggil" di skema untuk dijadikan ORDER BY
+     * server), bukan di query ini.
      */
     private function snapshotTampilanAntrian(): array
     {
@@ -172,9 +181,9 @@ class AntrianRegisController extends Controller
             ->join('institusi_asal as ia', 'ia.idinstitusi_asal', '=', 'ar.idinstitusi_asal')
             ->leftJoin('meja_regis as mr', 'mr.idmeja_regis', '=', 'ar.dipanggil_oleh')
             ->whereDate('ar.created_at', today())
-            ->where('ar.status', self::STATUS_DIPANGGIL)
+            ->whereIn('ar.status', [self::STATUS_DIPANGGIL, self::STATUS_DILAYANI, self::STATUS_TERLAYANI])
             ->orderByDesc('ar.created_at')
-            ->select('ar.idantrian_regis', 'ia.nama_institusi', 'mr.nomor_meja', 'ar.panggilan_ke')
+            ->select('ar.idantrian_regis', 'ia.nama_institusi', 'mr.nomor_meja', 'ar.panggilan_ke', 'ar.status')
             ->get();
 
         $terlewat = DB::table('antrian_regis as ar')
