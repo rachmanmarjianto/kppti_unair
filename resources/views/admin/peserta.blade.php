@@ -515,7 +515,7 @@
                             <select name="idinstitusi_asal_baru" id="input-pindah-institusi" class="form-select" required>
                                 <option value="">-- Pilih Kontingen --</option>
                                 @foreach ($institusiList as $institusiOpsi)
-                                    <option value="{{ $institusiOpsi->idinstitusi_asal }}">{{ $institusiOpsi->nama_institusi }}</option>
+                                    <option value="{{ $institusiOpsi->idinstitusi_asal }}">{{ $institusiOpsi->nama_institusi }}{{ $institusiOpsi->kode_kontingen ? ' ('.$institusiOpsi->kode_kontingen.')' : '' }}</option>
                                 @endforeach
                             </select>
                         </div>
