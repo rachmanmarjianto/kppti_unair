@@ -14,6 +14,13 @@ class PesertaAdminController extends Controller
      */
     private const ROLE_PESERTA = 2;
 
+    /**
+     * idjabatan yang dianggap "pimpinan" institusi (puncak + wakil, per
+     * kelompok jabatan: Perguruan Tinggi, asosiasi/lembaga/pemerhati,
+     * LLDikti) — dikonfirmasi developer, bukan flag di tabel jabatan.
+     */
+    private const JABATAN_PIMPINAN = [1, 2, 6, 7, 9, 10];
+
     public function index()
     {
         $menu = 'users';
@@ -55,6 +62,28 @@ class PesertaAdminController extends Controller
         ];
 
         return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard'));
+    }
+
+    /**
+     * Submenu "List Pimpinan" — daftar peserta aktif yang jabatannya
+     * termasuk JABATAN_PIMPINAN, lintas institusi.
+     */
+    public function listPimpinan()
+    {
+        $menu = 'users';
+        $submenu = 'list-pimpinan';
+
+        $pimpinanList = $this->pesertaAktifQuery()
+            ->join('institusi_asal as ia', 'ia.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'ia.idjenis_institusi')
+            ->whereIn('pe.idjabatan', self::JABATAN_PIMPINAN)
+            ->select('ia.nama_institusi', 'p.nama', 'j.nama_jabatan', 'p.no_wa', 'ji.nama_jenis_institusi')
+            ->orderBy('ia.nama_institusi')
+            ->get();
+
+        $jenisInstitusiList = DB::table('jenis_institusi')->orderBy('nama_jenis_institusi')->get();
+
+        return view('admin.list-pimpinan', compact('menu', 'submenu', 'pimpinanList', 'jenisInstitusiList'));
     }
 
     /**

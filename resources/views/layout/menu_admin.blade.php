@@ -68,6 +68,9 @@
                             <li @if($submenu == 'peserta') class="active" @endif>
                                 <a href="{{ route('admin.peserta') }}"> Peserta </a>
                             </li>
+                            <li @if($submenu == 'list-pimpinan') class="active" @endif>
+                                <a href="{{ route('admin.peserta.list-pimpinan') }}"> List Pimpinan </a>
+                            </li>
                             <li @if($submenu == 'acara-peserta') class="active" @endif>
                                 <a href="{{ route('admin.peserta.acara') }}"> Acara </a>
                             </li>
