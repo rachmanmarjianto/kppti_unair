@@ -70,7 +70,7 @@ Prioritas: **P0** wajib untuk pendaftaran dibuka, **P1** wajib sebelum hari-H, *
 | F16 | Manajemen peserta oleh admin (lihat semua data peserta, dikelompokkan per institusi asal) dan dashboard ringkasan peserta | P1 | Selesai |
 | F17 | Portal registrasi peserta (gerbang buka/tutup sesi registrasi berbasis jadwal master `jadwal_penting`) | P0 | Selesai |
 | F18 | Persiapan seminar kit per kontingen oleh Petugas Kit, setelah masa registrasi online ditutup (lihat §6.3) | P1 | Belum |
-| F19 | Registrasi kontingen di lokasi acara pada hari kedatangan, dengan sistem antrian — **ID dipesan lebih dulu**, detail alur/sistem antrian menyusul `[TBD]` (lihat §6.3) | P1 | Belum |
+| F19 | Registrasi kontingen di lokasi acara pada hari kedatangan, dengan sistem antrian (lihat §6.3 dan `docs/features/019-registrasi-antrian-kontingen.md`) | P1 | Belum |
 | F20 | Pengajuan MoU antar institusi — peserta (sebagai perwakilan institusi) mengajukan MoU ke institusi lain; institusi yang dituju memilih **Temu Diskusi** atau **Tunda lain waktu** (lihat §6.4) | P2 | Selesai |
 | F21 | Penjadwalan pertemuan MoU — saat disepakati Temu Diskusi, tentukan tanggal, sesi jam, dan ruang pertemuan (lihat §6.4) | P2 | Belum |
 | F22 | Konfirmasi kehadiran pertemuan MoU oleh **Petugas Ruang MoU** (role baru, `idrole` 7) pada hari pertemuan terjadwal (lihat §6.4) | P2 | Belum |
@@ -103,10 +103,10 @@ Status pengajuan (dipakai sama pada narasumber dan pameran):
 
 **Seminar kit**: satu paket (tas) berisi alat tulis (notebook, ballpoint), kartu peserta, dan kelengkapan lain. **Satu seminar kit = satu peserta.**
 
-Alur (F18 sudah dirancang di bawah; F19 baru dipesan ID-nya, detail menyusul):
+Alur (F18 sudah dirancang di bawah; F19 — spesifikasi lengkap di `docs/features/019-registrasi-antrian-kontingen.md`, beberapa detail teknis masih `[TBD]` di sana):
 
 1. Setelah masa registrasi online ditutup, **Petugas Kit** (role baru, `idrole` 5) menyiapkan seminar kit dan **mengelompokkannya per kontingen** — jumlah kit per kontingen mengikuti jumlah peserta terdaftar di kontingen tersebut. (**F18**)
-2. Pada hari kedatangan, ada sesi **registrasi kontingen di lokasi acara**. Satu kontingen cukup diwakili **satu peserta**; perwakilan ini menerima sekaligus seluruh seminar kit untuk kontingennya (sejumlah peserta di kontingen itu). Sesi ini akan memakai **sistem antrian** — alur dan desain antrian ini **dibahas menyusul**, untuk sekarang hanya ID fitur (F19) yang dipesan agar tidak bertabrakan dengan fitur lain. (**F19**, `[TBD]`)
+2. Pada hari kedatangan, ada sesi **registrasi kontingen di lokasi acara**. Satu kontingen cukup diwakili **satu peserta**; perwakilan ini menerima sekaligus seluruh seminar kit untuk kontingennya (sejumlah peserta di kontingen itu). Sesi ini memakai **sistem antrian** — perwakilan mengambil nomor antrian lewat halaman publik (tanpa login), menunggu dipanggil lewat layar tampilan antrian, lalu dilayani oleh **Petugas Meja Registrasi** (role baru, `[TBD]` idrole). (**F19**)
 3. Tujuan pengelompokan di langkah 1: begitu perwakilan kontingen registrasi di lokasi (langkah 2), seminar kit kontingen itu sudah siap sejumlah pas, sehingga proses registrasi lokasi berjalan lebih lancar/cepat.
 
 ### 6.4 Pengajuan MoU antar institusi
@@ -173,5 +173,5 @@ Alur:
 3. Apakah check-in di lokasi masuk cakupan?
 4. Tanggal dan lokasi pasti event?
 5. Apakah SC juga bisa memiliki role narasumber?
-6. F19 (registrasi kontingen di lokasi + sistem antrian): bagaimana alur antriannya persis (nomor antrian, display, dsb)? Menyusul dari developer.
+6. F19 (registrasi kontingen di lokasi + sistem antrian): alur inti sudah dijelaskan developer dan didokumentasikan di `docs/features/019-registrasi-antrian-kontingen.md`; beberapa detail teknis masih terbuka (nomor meja, role baru, mekanisme audio TTS, library PDF) — lihat §8 dokumen tersebut.
 7. F21-F23 (Pengajuan MoU, lihat §6.4): rincian alur UI Peserta memilih tanggal/sesi/ruang pertemuan (F21, memanfaatkan slot `pertemuan_mou` yang disiapkan F24), alur Petugas Ruang MoU (F22), dan tampilan rekap F23 untuk Admin — menyusul didiskusikan dengan developer. (Catatan: F20 sudah selesai, dan F24 — siapa mengelola master data `sesi_mou`/`ruang_mou`/`tanggal_mou`/`pertemuan_mou` — sudah terjawab: **Admin**, lewat menu tersendiri.)

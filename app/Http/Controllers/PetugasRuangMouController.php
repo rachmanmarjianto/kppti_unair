@@ -185,10 +185,46 @@ class PetugasRuangMouController extends Controller
                 'pic_pengaju_stamp_by' => $userdata['idpengguna'],
             ]);
 
-            $this->tandaiMulaiJikaKeduanyaHadir($idpengajuanMou);
+            $this->sinkronMulaiAt($idpengajuanMou);
         });
 
         return $this->jsonResponse(200, 'Kehadiran PIC Pengaju berhasil dicatat.', $this->ambilDataSlot($idpengajuanMou));
+    }
+
+    /**
+     * Batal kehadiran PIC Pengaju — jaga-jaga jika petugas salah klik
+     * "Hadir". Mengosongkan kembali `pic_pengaju_hadir_at`/`pic_pengaju_stamp_by`.
+     */
+    public function batalHadirPengaju(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $idpengajuanMou = $this->decryptRouteValue($validated['token']);
+
+        if ($idpengajuanMou === null) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        $idpengajuanMou = (int) $idpengajuanMou;
+
+        $pengajuan = DB::table('pengajuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->first();
+
+        if (! $pengajuan) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        DB::transaction(function () use ($idpengajuanMou) {
+            DB::table('pengajuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->update([
+                'pic_pengaju_hadir_at' => null,
+                'pic_pengaju_stamp_by' => null,
+            ]);
+
+            $this->sinkronMulaiAt($idpengajuanMou);
+        });
+
+        return $this->jsonResponse(200, 'Kehadiran PIC Pengaju dibatalkan.', $this->ambilDataSlot($idpengajuanMou));
     }
 
     /**
@@ -222,10 +258,45 @@ class PetugasRuangMouController extends Controller
                 'pic_mitra_stamp_by' => $userdata['idpengguna'],
             ]);
 
-            $this->tandaiMulaiJikaKeduanyaHadir($idpengajuanMou);
+            $this->sinkronMulaiAt($idpengajuanMou);
         });
 
         return $this->jsonResponse(200, 'Kehadiran PIC Mitra berhasil dicatat.', $this->ambilDataSlot($idpengajuanMou));
+    }
+
+    /**
+     * Batal kehadiran PIC Mitra — simetris dengan batalHadirPengaju().
+     */
+    public function batalHadirMitra(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $idpengajuanMou = $this->decryptRouteValue($validated['token']);
+
+        if ($idpengajuanMou === null) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        $idpengajuanMou = (int) $idpengajuanMou;
+
+        $pengajuan = DB::table('pengajuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->first();
+
+        if (! $pengajuan) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        DB::transaction(function () use ($idpengajuanMou) {
+            DB::table('pengajuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->update([
+                'pic_mitra_hadir_at' => null,
+                'pic_mitra_stamp_by' => null,
+            ]);
+
+            $this->sinkronMulaiAt($idpengajuanMou);
+        });
+
+        return $this->jsonResponse(200, 'Kehadiran PIC Mitra dibatalkan.', $this->ambilDataSlot($idpengajuanMou));
     }
 
     /**
@@ -277,20 +348,20 @@ class PetugasRuangMouController extends Controller
     }
 
     /**
-     * Set `pertemuan_mou.mulai_at` = sekarang kalau PIC Pengaju dan PIC
-     * Mitra pada pengajuan ini sudah sama-sama tercatat hadir. Dipanggil di
-     * dalam transaksi yang sama dengan update hadir_at, supaya baca data
-     * terbaru (bukan data sebelum update).
+     * Sinkronkan `pertemuan_mou.mulai_at` dengan status hadir PIC Pengaju +
+     * PIC Mitra pada pengajuan ini: diisi sekarang kalau keduanya sudah
+     * tercatat hadir, dikosongkan lagi kalau salah satu dibatalkan hadirnya
+     * (lewat batalHadirPengaju()/batalHadirMitra()). Dipanggil di dalam
+     * transaksi yang sama dengan update hadir_at, supaya baca data terbaru
+     * (bukan data sebelum update).
      */
-    private function tandaiMulaiJikaKeduanyaHadir(int $idpengajuanMou): void
+    private function sinkronMulaiAt(int $idpengajuanMou): void
     {
         $pengajuan = DB::table('pengajuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->first();
 
-        if ($pengajuan->pic_pengaju_hadir_at && $pengajuan->pic_mitra_hadir_at) {
-            DB::table('pertemuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->update([
-                'mulai_at' => now(),
-            ]);
-        }
+        DB::table('pertemuan_mou')->where('idpengajuan_mou', $idpengajuanMou)->update([
+            'mulai_at' => ($pengajuan->pic_pengaju_hadir_at && $pengajuan->pic_mitra_hadir_at) ? now() : null,
+        ]);
     }
 
     /**

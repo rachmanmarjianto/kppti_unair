@@ -22,6 +22,8 @@ class AdminController extends Controller
 
     private const ROLE_PETUGAS_RUANG_MOU = 7;
 
+    private const ROLE_PETUGAS_MEJA_REGIS = 8;
+
     /**
      * Maps the "box" slug used throughout this page/view to its role ID.
      *
@@ -33,6 +35,7 @@ class AdminController extends Controller
         'petugas-kit' => self::ROLE_PETUGAS_KIT,
         'master-sc' => self::ROLE_MASTER_SC,
         'petugas-ruang-mou' => self::ROLE_PETUGAS_RUANG_MOU,
+        'petugas-meja-regis' => self::ROLE_PETUGAS_MEJA_REGIS,
     ];
 
     public function index()
@@ -42,7 +45,7 @@ class AdminController extends Controller
 
         $institusiDashboard = DB::table('institusi_asal as i')
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
-            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'i.kode_kontingen', 'ji.nama_jenis_institusi')
             ->orderBy('i.nama_institusi')
             ->get();
 
@@ -127,8 +130,9 @@ class AdminController extends Controller
         $petugasKitUsers = $this->getUsersByRole(self::ROLE_PETUGAS_KIT);
         $masterScUsers = $this->getUsersByRole(self::ROLE_MASTER_SC);
         $petugasRuangMouUsers = $this->getUsersByRole(self::ROLE_PETUGAS_RUANG_MOU);
+        $petugasMejaRegisUsers = $this->getUsersByRole(self::ROLE_PETUGAS_MEJA_REGIS);
 
-        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers', 'petugasKitUsers', 'masterScUsers', 'petugasRuangMouUsers'));
+        return view('admin.admin-users', compact('menu', 'submenu', 'adminUsers', 'scUsers', 'petugasKitUsers', 'masterScUsers', 'petugasRuangMouUsers', 'petugasMejaRegisUsers'));
     }
 
     /**

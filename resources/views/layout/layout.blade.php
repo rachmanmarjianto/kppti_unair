@@ -246,6 +246,8 @@
             @include('layout.menu_master_sc')
         @elseif(session('userdata')['idrole_aktif'] == 7)
             @include('layout.menu_petugas_ruang_mou')
+        @elseif(session('userdata')['idrole_aktif'] == 8)
+            @include('layout.menu_petugas_meja_regis')
         @endif
         
         <!--  BEGIN CONTENT AREA  -->

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AntrianRegisController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BniCallbackController;
 use App\Http\Controllers\DiagnostikServerController;
@@ -13,6 +14,7 @@ include_once 'sc.php';
 include_once 'petugas-kit.php';
 include_once 'master-sc.php';
 include_once 'petugas-ruang-mou.php';
+include_once 'petugas-meja-regis.php';
 
 // Route::get('/', function () {
 //     return view('blank_page');
@@ -42,6 +44,14 @@ Route::middleware(['akses:All'])->group(function () {
     Route::post('/profile/password', [PenggunaController::class, 'updatePassword'])->name('profile.password.update');
     Route::post('/profile/role-aktif', [PenggunaController::class, 'ubahRoleAktif'])->name('profile.role.aktifkan');
 });
+
+// Halaman antrian registrasi kontingen (F19) — publik, tanpa login dan
+// tanpa gerbang jadwal (selalu terbuka), dikonfirmasi developer.
+Route::get('/antrian', [AntrianRegisController::class, 'landing'])->name('antrian.landing');
+Route::get('/antrian/ambil-nomor', [AntrianRegisController::class, 'formAmbilNomor'])->name('antrian.ambil-nomor');
+Route::post('/antrian/ambil-nomor', [AntrianRegisController::class, 'ambilNomor'])->name('antrian.ambil-nomor.submit');
+Route::get('/antrian/tampilan', [AntrianRegisController::class, 'tampilan'])->name('antrian.tampilan');
+Route::get('/antrian/tampilan/stream', [AntrianRegisController::class, 'streamTampilan'])->name('antrian.tampilan.stream');
 
 // Webhook publik dari BNI — tidak ada sesi, tidak digerbangi middleware akses.
 Route::post('/callback/bni-va', [BniCallbackController::class, 'handle'])->name('callback.bni-va');

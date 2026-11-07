@@ -170,6 +170,9 @@
                                         <button type="button" class="btn btn-success btn-hadir-pengaju">
                                             <i class="fa-solid fa-user-check me-1"></i> Hadir
                                         </button>
+                                        <button type="button" class="btn btn-outline-danger btn-batal-hadir-pengaju d-none">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Batalkan Hadir
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -182,6 +185,9 @@
                                         <p class="mb-2 status-hadir-mitra"></p>
                                         <button type="button" class="btn btn-success btn-hadir-mitra">
                                             <i class="fa-solid fa-user-check me-1"></i> Hadir
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-batal-hadir-mitra d-none">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Batalkan Hadir
                                         </button>
                                     </div>
                                 </div>
@@ -219,7 +225,9 @@
             var sesuaikanSlotUrl = '{{ route('petugas-ruang-mou.pengajuan.sesuaikan-slot') }}';
             var detailSlotUrl = '{{ route('petugas-ruang-mou.pengajuan.detail-slot') }}';
             var hadirPengajuUrl = '{{ route('petugas-ruang-mou.pengajuan.hadir-pengaju') }}';
+            var batalHadirPengajuUrl = '{{ route('petugas-ruang-mou.pengajuan.batal-hadir-pengaju') }}';
             var hadirMitraUrl = '{{ route('petugas-ruang-mou.pengajuan.hadir-mitra') }}';
+            var batalHadirMitraUrl = '{{ route('petugas-ruang-mou.pengajuan.batal-hadir-mitra') }}';
             var ubahHasilUrl = '{{ route('petugas-ruang-mou.pengajuan.ubah-hasil') }}';
             var baseUrl = '{{ route('petugas-ruang-mou.pengajuan') }}';
 
@@ -310,14 +318,22 @@
 
                 if (data.pic_pengaju_hadir_at) {
                     $content.find('.status-hadir-pengaju').html('<span class="badge bg-success">Sudah Hadir</span>');
+                    $content.find('.btn-hadir-pengaju').addClass('d-none');
+                    $content.find('.btn-batal-hadir-pengaju').removeClass('d-none');
                 } else {
                     $content.find('.status-hadir-pengaju').html('<span class="badge bg-secondary">Belum Hadir</span>');
+                    $content.find('.btn-hadir-pengaju').removeClass('d-none');
+                    $content.find('.btn-batal-hadir-pengaju').addClass('d-none');
                 }
 
                 if (data.pic_mitra_hadir_at) {
                     $content.find('.status-hadir-mitra').html('<span class="badge bg-success">Sudah Hadir</span>');
+                    $content.find('.btn-hadir-mitra').addClass('d-none');
+                    $content.find('.btn-batal-hadir-mitra').removeClass('d-none');
                 } else {
                     $content.find('.status-hadir-mitra').html('<span class="badge bg-secondary">Belum Hadir</span>');
+                    $content.find('.btn-hadir-mitra').removeClass('d-none');
+                    $content.find('.btn-batal-hadir-mitra').addClass('d-none');
                 }
 
                 var labelStatus = labelStatusAjuan[data.status_ajuan] || ['-', 'bg-secondary'];
@@ -400,6 +416,29 @@
 
             $modal.on('click', '.btn-hadir-mitra', function () {
                 jalankanAksi(hadirMitraUrl, {}, $(this), false);
+            });
+
+            function konfirmasiBatalHadir(url, $btn) {
+                Swal.fire({
+                    title: 'Batalkan Kehadiran?',
+                    text: 'Status hadir akan dikembalikan menjadi "Belum Hadir".',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, batalkan',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        jalankanAksi(url, {}, $btn, false);
+                    }
+                });
+            }
+
+            $modal.on('click', '.btn-batal-hadir-pengaju', function () {
+                konfirmasiBatalHadir(batalHadirPengajuUrl, $(this));
+            });
+
+            $modal.on('click', '.btn-batal-hadir-mitra', function () {
+                konfirmasiBatalHadir(batalHadirMitraUrl, $(this));
             });
 
             $modal.on('click', '.btn-ubah-hasil', function () {

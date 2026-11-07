@@ -23,6 +23,8 @@
         #modal-user-lama-petugas-kit .modal-content,
         #modal-user-baru-petugas-ruang-mou .modal-content,
         #modal-user-lama-petugas-ruang-mou .modal-content,
+        #modal-user-baru-petugas-meja-regis .modal-content,
+        #modal-user-lama-petugas-meja-regis .modal-content,
         #modal-detail-pengguna .modal-content,
         #modal-edit-pengguna .modal-content {
             background: #fff;
@@ -32,6 +34,7 @@
         #modal-user-lama-sc .form-control[readonly],
         #modal-user-lama-petugas-kit .form-control[readonly],
         #modal-user-lama-petugas-ruang-mou .form-control[readonly],
+        #modal-user-lama-petugas-meja-regis .form-control[readonly],
         #modal-detail-pengguna .form-control[readonly],
         #modal-edit-pengguna .form-control[readonly] {
             color: #000;
@@ -87,6 +90,12 @@
         'boxId' => 'petugas-ruang-mou',
         'boxTitle' => 'Petugas Ruang MoU Users',
         'users' => $petugasRuangMouUsers,
+    ])
+
+    @include('admin.partials.user-role-box', [
+        'boxId' => 'petugas-meja-regis',
+        'boxTitle' => 'Petugas Meja Registrasi Users',
+        'users' => $petugasMejaRegisUsers,
     ])
 
     <div class="modal fade" id="modal-detail-pengguna" tabindex="-1" aria-hidden="true">
@@ -218,7 +227,7 @@
             var resetPasswordUrl = '{{ route('admin.admin-users.reset-password') }}';
             var hapusRoleUrl = '{{ route('admin.admin-users.hapus-role') }}';
             var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            var boxIds = ['admin', 'sc', 'petugas-kit', 'master-sc', 'petugas-ruang-mou'];
+            var boxIds = ['admin', 'sc', 'petugas-kit', 'master-sc', 'petugas-ruang-mou', 'petugas-meja-regis'];
             var dataTables = {};
 
             boxIds.forEach(function (boxId) {

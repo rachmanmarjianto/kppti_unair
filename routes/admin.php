@@ -4,6 +4,7 @@ use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DataMasterController;
 use App\Http\Controllers\JadwalPentingController;
+use App\Http\Controllers\MejaRegisAdminController;
 use App\Http\Controllers\MouAdminController;
 use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
@@ -94,4 +95,8 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-mou/pertemuan/sesuaikan-slot', [MouAdminController::class, 'sesuaikanSlot'])->name('admin.mou.pertemuan.sesuaikan-slot');
     Route::get('/admin-mou/pengajuan/detail', [MouAdminController::class, 'detailPengajuan'])->name('admin.mou.pengajuan.detail');
     Route::get('/admin-mou/pengajuan/lampiran', [MouAdminController::class, 'unduhLampiran'])->name('admin.mou.pengajuan.lampiran');
+    Route::get('/admin-kedatangan/petugas-meja', [MejaRegisAdminController::class, 'index'])->name('admin.kedatangan.petugas-meja');
+    Route::post('/admin-kedatangan/petugas-meja/tambah', [MejaRegisAdminController::class, 'tambah'])->name('admin.kedatangan.petugas-meja.tambah');
+    Route::post('/admin-kedatangan/petugas-meja/ubah', [MejaRegisAdminController::class, 'ubah'])->name('admin.kedatangan.petugas-meja.ubah');
+    Route::post('/admin-kedatangan/petugas-meja/hapus', [MejaRegisAdminController::class, 'hapus'])->name('admin.kedatangan.petugas-meja.hapus');
 });

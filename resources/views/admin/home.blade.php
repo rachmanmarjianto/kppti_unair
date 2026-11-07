@@ -53,6 +53,7 @@
                             <tr>
                                 <th>Jenis Institusi</th>
                                 <th>Nama Unit Asal</th>
+                                <th>Kode Kontingen</th>
                                 <th class="text-center">Narasumber</th>
                                 <th class="text-center">Pameran</th>
                             </tr>
@@ -62,6 +63,7 @@
                                 <tr data-href="{{ route('admin.home.institusi-ajuan') }}?token={{ $baris->token }}">
                                     <td>{{ $baris->nama_jenis_institusi }}</td>
                                     <td>{{ $baris->nama_institusi }}</td>
+                                    <td>{{ $baris->kode_kontingen ?? '-' }}</td>
                                     <td class="text-center">{{ $baris->jumlah_narasumber }}</td>
                                     <td class="text-center">
                                         <span class="badge {{ $baris->ada_pameran ? 'bg-success' : 'bg-secondary' }}">
