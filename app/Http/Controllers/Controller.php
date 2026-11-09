@@ -683,7 +683,7 @@ class Controller extends BaseController
 
         return $this->pesertaAktifQuery($idInstitusiAsal)
             ->select(
-                'p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'p.idinstitusi_asal', 'j.nama_jabatan',
+                'p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'p.idinstitusi_asal', 'p.idcard', 'j.nama_jabatan',
                 'pe.idjenis_transportasi_kedatangan', 'pe.stasiun_kedatangan', 'pe.tanggal_kedatangan', 'pe.jam_kedatangan',
                 'pe.idjenis_transportasi_kepulangan', 'pe.stasiun_kepulangan', 'pe.tanggal_kepulangan', 'pe.jam_kepulangan',
                 'pe.nama_hotel', 'pe.city_tour', 'pe.path_foto'

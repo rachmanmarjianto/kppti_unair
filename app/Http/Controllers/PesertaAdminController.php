@@ -59,6 +59,7 @@ class PesertaAdminController extends Controller
             'jumlahBelumLengkap' => $pesertaList->where('lengkap', false)->count(),
             'kontingenSiapCetak' => $institusiList->where('semuaLengkap', true)->count(),
             'kontingenBelumSiap' => $institusiList->where('jumlahPeserta', '>', 0)->where('semuaLengkap', false)->count(),
+            'jumlahSudahCard' => $pesertaList->filter(fn ($p) => ! empty($p->idcard))->count(),
         ];
 
         return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard'));
