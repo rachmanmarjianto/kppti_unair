@@ -601,6 +601,16 @@ class MouController extends Controller
             ->where('idjenis_institusi', $validated['idjenis_institusi'])
             ->where('idinstitusi_asal', '!=', $idInstitusiAsal)
             ->whereNotIn('idinstitusi_asal', $idInstitusiDiblokir)
+            ->whereIn('idinstitusi_asal', function ($query) {
+                $query->select('p.idinstitusi_asal')
+                    ->from('pengguna as p')
+                    ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+                    ->join('jabatan as j', 'j.idjabatan', '=', 'pe.idjabatan')
+                    ->join('role_pengguna as rp', function ($join) {
+                        $join->on('rp.idpengguna', '=', 'p.idpengguna')->where('rp.idrole', 2);
+                    })
+                    ->where('p.is_deleted', false);
+            })
             ->when($validated['q'] ?? null, function ($query, $q) {
                 $query->where('nama_institusi', 'ilike', "%{$q}%");
             })
