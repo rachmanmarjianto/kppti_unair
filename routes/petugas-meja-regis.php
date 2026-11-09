@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['akses:8'])->group(function () {
     Route::get('/petugas-meja-regis', [PetugasMejaRegisController::class, 'index'])->name('petugas-meja-regis.index');
+    Route::get('/petugas-meja-regis/refresh-list', [PetugasMejaRegisController::class, 'refreshList'])->name('petugas-meja-regis.refresh-list');
     Route::post('/petugas-meja-regis/panggil', [PetugasMejaRegisController::class, 'panggil'])->name('petugas-meja-regis.panggil');
     Route::post('/petugas-meja-regis/panggil-ulang', [PetugasMejaRegisController::class, 'panggilUlang'])->name('petugas-meja-regis.panggil-ulang');
     Route::post('/petugas-meja-regis/terlewat', [PetugasMejaRegisController::class, 'terlewat'])->name('petugas-meja-regis.terlewat');

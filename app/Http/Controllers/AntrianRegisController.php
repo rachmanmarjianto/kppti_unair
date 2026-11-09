@@ -55,8 +55,9 @@ class AntrianRegisController extends Controller
     }
 
     /**
-     * AJAX — submit kode kontingen, daftarkan institusi ke antrian hari ini
-     * (sekali per institusi per tanggal).
+     * AJAX — submit kode kontingen, daftarkan institusi ke antrian hari ini.
+     * Satu institusi boleh ambil nomor antrian lebih dari satu kali per hari
+     * (tidak ada pengecekan "sudah daftar").
      */
     public function ambilNomor(Request $request)
     {
@@ -99,13 +100,10 @@ class AntrianRegisController extends Controller
             // transaksi pertama selesai sebelum ikut menghitung.
             DB::select('SELECT pg_advisory_xact_lock(?)', [crc32(today()->toDateString())]);
 
+            // Satu institusi boleh ambil nomor antrian lebih dari satu kali
+            // dalam sehari — tidak ada lagi gerbang "sudah daftar"
+            // (dikonfirmasi developer).
             $antrianHariIni = DB::table('antrian_regis')->whereDate('created_at', today())->get();
-
-            $sudahDaftar = $antrianHariIni->contains('idinstitusi_asal', $institusi->idinstitusi_asal);
-
-            if ($sudahDaftar) {
-                return $this->jsonResponse(409, 'Institusi Anda telah daftar antrian.');
-            }
 
             DB::table('antrian_regis')->insert([
                 'idinstitusi_asal' => $institusi->idinstitusi_asal,

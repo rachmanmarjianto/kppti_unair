@@ -80,6 +80,9 @@
                         <button type="button" class="btn btn-primary" id="btn-panggil-antrian">
                             <span class="btn-label"><i class="fa-solid fa-bell me-1"></i> Panggil Antrian</span>
                         </button>
+                        <button type="button" class="btn btn-outline-secondary float-end" id="btn-refresh-antrian">
+                            <span class="btn-label"><i class="fa-solid fa-rotate me-1"></i> Refresh Antrian</span>
+                        </button>
                     </div>
                     <table class="table table-hover table-bordered">
                         <thead>
@@ -126,6 +129,10 @@
                 <div id="bagian-kartu-dilayani" class="d-none">
                     <h4 class="mb-3" id="kartu-dilayani-nama"></h4>
 
+                    <a href="{{ route('petugas-meja-regis.unduh-pdf') }}" target="_blank" class="btn btn-outline-primary mb-3">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Unduh PDF Daftar Hadir
+                    </a>
+
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -136,9 +143,6 @@
                         <tbody id="baris-peserta-dilayani"></tbody>
                     </table>
 
-                    <a href="{{ route('petugas-meja-regis.unduh-pdf') }}" target="_blank" class="btn btn-outline-primary">
-                        <i class="fa-solid fa-file-pdf me-1"></i> Unduh PDF Daftar Hadir
-                    </a>
                     <button type="button" class="btn btn-primary" id="btn-selesai-layani">
                         <span class="btn-label"><i class="fa-solid fa-check me-1"></i> Selesai Layani</span>
                     </button>
@@ -198,6 +202,7 @@
             var toggleHadirUrl = '{{ route('petugas-meja-regis.toggle-hadir') }}';
             var selesaiLayaniUrl = '{{ route('petugas-meja-regis.selesai-layani') }}';
             var riwayatUrl = '{{ route('petugas-meja-regis.riwayat-dilayani') }}';
+            var refreshListUrl = '{{ route('petugas-meja-regis.refresh-list') }}';
 
             var mejaRegis = {!! json_encode($mejaRegis) !!};
             var kartuAktifAwal = {!! json_encode($kartuAktif) !!};
@@ -359,6 +364,30 @@
                 })
                 .done(function (res) {
                     renderKartu(res.data);
+                })
+                .fail(function (xhr) {
+                    tampilkanErrorHalaman(xhr);
+                });
+            });
+
+            // ===== Refresh Antrian =====
+            $('#btn-refresh-antrian').on('click', function () {
+                var $btn = $(this);
+                var teksAwal = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memuat...');
+                $('.page-alert').addClass('d-none').text('');
+
+                $.ajax({
+                    url: refreshListUrl,
+                    method: 'GET',
+                    dataType: 'json',
+                })
+                // `.always()` lebih dulu (lihat komentar di panggil()).
+                .always(function () {
+                    $btn.prop('disabled', false).html(teksAwal);
+                })
+                .done(function (res) {
+                    renderList(res.data);
                 })
                 .fail(function (xhr) {
                     tampilkanErrorHalaman(xhr);

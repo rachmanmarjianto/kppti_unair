@@ -52,6 +52,15 @@ class PetugasMejaRegisController extends Controller
     }
 
     /**
+     * AJAX — muat ulang list Antri + Terlewat tanpa reload halaman (tombol
+     * "Refresh Antrian" di tampilan depan).
+     */
+    public function refreshList()
+    {
+        return $this->jsonResponse(200, 'Berhasil.', $this->dataListDepan());
+    }
+
+    /**
      * Panggil antrian — tanpa `token` mengambil antrian teratas (nomor
      * terkecil berstatus Antri), dengan `token` memanggil institusi
      * spesifik yang diklik dari list Antri **atau** list Terlewat (baris
