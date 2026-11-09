@@ -354,8 +354,41 @@ class Controller extends BaseController
         DB::table('pameran')->where('idpameran', $idpameran)->update(['status_ajuan' => '3']);
     }
 
+    /**
+     * Normalisasi nomor WA peserta ke format `08xxxxxxxx` (panjang
+     * mengikuti nomor aslinya) — peserta mengisi nomornya dengan format
+     * campur aduk (`+62 813-8057-4018`, `+6285958582932`, `6285254353077`,
+     * dst). Strip semua karakter non-digit dulu, baru normalisasi awalan:
+     * `62...` → ganti jadi `0...`, angka tanpa kode negara/nol depan
+     * (`8...`) → tambahkan `0` di depan, yang sudah `0...` dibiarkan.
+     */
+    protected function normalisasiNoWa(?string $noWa): ?string
+    {
+        if ($noWa === null) {
+            return null;
+        }
+
+        $digit = preg_replace('/\D/', '', $noWa);
+
+        if ($digit === '') {
+            return $digit;
+        }
+
+        if (str_starts_with($digit, '62')) {
+            return '0'.substr($digit, 2);
+        }
+
+        if (str_starts_with($digit, '8')) {
+            return '0'.$digit;
+        }
+
+        return $digit;
+    }
+
     protected function kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $hp)
     {
+        $hp = $this->normalisasiNoWa($hp);
+
         try {
             $ch2 = curl_init();
             curl_setopt($ch2, CURLOPT_URL, 'https://h2h.unair.ac.id/token/ambil-token-v2');
