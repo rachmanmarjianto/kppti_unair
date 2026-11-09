@@ -522,6 +522,7 @@ class AdminController extends Controller
         $adaFoto = $pengguna->idpeserta && $pengguna->path_foto;
 
         return $this->jsonResponse(200, 'Berhasil.', [
+            'idpengguna' => $pengguna->idpengguna,
             'nama' => $pengguna->nama,
             'no_wa' => $pengguna->no_wa,
             'nama_institusi' => $pengguna->nama_institusi,
@@ -529,6 +530,24 @@ class AdminController extends Controller
             // — sama persis isinya, tidak perlu duplikat method serve foto di sini.
             'fotoUrl' => $adaFoto ? route('admin.peserta.foto', ['token' => $this->encryptRouteValue($pengguna->idpeserta)]) : null,
         ]);
+    }
+
+    /**
+     * AJAX — lepas idcard dari pengguna hasil pencarian Test Card. Dipakai
+     * saat card yang sudah di-tapping ternyata peserta pemiliknya tidak
+     * hadir, supaya card fisiknya bisa dipakai ulang untuk peserta lain.
+     */
+    public function hapusIdcardTestCard(Request $request)
+    {
+        $validated = $request->validate([
+            'idpengguna' => ['required', 'integer'],
+        ]);
+
+        if (! $this->hapusIdcardPengguna($validated['idpengguna'])) {
+            return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
+        }
+
+        return $this->jsonResponse(200, 'ID card berhasil dilepas dari pengguna ini.');
     }
 
     /**

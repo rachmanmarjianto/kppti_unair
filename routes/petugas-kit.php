@@ -14,4 +14,5 @@ Route::middleware(['akses:5'])->group(function () {
     Route::get('/petugas-kit/test-card', [PetugasKitController::class, 'testCard'])->name('petugas-kit.test-card');
     Route::post('/petugas-kit/test-card/cari', [PetugasKitController::class, 'cariTestCard'])->name('petugas-kit.test-card.cari');
     Route::get('/petugas-kit/test-card/foto', [PetugasKitController::class, 'tampilFotoTestCard'])->name('petugas-kit.test-card.foto');
+    Route::post('/petugas-kit/test-card/hapus-idcard', [PetugasKitController::class, 'hapusIdcardTestCard'])->name('petugas-kit.test-card.hapus-idcard');
 });

@@ -674,8 +674,28 @@ class Controller extends BaseController
             ->leftJoin('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
             ->where('p.idcard', $idcard)
             ->where('p.is_deleted', false)
-            ->select('p.nama', 'p.no_wa', 'i.nama_institusi', 'pe.idpeserta', 'pe.path_foto')
+            ->select('p.idpengguna', 'p.nama', 'p.no_wa', 'i.nama_institusi', 'pe.idpeserta', 'pe.path_foto')
             ->first();
+    }
+
+    /**
+     * Hapus idcard seorang pengguna (set null) — dipakai menu "Test Card"
+     * untuk melepas card yang sudah di-tapping tapi peserta pemiliknya
+     * ternyata tidak hadir, supaya card fisiknya bisa dipakai ulang untuk
+     * peserta lain. Return false kalau pengguna tidak ditemukan/sudah
+     * dihapus, supaya caller bisa balas 404.
+     */
+    protected function hapusIdcardPengguna(int $idpengguna): bool
+    {
+        $ditemukan = DB::table('pengguna')->where('idpengguna', $idpengguna)->where('is_deleted', false)->exists();
+
+        if (! $ditemukan) {
+            return false;
+        }
+
+        DB::table('pengguna')->where('idpengguna', $idpengguna)->update(['idcard' => null]);
+
+        return true;
     }
 
     /**

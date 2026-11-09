@@ -43,6 +43,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');
     Route::get('/admin-test-card', [AdminController::class, 'testCard'])->name('admin.test-card');
     Route::post('/admin-test-card/cari', [AdminController::class, 'cariTestCard'])->name('admin.test-card.cari');
+    Route::post('/admin-test-card/hapus-idcard', [AdminController::class, 'hapusIdcardTestCard'])->name('admin.test-card.hapus-idcard');
     Route::post('/admin-peserta/acara/daftar', [PesertaAdminController::class, 'daftarAcara'])->name('admin.peserta.acara.daftar');
     Route::post('/admin-peserta/acara/batal', [PesertaAdminController::class, 'batalAcara'])->name('admin.peserta.acara.batal');
     Route::get('/admin-narasumber', [NarasumberAdminController::class, 'index'])->name('admin.narasumber');
