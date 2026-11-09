@@ -50,7 +50,13 @@
                         <tbody>
                             @forelse($pesertaList as $peserta)
                                 <tr>
-                                    <td>{{ $peserta->nama }}</td>
+                                    <td>
+                                        @if($peserta->isPetugasJaga)
+                                            <span class="text-success">{{ $peserta->nama }} (booth crew)</span>
+                                        @else
+                                            {{ $peserta->nama }}
+                                        @endif
+                                    </td>
                                     <td>
                                         <input type="text" class="form-control input-idcard" data-idpengguna="{{ $peserta->idpengguna }}" value="{{ $peserta->idcard }}" autocomplete="off">
                                         <div class="status-idcard-peserta"></div>

@@ -596,17 +596,30 @@ class Controller extends BaseController
 
     /**
      * Active peserta of one institusi_asal, ordered alphabetically by name,
-     * carrying `idpengguna`/`nama`/`idcard` — used by the Tapping Card
-     * detail page to list peserta for idcard mapping.
+     * carrying `idpengguna`/`nama`/`idcard` plus `isPetugasJaga` (true kalau
+     * peserta ini terdaftar di `petugas_jaga`, yaitu petugas jaga booth
+     * pameran — ditandai "(booth crew)" di halaman Tapping Card) — used by
+     * the Tapping Card detail page to list peserta for idcard mapping.
      *
      * @return Collection<int, object>
      */
     protected function tappingCardPesertaList(int $idInstitusiAsal): Collection
     {
-        return $this->pesertaAktifQuery($idInstitusiAsal)
-            ->select('p.idpengguna', 'p.nama', 'p.idcard')
+        $pesertaList = $this->pesertaAktifQuery($idInstitusiAsal)
+            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.idcard')
             ->orderBy('p.nama')
             ->get();
+
+        $idPesertaJaga = DB::table('petugas_jaga')
+            ->whereIn('idpeserta', $pesertaList->pluck('idpeserta'))
+            ->pluck('idpeserta')
+            ->unique();
+
+        return $pesertaList->map(function ($peserta) use ($idPesertaJaga) {
+            $peserta->isPetugasJaga = $idPesertaJaga->contains($peserta->idpeserta);
+
+            return $peserta;
+        });
     }
 
     /**
