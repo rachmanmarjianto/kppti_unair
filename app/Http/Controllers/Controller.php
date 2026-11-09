@@ -565,6 +565,51 @@ class Controller extends BaseController
     }
 
     /**
+     * Every institusi_asal + jenis_institusi, with `jumlahPeserta` (active
+     * peserta count) and `jumlahSudahCard` (how many of those already have
+     * `pengguna.idcard` filled) — the per-kontingen Tapping Card progress
+     * summary used by `PetugasKitController::tappingCardIndex()`.
+     *
+     * @return Collection<int, object>
+     */
+    protected function tappingCardProgress(): Collection
+    {
+        $pesertaPerInstitusi = $this->pesertaAktifQuery()
+            ->select('p.idinstitusi_asal', 'p.idcard')
+            ->get()
+            ->groupBy('idinstitusi_asal');
+
+        return DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->orderBy('i.nama_institusi')
+            ->get()
+            ->map(function ($institusi) use ($pesertaPerInstitusi) {
+                $peserta = $pesertaPerInstitusi->get($institusi->idinstitusi_asal, collect());
+                $institusi->jumlahPeserta = $peserta->count();
+                $institusi->jumlahSudahCard = $peserta->filter(fn ($p) => ! empty($p->idcard))->count();
+                $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
+
+                return $institusi;
+            });
+    }
+
+    /**
+     * Active peserta of one institusi_asal, ordered alphabetically by name,
+     * carrying `idpengguna`/`nama`/`idcard` — used by the Tapping Card
+     * detail page to list peserta for idcard mapping.
+     *
+     * @return Collection<int, object>
+     */
+    protected function tappingCardPesertaList(int $idInstitusiAsal): Collection
+    {
+        return $this->pesertaAktifQuery($idInstitusiAsal)
+            ->select('p.idpengguna', 'p.nama', 'p.idcard')
+            ->orderBy('p.nama')
+            ->get();
+    }
+
+    /**
      * The idjenis_transport of the active ("status" = true) "Kendaraan Pribadi"
      * row — looked up by name instead of a hardcoded ID, since the seeder keeps
      * an inactive duplicate row around.

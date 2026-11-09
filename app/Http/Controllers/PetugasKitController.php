@@ -145,6 +145,88 @@ class PetugasKitController extends Controller
     }
 
     /**
+     * Daftar kontingen untuk pemetaan ID card ke pengguna — sama pola
+     * seperti `index()` (Seminar Kit), bedanya tautan Aksi membuka
+     * `tappingCardDetail()`.
+     */
+    public function tappingCardIndex()
+    {
+        $menu = 'tapping-card';
+        $submenu = '';
+
+        $kontingen = $this->tappingCardProgress();
+        $jenisInstitusiList = DB::table('jenis_institusi')->orderBy('nama_jenis_institusi')->get();
+
+        return view('petugas-kit.tapping-card-index', compact('menu', 'submenu', 'kontingen', 'jenisInstitusiList'));
+    }
+
+    /**
+     * Halaman kerja Tapping Card untuk satu kontingen — input ID card per
+     * peserta, disimpan langsung AJAX per baris (lihat `simpanIdcard()`).
+     */
+    public function tappingCardDetail(Request $request)
+    {
+        $idInstitusiAsal = $this->decryptRouteValue($request->query('token'));
+
+        if ($idInstitusiAsal === null) {
+            abort(404);
+        }
+
+        $idInstitusiAsal = (int) $idInstitusiAsal;
+
+        $institusi = DB::table('institusi_asal as i')
+            ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
+            ->where('i.idinstitusi_asal', $idInstitusiAsal)
+            ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
+            ->first();
+
+        if (! $institusi) {
+            abort(404);
+        }
+
+        $menu = 'tapping-card';
+        $submenu = '';
+        $token = $this->encryptRouteValue($idInstitusiAsal);
+
+        $pesertaList = $this->tappingCardPesertaList($idInstitusiAsal);
+
+        return view('petugas-kit.tapping-card-detail', compact('menu', 'submenu', 'institusi', 'token', 'pesertaList'));
+    }
+
+    /**
+     * Simpan ID card satu pengguna. idcard divalidasi unik antar pengguna
+     * aktif (dikonfirmasi developer — satu kartu fisik tidak boleh terpetakan
+     * ke dua akun berbeda); boleh ditimpa bebas kapan pun.
+     */
+    public function simpanIdcard(Request $request)
+    {
+        $validated = $request->validate([
+            'idpengguna' => ['required', 'integer'],
+            'idcard' => ['required', 'string', 'max:100'],
+        ]);
+
+        $pengguna = DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->where('is_deleted', false)->first();
+
+        if (! $pengguna) {
+            return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
+        }
+
+        $sudahDipakai = DB::table('pengguna')
+            ->where('idcard', $validated['idcard'])
+            ->where('idpengguna', '!=', $validated['idpengguna'])
+            ->where('is_deleted', false)
+            ->exists();
+
+        if ($sudahDipakai) {
+            return $this->jsonResponse(409, 'ID card ini sudah dipakai pengguna lain.');
+        }
+
+        DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard']]);
+
+        return $this->jsonResponse(200, 'ID card berhasil disimpan.');
+    }
+
+    /**
      * `peserta.kit_lengkap` = true hanya kalau SEMUA seminar_kit aktif
      * sudah punya baris `kit_peserta` dengan `check = true` untuk peserta
      * ini. Dipanggil setelah tiap toggle satu kit (lihat `toggleKit()`).
