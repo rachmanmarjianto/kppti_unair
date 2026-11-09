@@ -64,7 +64,13 @@
                         <tbody>
                             @foreach($kontingen as $baris)
                                 <tr>
-                                    <td>{{ $baris->nama_institusi }}</td>
+                                    <td>
+                                        @if($baris->adaBelumLengkap)
+                                            <span class="text-danger">{{ $baris->nama_institusi }} (Belum Lengkap)</span>
+                                        @else
+                                            {{ $baris->nama_institusi }}
+                                        @endif
+                                    </td>
                                     <td>{{ $baris->nama_jenis_institusi }}</td>
                                     <td class="text-center">{{ $baris->jumlahPeserta }}</td>
                                     <td class="text-center">{{ $baris->jumlahSudahCard }}</td>

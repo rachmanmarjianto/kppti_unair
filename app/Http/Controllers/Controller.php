@@ -599,18 +599,17 @@ class Controller extends BaseController
 
     /**
      * Every institusi_asal + jenis_institusi, with `jumlahPeserta` (active
-     * peserta count) and `jumlahSudahCard` (how many of those already have
-     * `pengguna.idcard` filled) — the per-kontingen Tapping Card progress
-     * summary used by `PetugasKitController::tappingCardIndex()`.
+     * peserta count), `jumlahSudahCard` (how many of those already have
+     * `pengguna.idcard` filled), and `adaBelumLengkap` (true kalau minimal
+     * 1 peserta institusi ini datanya belum lengkap — lihat
+     * `pesertaDenganStatusLengkap()`) — the per-kontingen Tapping Card
+     * progress summary used by `PetugasKitController::tappingCardIndex()`.
      *
      * @return Collection<int, object>
      */
     protected function tappingCardProgress(): Collection
     {
-        $pesertaPerInstitusi = $this->pesertaAktifQuery()
-            ->select('p.idinstitusi_asal', 'p.idcard')
-            ->get()
-            ->groupBy('idinstitusi_asal');
+        $pesertaPerInstitusi = $this->pesertaDenganStatusLengkap()->groupBy('idinstitusi_asal');
 
         return DB::table('institusi_asal as i')
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
@@ -621,6 +620,7 @@ class Controller extends BaseController
                 $peserta = $pesertaPerInstitusi->get($institusi->idinstitusi_asal, collect());
                 $institusi->jumlahPeserta = $peserta->count();
                 $institusi->jumlahSudahCard = $peserta->filter(fn ($p) => ! empty($p->idcard))->count();
+                $institusi->adaBelumLengkap = $peserta->contains('lengkap', false);
                 $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
 
                 return $institusi;
@@ -629,7 +629,8 @@ class Controller extends BaseController
 
     /**
      * Active peserta of one institusi_asal, ordered alphabetically by name,
-     * carrying `idpengguna`/`nama`/`idcard` plus `isPetugasJaga` (true kalau
+     * carrying `idpengguna`/`nama`/`idcard`/`lengkap` (lihat
+     * `pesertaDenganStatusLengkap()`) plus `isPetugasJaga` (true kalau
      * peserta ini terdaftar di `petugas_jaga`, yaitu petugas jaga booth
      * pameran — ditandai "(booth crew)" di halaman Tapping Card) — used by
      * the Tapping Card detail page to list peserta for idcard mapping.
@@ -638,10 +639,7 @@ class Controller extends BaseController
      */
     protected function tappingCardPesertaList(int $idInstitusiAsal): Collection
     {
-        $pesertaList = $this->pesertaAktifQuery($idInstitusiAsal)
-            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.idcard')
-            ->orderBy('p.nama')
-            ->get();
+        $pesertaList = $this->pesertaDenganStatusLengkap($idInstitusiAsal);
 
         $idPesertaJaga = DB::table('petugas_jaga')
             ->whereIn('idpeserta', $pesertaList->pluck('idpeserta'))

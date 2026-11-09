@@ -51,7 +51,9 @@
                             @forelse($pesertaList as $peserta)
                                 <tr>
                                     <td>
-                                        @if($peserta->isPetugasJaga)
+                                        @if(! $peserta->lengkap)
+                                            <span class="text-danger">{{ $peserta->nama }} (Belum Lengkap)</span>
+                                        @elseif($peserta->isPetugasJaga)
                                             <span class="text-success">{{ $peserta->nama }} (booth crew)</span>
                                         @else
                                             {{ $peserta->nama }}
