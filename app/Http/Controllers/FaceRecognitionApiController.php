@@ -11,10 +11,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class FaceRecognitionApiController extends Controller
 {
     /**
-     * Daftar peserta aktif **yang sudah punya foto** untuk sinkronisasi ke
-     * server manajemen perangkat face recognition Hikvision MinMoe —
-     * peserta tanpa foto tidak berguna untuk didaftarkan ke perangkat, jadi
-     * disaring di sini (bukan tanggung jawab server MinMoe memilah). Endpoint
+     * Daftar peserta aktif **yang sudah punya foto DAN sudah ditapping
+     * idcard-nya** untuk sinkronisasi ke server manajemen perangkat face
+     * recognition Hikvision MinMoe — peserta tanpa foto atau belum
+     * ditapping tidak berguna untuk didaftarkan ke perangkat (idcard-nya
+     * yang jadi `nim_nidn`/`nama_file`), jadi disaring di sini (bukan
+     * tanggung jawab server MinMoe memilah). Endpoint
      * publik tanpa sesi login (diakses server lain, bukan browser pengguna)
      * — dibatasi lewat middleware whitelist IP (`face-recognition.ip`),
      * bukan middleware akses role biasa. Mengembalikan JSON array langsung
@@ -28,8 +30,9 @@ class FaceRecognitionApiController extends Controller
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
             ->leftJoin('lldikti as l', 'l.idlldikti', '=', 'i.idlldikti')
             ->whereNotNull('pe.path_foto')
+            ->whereNotNull('p.idcard')
             ->select(
-                'p.idpengguna', 'p.nama',
+                'p.idpengguna', 'p.nama', 'p.idcard',
                 'i.idinstitusi_asal', 'i.nama_institusi',
                 'ji.nama_jenis_institusi', 'l.nomor_lldikti'
             )
@@ -47,7 +50,7 @@ class FaceRecognitionApiController extends Controller
                     'id_personal' => '-',
                     'id_usulan' => '-',
                     'id_pdpt' => '-',
-                    'nim_nidn' => (string) $baris->idpengguna,
+                    'nim_nidn' => (string) $baris->idcard,
                     'nama' => $baris->nama,
                     'peran' => '-',
                     'nama_program_studi' => '-',
@@ -56,7 +59,7 @@ class FaceRecognitionApiController extends Controller
                     'id_nidn_dosen_pimnas' => '-',
                     'is_hadir' => '',
                     'path_file' => '-',
-                    'nama_file' => "{$baris->idpengguna}.jpg",
+                    'nama_file' => "{$baris->idcard}.jpg",
                     'id_kelas_pimnas' => '',
                     'kelas_pimnas' => '',
                 ];
@@ -67,20 +70,20 @@ class FaceRecognitionApiController extends Controller
     }
 
     /**
-     * Serve satu foto peserta berdasarkan `idpengguna` (segmen URL
-     * `.../{idpengguna}.jpg`, bukan token terenkripsi — kontrak API ini
-     * dengan server MinMoe memakai idpengguna mentah, sama seperti
-     * `nim_nidn`/`nama_file` di pesertaList(); `.jpg` di URL murni kosmetik
-     * agar namanya mirip nama file, isi gambar tetap diambil dari
-     * `path_foto` tersimpan — tidak dipakai untuk menebak ekstensi asli).
-     * Endpoint publik, dibatasi middleware whitelist IP yang sama
+     * Serve satu foto peserta berdasarkan `idcard` (segmen URL
+     * `.../{idcard}.jpg`, bukan token terenkripsi — kontrak API ini dengan
+     * server MinMoe memakai idcard mentah, sama seperti `nim_nidn`/
+     * `nama_file` di pesertaList(); `.jpg` di URL murni kosmetik agar
+     * namanya mirip nama file, isi gambar tetap diambil dari `path_foto`
+     * tersimpan — tidak dipakai untuk menebak ekstensi asli). Endpoint
+     * publik, dibatasi middleware whitelist IP yang sama
      * (`face-recognition.ip`).
      */
-    public function foto(int $idpengguna): StreamedResponse
+    public function foto(string $idcard): StreamedResponse
     {
         $pathFoto = DB::table('pengguna as p')
             ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
-            ->where('p.idpengguna', $idpengguna)
+            ->where('p.idcard', $idcard)
             ->value('pe.path_foto');
 
         if (! $pathFoto || ! Storage::disk('local')->exists($pathFoto)) {

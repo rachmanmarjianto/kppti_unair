@@ -62,9 +62,8 @@ Route::get('/callback/bni-va', [BniCallbackController::class, 'handle_forbidden'
 Route::get('/api/face-recognition/peserta', [FaceRecognitionApiController::class, 'pesertaList'])
     ->middleware('face-recognition.ip')
     ->name('api.face-recognition.peserta');
-Route::get('/api/face-recognition/foto/{idpengguna}.jpg', [FaceRecognitionApiController::class, 'foto'])
+Route::get('/api/face-recognition/foto/{idcard}.jpg', [FaceRecognitionApiController::class, 'foto'])
     ->middleware('face-recognition.ip')
-    ->whereNumber('idpengguna')
     ->name('api.face-recognition.foto');
 
 // Debug produksi — gerbangnya kolom `aktif` di tabel `php_info`, bukan
