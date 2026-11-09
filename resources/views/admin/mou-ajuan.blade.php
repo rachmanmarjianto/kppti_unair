@@ -71,6 +71,8 @@
         .stat-box-mou-total .widget-content-area { background: linear-gradient(135deg, #4361ee, #3a0ca3) !important; }
         .stat-box-mou-terjalin .widget-content-area { background: linear-gradient(135deg, #0ca678, #0a9396) !important; }
         .stat-box-mou-institusi .widget-content-area { background: linear-gradient(135deg, #f72585, #7209b7) !important; }
+        .stat-box-mou-temu .widget-content-area { background: linear-gradient(135deg, #f8961e, #f3722c) !important; }
+        .stat-box-mou-temu-institusi .widget-content-area { background: linear-gradient(135deg, #577590, #277da1) !important; }
     </style>
 @endsection
 
@@ -118,6 +120,39 @@
                         <div>
                             <p class="mb-1">Institusi dengan MoU Terjalin</p>
                             <h3 class="mb-0">{{ $jumlahInstitusiTerjalin }}</h3>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-6 col-lg-6 col-sm-6 col-12 layout-spacing">
+            <div class="statbox widget box box-shadow stat-box-mou stat-box-mou-temu">
+                <div class="widget-content widget-content-area">
+                    <div class="d-flex justify-content-between align-items-center" style="padding: 10px">
+                        <div>
+                            <p class="mb-1">Jumlah Temu Diskusi</p>
+                            <h3 class="mb-0">{{ $jumlahTemuDiskusi }}</h3>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-people-arrows"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6 col-lg-6 col-sm-6 col-12 layout-spacing">
+            <div class="statbox widget box box-shadow stat-box-mou stat-box-mou-temu-institusi">
+                <div class="widget-content widget-content-area">
+                    <div class="d-flex justify-content-between align-items-center" style="padding: 10px">
+                        <div>
+                            <p class="mb-1">Institusi Terlibat Temu Diskusi</p>
+                            <h3 class="mb-0">{{ $jumlahInstitusiTemuDiskusi }}</h3>
                         </div>
                         <div class="stat-icon">
                             <i class="fa-solid fa-building"></i>

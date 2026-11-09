@@ -90,10 +90,16 @@ class MouAdminController extends Controller
             ->merge(DB::table('pengajuan_mou')->where('status_ajuan', 4)->pluck('idinstitusi_mitra'))
             ->unique()
             ->count();
+        $jumlahTemuDiskusi = DB::table('pengajuan_mou')->where('status_ajuan', 2)->count();
+        $jumlahInstitusiTemuDiskusi = DB::table('pengajuan_mou')->where('status_ajuan', 2)->pluck('idinstitusi_pengaju')
+            ->merge(DB::table('pengajuan_mou')->where('status_ajuan', 2)->pluck('idinstitusi_mitra'))
+            ->unique()
+            ->count();
 
         return view('admin.mou-ajuan', compact(
             'menu', 'submenu', 'jenisInstitusiList', 'rekapList',
-            'jumlahTotalMou', 'jumlahTerjalin', 'jumlahInstitusiTerjalin'
+            'jumlahTotalMou', 'jumlahTerjalin', 'jumlahInstitusiTerjalin',
+            'jumlahTemuDiskusi', 'jumlahInstitusiTemuDiskusi'
         ));
     }
 
