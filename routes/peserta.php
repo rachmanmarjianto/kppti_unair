@@ -73,11 +73,16 @@ Route::middleware(['akses:2'])->group(function () {
     // wajib kapan pun walau sesi registrasi acara sudah ditutup.
     Route::post('/peserta-sekontingen/acara/batal-wajib-penjaga', [PesertaController::class, 'toggleAcaraWajibPenjaga'])->name('peserta.sekontingen.acara.batal-wajib-penjaga');
 
-    // Hanya pilihan acara yang dikunci begitu timestamp_tutup jadwal_penting
-    // id=7 (Registrasi Acara) terlewati — tujuannya alokasi konsumsi di
-    // ruangan, bukan data peserta secara umum (yang tetap boleh diubah kapan
-    // saja). Lihat docs/features/017-portal-registrasi-peserta.md.
-    Route::middleware(['jadwalPenting:7,tutup'])->group(function () {
+    // Pilihan acara hanya bisa diubah selama jadwal_penting id=7 (Registrasi
+    // Acara) sedang terbuka — pakai syarat default 'buka' (cek timestamp_buka
+    // DAN timestamp_tutup), bukan 'tutup' saja: jadwal ini kini jadwal
+    // tersendiri (sebelumnya menumpang id=1 Registrasi Peserta, yang mustahil
+    // "belum dibuka" karena peserta itu sendiri baru ada setelah registrasi
+    // peserta dibuka — asumsi itu tidak berlaku lagi untuk jadwal terpisah
+    // ini). Tujuannya alokasi konsumsi di ruangan, bukan data peserta secara
+    // umum (yang tetap boleh diubah kapan saja). Lihat
+    // docs/features/017-portal-registrasi-peserta.md.
+    Route::middleware(['jadwalPenting:7'])->group(function () {
         Route::post('/peserta-sekontingen/acara/daftar', [PesertaController::class, 'daftarAcara'])->name('peserta.sekontingen.acara.daftar');
         Route::post('/peserta-sekontingen/acara/batal', [PesertaController::class, 'batalAcara'])->name('peserta.sekontingen.acara.batal');
     });
