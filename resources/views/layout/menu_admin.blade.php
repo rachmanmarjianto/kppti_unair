@@ -74,6 +74,9 @@
                             <li @if($submenu == 'acara-peserta') class="active" @endif>
                                 <a href="{{ route('admin.peserta.acara') }}"> Acara </a>
                             </li>
+                            <li @if($submenu == 'test-card') class="active" @endif>
+                                <a href="{{ route('admin.test-card') }}"> Test Card </a>
+                            </li>
                         </ul>
                     </li>
 

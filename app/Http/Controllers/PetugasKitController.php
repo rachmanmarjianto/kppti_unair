@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PetugasKitController extends Controller
 {
@@ -224,6 +225,64 @@ class PetugasKitController extends Controller
         DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard']]);
 
         return $this->jsonResponse(200, 'ID card berhasil disimpan.');
+    }
+
+    /**
+     * Halaman "Test Card" — verifikasi cepat sebuah ID card sudah
+     * terpetakan ke siapa (lihat `cariTestCard()`).
+     */
+    public function testCard()
+    {
+        $menu = 'test-card';
+        $submenu = '';
+
+        return view('petugas-kit.test-card', compact('menu', 'submenu'));
+    }
+
+    /**
+     * AJAX — cari pengguna berdasarkan idcard yang di-tap/diketik.
+     */
+    public function cariTestCard(Request $request)
+    {
+        $validated = $request->validate([
+            'idcard' => ['required', 'string', 'max:100'],
+        ]);
+
+        $pengguna = $this->cariPenggunaByIdcard($validated['idcard']);
+
+        if (! $pengguna) {
+            return $this->jsonResponse(404, 'ID card tidak ditemukan.');
+        }
+
+        $adaFoto = $pengguna->idpeserta && $pengguna->path_foto;
+
+        return $this->jsonResponse(200, 'Berhasil.', [
+            'nama' => $pengguna->nama,
+            'no_wa' => $pengguna->no_wa,
+            'nama_institusi' => $pengguna->nama_institusi,
+            'fotoUrl' => $adaFoto ? route('petugas-kit.test-card.foto', ['token' => $this->encryptRouteValue($pengguna->idpeserta)]) : null,
+        ]);
+    }
+
+    /**
+     * Serve foto peserta untuk hasil Test Card — pola sama seperti
+     * `PesertaAdminController::tampilFoto()`.
+     */
+    public function tampilFotoTestCard(Request $request)
+    {
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $pathFoto = DB::table('peserta')->where('idpeserta', (int) $idpeserta)->value('path_foto');
+
+        if (! $pathFoto || ! Storage::disk('local')->exists($pathFoto)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($pathFoto);
     }
 
     /**

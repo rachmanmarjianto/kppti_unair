@@ -493,6 +493,45 @@ class AdminController extends Controller
     }
 
     /**
+     * Submenu "Test Card" (di bawah menu Users) — verifikasi cepat sebuah
+     * ID card sudah terpetakan ke siapa (lihat `cariTestCard()`).
+     */
+    public function testCard()
+    {
+        $menu = 'users';
+        $submenu = 'test-card';
+
+        return view('admin.test-card', compact('menu', 'submenu'));
+    }
+
+    /**
+     * AJAX — cari pengguna berdasarkan idcard yang di-tap/diketik.
+     */
+    public function cariTestCard(Request $request)
+    {
+        $validated = $request->validate([
+            'idcard' => ['required', 'string', 'max:100'],
+        ]);
+
+        $pengguna = $this->cariPenggunaByIdcard($validated['idcard']);
+
+        if (! $pengguna) {
+            return $this->jsonResponse(404, 'ID card tidak ditemukan.');
+        }
+
+        $adaFoto = $pengguna->idpeserta && $pengguna->path_foto;
+
+        return $this->jsonResponse(200, 'Berhasil.', [
+            'nama' => $pengguna->nama,
+            'no_wa' => $pengguna->no_wa,
+            'nama_institusi' => $pengguna->nama_institusi,
+            // Reuse endpoint foto milik submenu Peserta (`PesertaAdminController::tampilFoto()`)
+            // — sama persis isinya, tidak perlu duplikat method serve foto di sini.
+            'fotoUrl' => $adaFoto ? route('admin.peserta.foto', ['token' => $this->encryptRouteValue($pengguna->idpeserta)]) : null,
+        ]);
+    }
+
+    /**
      * @return Collection<int, object>
      */
     private function getUsersByRole(int $idrole)

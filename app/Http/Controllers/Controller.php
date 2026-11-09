@@ -623,6 +623,29 @@ class Controller extends BaseController
     }
 
     /**
+     * Cari satu pengguna berdasarkan `idcard` (hasil Tapping Card) — dipakai
+     * menu "Test Card" (Petugas Kit & Admin) untuk verifikasi cepat card
+     * sudah terpetakan ke siapa. Tidak dibatasi role tertentu, karena
+     * `idcard` adalah atribut di tabel `pengguna` sendiri. `leftJoin` ke
+     * `institusi_asal` dan `peserta` (bukan `join`) karena
+     * `pengguna.idinstitusi_asal` nullable untuk role non-peserta dan tidak
+     * semua pengguna punya baris `peserta` — pengguna tetap ketemu,
+     * `nama_institusi`/`idpeserta`/`path_foto` jadi null kalau tidak ada.
+     * Caller yang perlu menampilkan foto membentuk URL-nya sendiri lewat
+     * `encryptRouteValue($hasil->idpeserta)`, bukan dari sini.
+     */
+    protected function cariPenggunaByIdcard(string $idcard): ?object
+    {
+        return DB::table('pengguna as p')
+            ->leftJoin('institusi_asal as i', 'i.idinstitusi_asal', '=', 'p.idinstitusi_asal')
+            ->leftJoin('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+            ->where('p.idcard', $idcard)
+            ->where('p.is_deleted', false)
+            ->select('p.nama', 'p.no_wa', 'i.nama_institusi', 'pe.idpeserta', 'pe.path_foto')
+            ->first();
+    }
+
+    /**
      * The idjenis_transport of the active ("status" = true) "Kendaraan Pribadi"
      * row — looked up by name instead of a hardcoded ID, since the seeder keeps
      * an inactive duplicate row around.

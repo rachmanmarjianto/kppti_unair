@@ -11,4 +11,7 @@ Route::middleware(['akses:5'])->group(function () {
     Route::get('/petugas-kit/tapping-card', [PetugasKitController::class, 'tappingCardIndex'])->name('petugas-kit.tapping-card');
     Route::get('/petugas-kit/tapping-card/detail', [PetugasKitController::class, 'tappingCardDetail'])->name('petugas-kit.tapping-card.detail');
     Route::post('/petugas-kit/tapping-card/simpan', [PetugasKitController::class, 'simpanIdcard'])->name('petugas-kit.tapping-card.simpan');
+    Route::get('/petugas-kit/test-card', [PetugasKitController::class, 'testCard'])->name('petugas-kit.test-card');
+    Route::post('/petugas-kit/test-card/cari', [PetugasKitController::class, 'cariTestCard'])->name('petugas-kit.test-card.cari');
+    Route::get('/petugas-kit/test-card/foto', [PetugasKitController::class, 'tampilFotoTestCard'])->name('petugas-kit.test-card.foto');
 });
