@@ -796,10 +796,11 @@ class Controller extends BaseController
         return DB::table('narasumber_acara as na')
             ->join('narasumber as n', 'n.idnarasumber', '=', 'na.idnarasumber')
             ->join('pengguna as p', 'p.idpengguna', '=', 'n.idpengguna')
+            ->leftJoin('institusi_asal as ia', 'ia.idinstitusi_asal', '=', 'p.idinstitusi_asal')
             ->whereIn('na.idacara', $idAcaraList)
             ->where('na.status', true)
             ->where('n.status_ajuan', '5')
-            ->select('na.idacara', 'p.nama', 'n.subtema')
+            ->select('na.idacara', 'p.nama', 'n.subtema', 'ia.nama_institusi')
             ->get()
             ->groupBy('idacara');
     }

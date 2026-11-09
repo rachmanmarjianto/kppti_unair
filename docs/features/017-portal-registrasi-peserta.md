@@ -13,7 +13,7 @@ Tabel `jadwal_penting` (dikonfirmasi lewat `database-schema`, sudah ada datanya 
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `idjadwal_penting` | integer, PK, auto | **Nilai tetap** — `1` Registrasi Peserta, `2` Pengajuan Narasumber, `3` Pengajuan Pameran (dikonfirmasi dari data live, bukan ditebak). |
+| `idjadwal_penting` | integer, PK, auto | **Nilai tetap** — `1` Registrasi Peserta, `2` Pengajuan Narasumber, `3` Pengajuan Pameran (dikonfirmasi dari data live, bukan ditebak). `7` Registrasi Acara ditambahkan developer belakangan (langsung ke DB, tanpa migrasi/seeder baru — pola yang sama dengan penambahan `idrole` baru di proyek ini) untuk menggantikan id `1` sebagai gerbang kunci pilihan acara, lihat §8. |
 | `nama_jadwal` | varchar(255), nullable | Nama proses, untuk ditampilkan di halaman tertutup. |
 | `timestamp_buka` | timestamp, nullable | Kapan sesi mulai dibuka (dipakai saat `mode=1`). |
 | `timestamp_tutup` | timestamp, nullable | Kapan sesi berakhir (dipakai saat `mode=1`). |
@@ -63,20 +63,20 @@ View baru `resources/views/jadwal-tertutup.blade.php` — halaman mandiri (bukan
 **Admin bisa mengubah `mode`/`timestamp_buka`/`timestamp_tutup`** lewat UI, bukan cuma lewat database langsung:
 
 - Controller baru `JadwalPentingController` (`index()` GET, `update(Request $request)` POST), rute di `routes/admin.php` (`admin.jadwal-penting`, `admin.jadwal-penting.update`), middleware `akses:1`.
-- `idjadwal_penting` adalah **nilai tetap** (1/2/3) — ini **bukan** CRUD penuh, admin hanya **mengedit** ke-3 baris yang sudah ada (`mode`/`timestamp_buka`/`timestamp_tutup`), tidak ada tambah/hapus baris. Validasi `idjadwal_penting` dibatasi `in:1,2,3` (bukan `exists` generik) supaya percobaan mengirim id lain ditolak jelas. `nama_jadwal` ditampilkan read-only (bukan field yang diedit).
+- `idjadwal_penting` adalah **nilai tetap** — ini **bukan** CRUD penuh, admin hanya **mengedit** baris yang sudah ada (`mode`/`timestamp_buka`/`timestamp_tutup`), tidak ada tambah/hapus baris lewat UI ini (baris baru, seperti id `7` Registrasi Acara, ditambahkan langsung ke DB). Validasi `idjadwal_penting` di `JadwalPentingController::update()` memakai `exists:jadwal_penting,idjadwal_penting` (generik, bukan `in:1,2,3` — otomatis ikut mendukung baris baru tanpa perlu ubah kode). `nama_jadwal` ditampilkan read-only (bukan field yang diedit).
 - View baru `resources/views/admin/jadwal-penting.blade.php` — tabel 3 baris tetap (bukan accordion), tiap baris menampilkan `mode`, waktu buka/tutup, dan **badge status saat ini (Terbuka/Tertutup)** dihitung langsung di Blade dengan logika yang sama persis seperti `JadwalPentingMiddleware::sedangBuka()`, supaya admin langsung melihat efek perubahannya. Modal edit per baris (pola `$.ajax` + SweetAlert2 + `jsonResponse()`, sama seperti `admin/acara.blade.php`).
 - Menu sidebar baru "Jadwal Penting" di `resources/views/layout/menu_admin.blade.php`, sejajar menu "Acara".
 
-## 8. Gerbang kedua: kunci **pilihan acara** setelah `timestamp_tutup` (revisi kedua — cakupan dipersempit)
+## 8. Gerbang kedua: kunci **pilihan acara** setelah `timestamp_tutup` (revisi kedua — cakupan dipersempit; revisi ketiga — jadwal sendiri)
 
-Gerbang registrasi (§4) hanya mengatur **pendaftaran peserta baru**. Developer menambahkan syarat kedua: begitu **waktu sekarang ≥ `timestamp_tutup`** (jadwal id=1, Registrasi Peserta), peserta yang **sudah terdaftar** tidak boleh lagi mengubah **pilihan acaranya**.
+Gerbang registrasi (§4) hanya mengatur **pendaftaran peserta baru**. Developer menambahkan syarat kedua: begitu **waktu sekarang ≥ `timestamp_tutup`** (jadwal id=**7**, **Registrasi Acara** — awalnya memakai jadwal id=1 Registrasi Peserta, dipisah developer belakangan ke jadwal sendiri supaya buka/tutup registrasi acara tidak lagi terikat ke jadwal registrasi peserta), peserta yang **sudah terdaftar** tidak boleh lagi mengubah **pilihan acaranya**.
 
 **Revisi developer**: cakupan awalnya sempat mencakup data kontingen juga (institusi, tambah/update peserta, logistik, foto), lalu **dipersempit hanya ke pilihan acara** — data peserta secara umum tetap boleh diubah kapan saja, tidak ikut dikunci. Alasannya: tujuan gerbang ini adalah **alokasi konsumsi di ruangan** (jumlah peserta per acara perlu final untuk perencanaan konsumsi/logistik ruangan), bukan membekukan seluruh data kontingen.
 
 Ini **beda logika** dari gerbang registrasi: gerbang registrasi menolak kalau **belum dibuka atau sudah ditutup** (dua sisi); gerbang ini **hanya** peduli "sudah lewat tutup" — sisi "belum dibuka" tidak relevan karena mustahil ada peserta terdaftar sebelum registrasi pernah dibuka.
 
 - `JadwalPentingMiddleware::handle()` menerima parameter ke-2 opsional `$syarat` (`'buka'` default, atau `'tutup'`). Saat `$syarat='tutup'`, middleware memanggil `belumTutup()` (bukan `sedangBuka()`): `mode='2'` tetap selalu lolos; `mode='1'` lolos selama `now() < timestamp_tutup` (null `timestamp_tutup` = tidak ada batas, selalu lolos).
-- Dipasang di `routes/peserta.php` sebagai `jadwalPenting:1,tutup`, membungkus **hanya 2 rute**: `peserta.sekontingen.acara.daftar` dan `peserta.sekontingen.acara.batal`. Rute data kontingen lain (`peserta.institusi.update`, `peserta.sekontingen.tambah`, `peserta.sekontingen.update`, `peserta.sekontingen.logistik.update`, `peserta.sekontingen.foto.update`, `peserta.sekontingen.reset-password`) **tidak** digerbangi — tetap bisa diubah kapan saja.
+- Dipasang di `routes/peserta.php` sebagai `jadwalPenting:7,tutup`, membungkus **hanya 2 rute**: `peserta.sekontingen.acara.daftar` dan `peserta.sekontingen.acara.batal`. Rute data kontingen lain (`peserta.institusi.update`, `peserta.sekontingen.tambah`, `peserta.sekontingen.update`, `peserta.sekontingen.logistik.update`, `peserta.sekontingen.foto.update`, `peserta.sekontingen.reset-password`) **tidak** digerbangi — tetap bisa diubah kapan saja.
 - Rute yang digerbangi di sini adalah endpoint `$.ajax`/POST, jadi responsnya selalu JSON 403 (`{"code":403,"message":"Periode registrasi sudah ditutup. Data peserta dan pilihan acara tidak bisa diubah lagi."}`) — tidak pernah jatuh ke render halaman `jadwal-tertutup.blade.php` (itu hanya relevan untuk gerbang registrasi di §4/§5 yang punya halaman GET).
 
 ## 9. Jalur admin: tetap bisa mengubah pilihan acara peserta setelah tutup

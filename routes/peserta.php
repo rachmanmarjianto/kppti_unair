@@ -74,10 +74,10 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/peserta-sekontingen/acara/batal-wajib-penjaga', [PesertaController::class, 'toggleAcaraWajibPenjaga'])->name('peserta.sekontingen.acara.batal-wajib-penjaga');
 
     // Hanya pilihan acara yang dikunci begitu timestamp_tutup jadwal_penting
-    // id=1 (Registrasi Peserta) terlewati — tujuannya alokasi konsumsi di
+    // id=7 (Registrasi Acara) terlewati — tujuannya alokasi konsumsi di
     // ruangan, bukan data peserta secara umum (yang tetap boleh diubah kapan
     // saja). Lihat docs/features/017-portal-registrasi-peserta.md.
-    Route::middleware(['jadwalPenting:1,tutup'])->group(function () {
+    Route::middleware(['jadwalPenting:7,tutup'])->group(function () {
         Route::post('/peserta-sekontingen/acara/daftar', [PesertaController::class, 'daftarAcara'])->name('peserta.sekontingen.acara.daftar');
         Route::post('/peserta-sekontingen/acara/batal', [PesertaController::class, 'batalAcara'])->name('peserta.sekontingen.acara.batal');
     });

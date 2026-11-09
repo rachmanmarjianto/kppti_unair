@@ -31,6 +31,7 @@ class AcaraController extends Controller
                 'narasumberList' => $a->narasumberList->map(fn ($n) => [
                     'nama' => $n->nama,
                     'subtema' => $n->subtema,
+                    'nama_institusi' => $n->nama_institusi,
                 ])->values(),
             ];
         };

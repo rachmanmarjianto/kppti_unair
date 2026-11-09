@@ -106,7 +106,15 @@
                                         @elseif($acara->narasumberList->isNotEmpty())
                                             <ul class="list-unstyled mb-0">
                                                 @foreach($acara->narasumberList as $ns)
-                                                    <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                    <li>
+                                                        {{ $ns->nama }}
+                                                        @if($ns->nama_institusi)
+                                                            <span class="text-muted" style="font-size: 12px;">({{ $ns->nama_institusi }})</span>
+                                                        @endif
+                                                        @if($ns->subtema)
+                                                            <br><span class="text-muted">{{ $ns->subtema }}</span>
+                                                        @endif
+                                                    </li>
                                                 @endforeach
                                             </ul>
                                         @else
@@ -142,7 +150,15 @@
                                                 @elseif($anak->narasumberList->isNotEmpty())
                                                     <ul class="list-unstyled mb-0">
                                                         @foreach($anak->narasumberList as $ns)
-                                                            <li>{{ $ns->nama }}@if($ns->subtema) <span class="text-muted">({{ $ns->subtema }})</span>@endif</li>
+                                                            <li>
+                                                                {{ $ns->nama }}
+                                                                @if($ns->nama_institusi)
+                                                                    <span class="text-muted" style="font-size: 12px;">({{ $ns->nama_institusi }})</span>
+                                                                @endif
+                                                                @if($ns->subtema)
+                                                                    <br><span class="text-muted">{{ $ns->subtema }}</span>
+                                                                @endif
+                                                            </li>
                                                         @endforeach
                                                     </ul>
                                                 @else
@@ -364,7 +380,8 @@
                 var $daftarNarasumber = $('#daftar-narasumber-readonly').empty();
                 if (data.narasumberList && data.narasumberList.length > 0) {
                     data.narasumberList.forEach(function (ns) {
-                        var teks = ns.nama + (ns.subtema ? ' (' + ns.subtema + ')' : '');
+                        var teks = ns.nama + (ns.nama_institusi ? ' (' + ns.nama_institusi + ')' : '');
+                        teks += ns.subtema ? ' — ' + ns.subtema : '';
                         $('<div>').text(teks).appendTo($daftarNarasumber);
                     });
                 } else {
