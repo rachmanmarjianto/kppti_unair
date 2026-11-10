@@ -43,6 +43,7 @@
         }
 
         .stat-box-kehadiran-peserta .widget-content-area { background: linear-gradient(135deg, #0ca678, #0a9396) !important; }
+        .stat-box-kehadiran-institusi .widget-content-area { background: linear-gradient(135deg, #f72585, #7209b7) !important; }
     </style>
 @endsection
 
@@ -63,6 +64,22 @@
                         </div>
                         <div class="stat-icon">
                             <i class="fa-solid fa-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-4 col-sm-6 col-12 layout-spacing">
+            <div class="statbox widget box box-shadow stat-box-kehadiran stat-box-kehadiran-institusi">
+                <div class="widget-content widget-content-area">
+                    <div class="d-flex justify-content-between align-items-center" style="padding: 10px">
+                        <div>
+                            <p class="mb-1">Jumlah Institusi Hadir</p>
+                            <h3 class="mb-0">{{ $jumlahInstitusiHadir }}</h3>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-building"></i>
                         </div>
                     </div>
                 </div>

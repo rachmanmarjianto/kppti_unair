@@ -185,8 +185,13 @@ class MejaRegisAdminController extends Controller
 
         $jumlahPesertaHadir = $jumlahHadirPerInstitusi->sum();
 
+        // $kehadiranList sudah difilter ke institusi yang minimal satu
+        // pesertanya hadir (lihat whereIn di atas), jadi jumlah barisnya
+        // sendiri adalah jawabannya.
+        $jumlahInstitusiHadir = $kehadiranList->count();
+
         return view('admin.kehadiran-kontingen', compact(
-            'menu', 'submenu', 'kehadiranList', 'jenisInstitusiList', 'rekapJenisInstitusi', 'jumlahPesertaHadir'
+            'menu', 'submenu', 'kehadiranList', 'jenisInstitusiList', 'rekapJenisInstitusi', 'jumlahPesertaHadir', 'jumlahInstitusiHadir'
         ));
     }
 }
