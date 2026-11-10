@@ -410,6 +410,9 @@ class PetugasMejaRegisController extends Controller
      * Dipanggil atau Sedang Dilayani) — dipakai index() dan re-render
      * setelah setiap aksi AJAX. Null kalau petugas tidak punya antrian
      * aktif (tampilan depan harus menunjukkan list, bukan kartu).
+     * `pesertaList` (hanya diisi saat status Sedang Dilayani) membawa
+     * `isNarasumberDiterima` dan `isPetugasJaga` — pola sama seperti
+     * Tapping Card (lihat `Controller::idPenggunaNarasumberDiterima()`).
      */
     private function dataKartuAktif(object $mejaRegis): ?array
     {
@@ -429,14 +432,24 @@ class PetugasMejaRegisController extends Controller
 
         if ($baris->status === self::STATUS_DILAYANI) {
             $pesertaList = $this->pesertaAktifQuery($baris->idinstitusi_asal)
-                ->select('pe.idpeserta', 'p.nama', 'pe.hadir', 'pe.path_foto')
+                ->select('pe.idpeserta', 'p.idpengguna', 'p.nama', 'pe.hadir', 'pe.path_foto')
                 ->orderBy('p.nama')
-                ->get()
-                ->map(function ($peserta) {
-                    $peserta->fotoLengkap = $peserta->path_foto !== null;
+                ->get();
 
-                    return $peserta;
-                });
+            $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
+
+            $idPesertaJaga = DB::table('petugas_jaga')
+                ->whereIn('idpeserta', $pesertaList->pluck('idpeserta'))
+                ->pluck('idpeserta')
+                ->unique();
+
+            $pesertaList = $pesertaList->map(function ($peserta) use ($idPenggunaNarasumber, $idPesertaJaga) {
+                $peserta->fotoLengkap = $peserta->path_foto !== null;
+                $peserta->isNarasumberDiterima = $idPenggunaNarasumber->contains($peserta->idpengguna);
+                $peserta->isPetugasJaga = $idPesertaJaga->contains($peserta->idpeserta);
+
+                return $peserta;
+            });
         }
 
         return [

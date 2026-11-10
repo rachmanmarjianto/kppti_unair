@@ -139,6 +139,8 @@
                                 <th style="width: 60px;" class="text-center">Hadir</th>
                                 <th>Nama Peserta</th>
                                 <th class="text-center">Foto Lengkap</th>
+                                <th class="text-center">Narasumber</th>
+                                <th class="text-center">Booth Crew</th>
                             </tr>
                         </thead>
                         <tbody id="baris-peserta-dilayani"></tbody>
@@ -258,7 +260,7 @@
                     var $tbodyPeserta = $('#baris-peserta-dilayani').empty();
 
                     if (kartu.pesertaList.length === 0) {
-                        $tbodyPeserta.html('<tr><td colspan="3" class="text-center text-muted">Belum ada peserta terdaftar.</td></tr>');
+                        $tbodyPeserta.html('<tr><td colspan="5" class="text-center text-muted">Belum ada peserta terdaftar.</td></tr>');
                     } else {
                         kartu.pesertaList.forEach(function (peserta) {
                             var $checkbox = $('<input>').attr({ type: 'checkbox', 'data-idpeserta': peserta.idpeserta }).addClass('form-check-input checkbox-hadir-peserta');
@@ -270,10 +272,20 @@
                                 ? $('<span>').text('Ya')
                                 : $('<span>').addClass('text-danger').text('Belum');
 
+                            var $centangNarasumber = peserta.isNarasumberDiterima
+                                ? $('<i>').addClass('fa-solid fa-check text-success')
+                                : $('<span>');
+
+                            var $centangBoothCrew = peserta.isPetugasJaga
+                                ? $('<i>').addClass('fa-solid fa-check text-success')
+                                : $('<span>');
+
                             $('<tr>')
                                 .append($('<td>').addClass('text-center').append($checkbox).append($status))
                                 .append($('<td>').text(peserta.nama))
                                 .append($('<td>').addClass('text-center').append($fotoLengkap))
+                                .append($('<td>').addClass('text-center').append($centangNarasumber))
+                                .append($('<td>').addClass('text-center').append($centangBoothCrew))
                                 .appendTo($tbodyPeserta);
                         });
                     }
