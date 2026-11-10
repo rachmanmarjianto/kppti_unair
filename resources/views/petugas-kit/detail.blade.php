@@ -63,7 +63,13 @@
                         <tbody>
                             @forelse($pesertaList as $peserta)
                                 <tr>
-                                    <td rowspan="3">{{ $peserta->nama }}</td>
+                                    <td rowspan="3">
+                                        @if($peserta->isNarasumberDiterima)
+                                            <span class="text-primary">{{ $peserta->nama }} (NARASUMBER)</span>
+                                        @else
+                                            {{ $peserta->nama }}
+                                        @endif
+                                    </td>
                                     @foreach($kitAktif as $kit)
                                         <td class="text-center">
                                             <input type="checkbox" class="form-check-input check-kit"

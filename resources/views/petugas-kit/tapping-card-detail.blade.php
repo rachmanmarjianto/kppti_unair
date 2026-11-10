@@ -51,8 +51,12 @@
                             @forelse($pesertaList as $peserta)
                                 <tr>
                                     <td>
-                                        @if(! $peserta->lengkap)
+                                        @if(! $peserta->lengkap && $peserta->isNarasumberDiterima)
+                                            <span class="text-primary">{{ $peserta->nama }} (Belum Lengkap) (NARASUMBER)</span>
+                                        @elseif(! $peserta->lengkap)
                                             <span class="text-danger">{{ $peserta->nama }} (Belum Lengkap)</span>
+                                        @elseif($peserta->isNarasumberDiterima)
+                                            <span class="text-primary">{{ $peserta->nama }} (NARASUMBER)</span>
                                         @elseif($peserta->isPetugasJaga)
                                             <span class="text-success">{{ $peserta->nama }} (booth crew)</span>
                                         @else

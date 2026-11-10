@@ -58,6 +58,7 @@
                                 <th>Jenis Institusi</th>
                                 <th class="text-center">Jumlah Peserta</th>
                                 <th class="text-center">Card</th>
+                                <th class="text-center">Narasumber</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -74,6 +75,7 @@
                                     <td>{{ $baris->nama_jenis_institusi }}</td>
                                     <td class="text-center">{{ $baris->jumlahPeserta }}</td>
                                     <td class="text-center">{{ $baris->jumlahSudahCard }}</td>
+                                    <td class="text-center">{{ $baris->adaNarasumberDiterima ? 'Ya' : '-' }}</td>
                                     <td class="text-center">
                                         <a href="{{ route('petugas-kit.tapping-card.detail') }}?token={{ $baris->token }}" class="btn btn-sm btn-outline-secondary">Detail</a>
                                     </td>

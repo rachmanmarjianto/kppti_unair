@@ -520,29 +520,35 @@ class Controller extends BaseController
 
     /**
      * Every institusi_asal + jenis_institusi, with `jumlahPeserta` (active
-     * peserta count) and `jumlahLengkap` (how many of those have
-     * `kit_lengkap = true`) — the per-kontingen seminar kit progress
-     * summary. Shared by SeminarKitController (admin, read-only) and
-     * PetugasKitController (same list, interactive detail page).
+     * peserta count), `jumlahLengkap` (how many of those have
+     * `kit_lengkap = true`), dan `adaNarasumberDiterima` (true kalau
+     * minimal 1 peserta institusi ini juga narasumber yang ajuannya
+     * Diterima — lihat `idPenggunaNarasumberDiterima()`) — the per-kontingen
+     * seminar kit progress summary. Shared by SeminarKitController (admin,
+     * read-only) and PetugasKitController (same list, interactive detail
+     * page; satu-satunya yang menampilkan `adaNarasumberDiterima`).
      *
      * @return Collection<int, object>
      */
     protected function kontingenKitProgress(): Collection
     {
         $pesertaPerInstitusi = $this->pesertaAktifQuery()
-            ->select('p.idinstitusi_asal', 'pe.kit_lengkap')
+            ->select('p.idinstitusi_asal', 'p.idpengguna', 'pe.kit_lengkap')
             ->get()
             ->groupBy('idinstitusi_asal');
+
+        $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
 
         return DB::table('institusi_asal as i')
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
             ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
             ->orderBy('i.nama_institusi')
             ->get()
-            ->map(function ($institusi) use ($pesertaPerInstitusi) {
+            ->map(function ($institusi) use ($pesertaPerInstitusi, $idPenggunaNarasumber) {
                 $peserta = $pesertaPerInstitusi->get($institusi->idinstitusi_asal, collect());
                 $institusi->jumlahPeserta = $peserta->count();
                 $institusi->jumlahLengkap = $peserta->where('kit_lengkap', true)->count();
+                $institusi->adaNarasumberDiterima = $peserta->contains(fn ($p) => $idPenggunaNarasumber->contains($p->idpengguna));
                 $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
 
                 return $institusi;
@@ -554,9 +560,12 @@ class Controller extends BaseController
      * seminar_kit list (table columns) and the institusi's active peserta,
      * each carrying a `kitMap` keyed by idseminar_kit with that kit's
      * check/created_at/nama_petugas (or nulls if no kit_peserta row yet
-     * for that pair). Shared by SeminarKitController::progressDetail()
+     * for that pair) dan `isNarasumberDiterima` (true kalau peserta ini
+     * juga narasumber yang ajuannya Diterima — ditandai "(NARASUMBER)" di
+     * halaman Petugas Kit). Shared by SeminarKitController::progressDetail()
      * (admin, read-only) and PetugasKitController::detail() (Petugas Kit,
-     * interactive checkboxes).
+     * interactive checkboxes; satu-satunya yang menampilkan
+     * `isNarasumberDiterima`).
      *
      * @return array{kitAktif: Collection<int, object>, pesertaList: Collection<int, object>}
      */
@@ -565,7 +574,7 @@ class Controller extends BaseController
         $kitAktif = DB::table('seminar_kit')->where('status', true)->orderBy('idseminar_kit')->get();
 
         $pesertaList = $this->pesertaAktifQuery($idInstitusiAsal)
-            ->select('pe.idpeserta', 'p.nama', 'pe.kit_lengkap')
+            ->select('pe.idpeserta', 'p.idpengguna', 'p.nama', 'pe.kit_lengkap')
             ->orderBy('p.nama')
             ->get();
 
@@ -578,7 +587,9 @@ class Controller extends BaseController
                 ->get()
                 ->groupBy('idpeserta');
 
-        $pesertaList = $pesertaList->map(function ($peserta) use ($kitPesertaRows, $kitAktif) {
+        $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
+
+        $pesertaList = $pesertaList->map(function ($peserta) use ($kitPesertaRows, $kitAktif, $idPenggunaNarasumber) {
             $rowsUntukPeserta = $kitPesertaRows->get($peserta->idpeserta, collect())->keyBy('idseminar_kit');
 
             $peserta->kitMap = $kitAktif->mapWithKeys(function ($kit) use ($rowsUntukPeserta) {
@@ -591,6 +602,8 @@ class Controller extends BaseController
                 ]];
             });
 
+            $peserta->isNarasumberDiterima = $idPenggunaNarasumber->contains($peserta->idpengguna);
+
             return $peserta;
         });
 
@@ -598,29 +611,46 @@ class Controller extends BaseController
     }
 
     /**
+     * idpengguna dari setiap baris `narasumber` yang status_ajuan-nya
+     * "Diterima" (kode '5', lihat `NarasumberController::STATUS_DITERIMA`)
+     * — dipakai untuk menandai peserta yang juga narasumber diterima di
+     * halaman Tapping Card.
+     *
+     * @return Collection<int, int>
+     */
+    protected function idPenggunaNarasumberDiterima(): Collection
+    {
+        return DB::table('narasumber')->where('status_ajuan', '5')->pluck('idpengguna')->unique();
+    }
+
+    /**
      * Every institusi_asal + jenis_institusi, with `jumlahPeserta` (active
      * peserta count), `jumlahSudahCard` (how many of those already have
-     * `pengguna.idcard` filled), and `adaBelumLengkap` (true kalau minimal
+     * `pengguna.idcard` filled), `adaBelumLengkap` (true kalau minimal
      * 1 peserta institusi ini datanya belum lengkap — lihat
-     * `pesertaDenganStatusLengkap()`) — the per-kontingen Tapping Card
-     * progress summary used by `PetugasKitController::tappingCardIndex()`.
+     * `pesertaDenganStatusLengkap()`), dan `adaNarasumberDiterima` (true
+     * kalau minimal 1 peserta institusi ini juga narasumber yang ajuannya
+     * Diterima) — the per-kontingen Tapping Card progress summary used by
+     * `PetugasKitController::tappingCardIndex()`.
      *
      * @return Collection<int, object>
      */
     protected function tappingCardProgress(): Collection
     {
         $pesertaPerInstitusi = $this->pesertaDenganStatusLengkap()->groupBy('idinstitusi_asal');
+        $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
 
         return DB::table('institusi_asal as i')
             ->join('jenis_institusi as ji', 'ji.idjenis_institusi', '=', 'i.idjenis_institusi')
             ->select('i.idinstitusi_asal', 'i.nama_institusi', 'ji.nama_jenis_institusi')
             ->orderBy('i.nama_institusi')
             ->get()
-            ->map(function ($institusi) use ($pesertaPerInstitusi) {
+            ->map(function ($institusi) use ($pesertaPerInstitusi, $idPenggunaNarasumber) {
                 $peserta = $pesertaPerInstitusi->get($institusi->idinstitusi_asal, collect());
                 $institusi->jumlahPeserta = $peserta->count();
                 $institusi->jumlahSudahCard = $peserta->filter(fn ($p) => ! empty($p->idcard))->count();
                 $institusi->adaBelumLengkap = $peserta->contains('lengkap', false);
+                $institusi->adaNarasumberDiterima = $peserta->contains(fn ($p) => $idPenggunaNarasumber->contains($p->idpengguna));
                 $institusi->token = $this->encryptRouteValue($institusi->idinstitusi_asal);
 
                 return $institusi;
@@ -632,8 +662,10 @@ class Controller extends BaseController
      * carrying `idpengguna`/`nama`/`idcard`/`lengkap` (lihat
      * `pesertaDenganStatusLengkap()`) plus `isPetugasJaga` (true kalau
      * peserta ini terdaftar di `petugas_jaga`, yaitu petugas jaga booth
-     * pameran — ditandai "(booth crew)" di halaman Tapping Card) — used by
-     * the Tapping Card detail page to list peserta for idcard mapping.
+     * pameran — ditandai "(booth crew)" di halaman Tapping Card) dan
+     * `isNarasumberDiterima` (true kalau peserta ini juga narasumber yang
+     * ajuannya Diterima — ditandai "(NARASUMBER)") — used by the Tapping
+     * Card detail page to list peserta for idcard mapping.
      *
      * @return Collection<int, object>
      */
@@ -646,8 +678,11 @@ class Controller extends BaseController
             ->pluck('idpeserta')
             ->unique();
 
-        return $pesertaList->map(function ($peserta) use ($idPesertaJaga) {
+        $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
+
+        return $pesertaList->map(function ($peserta) use ($idPesertaJaga, $idPenggunaNarasumber) {
             $peserta->isPetugasJaga = $idPesertaJaga->contains($peserta->idpeserta);
+            $peserta->isNarasumberDiterima = $idPenggunaNarasumber->contains($peserta->idpengguna);
 
             return $peserta;
         });
