@@ -201,8 +201,12 @@ class PetugasMejaRegisController extends Controller
     }
 
     /**
-     * Tandai antrian yang sedang dipanggil petugas ini sebagai Terlewat —
-     * petugas kembali ke tampilan depan untuk memanggil antrian lain.
+     * Tandai antrian yang sedang ditangani petugas ini (Dipanggil maupun
+     * Sedang Dilayani — tombol "Lewati" ada di kedua layar, lihat
+     * docs/features) sebagai Terlewat — petugas kembali ke tampilan depan
+     * untuk memanggil antrian lain. Dipakai juga saat perlengkapan (mis.
+     * seminar kit) kurang di tengah layanan, supaya perwakilan diminta
+     * menunggu lagi dan dipanggil ulang nanti.
      */
     public function terlewat(Request $request)
     {
@@ -212,7 +216,7 @@ class PetugasMejaRegisController extends Controller
             return $this->jsonResponse(422, 'Anda belum dipetakan ke meja registrasi mana pun.');
         }
 
-        $baris = $this->antrianAktifMilikPetugas($mejaRegis, self::STATUS_DIPANGGIL);
+        $baris = $this->antrianAktifMilikPetugas($mejaRegis, [self::STATUS_DIPANGGIL, self::STATUS_DILAYANI]);
 
         if (! $baris) {
             return $this->jsonResponse(404, 'Tidak ada antrian yang sedang dipanggil oleh Anda.');
@@ -393,14 +397,17 @@ class PetugasMejaRegisController extends Controller
 
     /**
      * Baris `antrian_regis` hari ini yang dipanggil oleh meja ini dan
-     * masih berstatus $status — dipakai berulang oleh panggilUlang(),
-     * terlewat(), layani(), toggleHadir(), selesaiLayani().
+     * masih berstatus $status (satu status atau beberapa) — dipakai
+     * berulang oleh panggilUlang(), terlewat(), layani(), toggleHadir(),
+     * selesaiLayani().
+     *
+     * @param  string|array<int, string>  $status
      */
-    private function antrianAktifMilikPetugas(object $mejaRegis, string $status): ?object
+    private function antrianAktifMilikPetugas(object $mejaRegis, string|array $status): ?object
     {
         return DB::table('antrian_regis')
             ->where('dipanggil_oleh', $mejaRegis->idmeja_regis)
-            ->where('status', $status)
+            ->whereIn('status', is_array($status) ? $status : [$status])
             ->whereDate('created_at', today())
             ->first();
     }

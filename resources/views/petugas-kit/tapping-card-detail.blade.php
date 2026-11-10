@@ -4,6 +4,9 @@
 
 @section('page-css')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
     <style>
         .status-idcard-peserta {
             font-size: 12px;
@@ -47,7 +50,7 @@
                                 <th style="min-width: 220px;">ID Card</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="baris-peserta-idcard">
                             @forelse($pesertaList as $peserta)
                                 <tr>
                                     <td>
@@ -64,7 +67,12 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <input type="text" class="form-control input-idcard" data-idpengguna="{{ $peserta->idpengguna }}" value="{{ $peserta->idcard }}" autocomplete="off">
+                                        <div class="d-flex gap-2">
+                                            <input type="text" class="form-control input-idcard" data-idpengguna="{{ $peserta->idpengguna }}" value="{{ $peserta->idcard }}" autocomplete="off">
+                                            <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-idcard" data-idpengguna="{{ $peserta->idpengguna }}" title="Hapus ID Card">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <div class="status-idcard-peserta"></div>
                                     </td>
                                 </tr>
@@ -83,11 +91,13 @@
 
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
 
     <script>
         $(function () {
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var simpanUrl = '{{ route('petugas-kit.tapping-card.simpan') }}';
+            var hapusIdcardUrl = '{{ route('petugas-kit.tapping-card.hapus-idcard') }}';
 
             function tampilkanError(xhr) {
                 var res = xhr.responseJSON || {};
@@ -141,6 +151,47 @@
                     $kosong.focus();
                 }
             }
+
+            $('#baris-peserta-idcard').on('click', '.btn-hapus-idcard', function () {
+                var $btn = $(this);
+                var idpengguna = $btn.data('idpengguna');
+                var $input = $('.input-idcard[data-idpengguna="' + idpengguna + '"]');
+                var $status = $input.closest('td').find('.status-idcard-peserta');
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Hapus ID card peserta ini? Card fisiknya bisa dipakai ulang untuk peserta lain setelah ini.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+                    $('.page-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: hapusIdcardUrl,
+                        method: 'POST',
+                        data: { idpengguna: idpengguna },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function () {
+                        $input.val('');
+                        $status.html('');
+                    })
+                    .fail(function (xhr) {
+                        tampilkanError(xhr);
+                    })
+                    .always(function () {
+                        $btn.prop('disabled', false).html('<i class="fa-solid fa-trash"></i>');
+                    });
+                });
+            });
 
             $('.input-idcard').on('keydown', function (e) {
                 if (e.key !== 'Enter') {

@@ -149,6 +149,9 @@
                     <button type="button" class="btn btn-primary" id="btn-selesai-layani">
                         <span class="btn-label"><i class="fa-solid fa-check me-1"></i> Selesai Layani</span>
                     </button>
+                    <button type="button" class="btn btn-outline-danger" id="btn-terlewat-dilayani">
+                        <span class="btn-label"><i class="fa-solid fa-ban me-1"></i> Lewati</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -414,6 +417,40 @@
 
             // ===== Terlewat =====
             $('#btn-terlewat').on('click', function () {
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Tandai antrian ini terlewat?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, terlewat',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    $('.page-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: terlewatUrl,
+                        method: 'POST',
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        renderList(res.data);
+                    })
+                    .fail(function (xhr) {
+                        tampilkanErrorHalaman(xhr);
+                    });
+                });
+            });
+
+            // ===== Lewati (dari layar Sedang Dilayani) — perlakuan sama
+            // dengan #btn-terlewat di layar Dipanggil, dipakai mis. saat
+            // perlengkapan (seminar kit) kurang supaya perwakilan diminta
+            // menunggu lagi dan dipanggil ulang nanti. =====
+            $('#btn-terlewat-dilayani').on('click', function () {
                 Swal.fire({
                     title: 'Konfirmasi',
                     text: 'Tandai antrian ini terlewat?',

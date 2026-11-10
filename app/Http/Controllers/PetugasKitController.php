@@ -228,6 +228,24 @@ class PetugasKitController extends Controller
     }
 
     /**
+     * AJAX — hapus idcard satu pengguna dari halaman detail Tapping Card.
+     * Dipakai kalau ID card yang ter-tap keliru/perlu diulang untuk
+     * peserta ini — card fisiknya jadi bisa dipakai ulang.
+     */
+    public function hapusIdcardTappingCard(Request $request)
+    {
+        $validated = $request->validate([
+            'idpengguna' => ['required', 'integer'],
+        ]);
+
+        if (! $this->hapusIdcardPengguna($validated['idpengguna'])) {
+            return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
+        }
+
+        return $this->jsonResponse(200, 'ID card berhasil dihapus.');
+    }
+
+    /**
      * Halaman "Test Card" — verifikasi cepat sebuah ID card sudah
      * terpetakan ke siapa (lihat `cariTestCard()`).
      */
