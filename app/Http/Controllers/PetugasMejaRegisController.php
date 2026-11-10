@@ -429,9 +429,14 @@ class PetugasMejaRegisController extends Controller
 
         if ($baris->status === self::STATUS_DILAYANI) {
             $pesertaList = $this->pesertaAktifQuery($baris->idinstitusi_asal)
-                ->select('pe.idpeserta', 'p.nama', 'pe.hadir')
+                ->select('pe.idpeserta', 'p.nama', 'pe.hadir', 'pe.path_foto')
                 ->orderBy('p.nama')
-                ->get();
+                ->get()
+                ->map(function ($peserta) {
+                    $peserta->fotoLengkap = $peserta->path_foto !== null;
+
+                    return $peserta;
+                });
         }
 
         return [

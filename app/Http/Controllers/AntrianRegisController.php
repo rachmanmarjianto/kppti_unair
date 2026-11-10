@@ -75,19 +75,15 @@ class AntrianRegisController extends Controller
             return $this->jsonResponse(404, 'Kode kontingen tidak ditemukan.');
         }
 
-        // Gerbang yang sama dengan unduh kartu registrasi kontingen
-        // (PesertaController::unduhKartuKontingen()) — kontingen yang
-        // datanya belum lengkap belum berhak ambil nomor antrian kedatangan,
-        // dikonfirmasi developer.
+        // Gerbang kelengkapan data (dulu sama dengan unduh kartu registrasi
+        // kontingen) sudah dicabut (dikonfirmasi developer) — kontingen
+        // yang datanya belum lengkap tetap boleh ambil nomor antrian
+        // kedatangan. Satu-satunya syarat yang tersisa: kontingen harus
+        // punya minimal 1 peserta.
         $pesertaList = $this->pesertaDenganStatusLengkap($institusi->idinstitusi_asal);
-        $belumLengkap = $pesertaList->where('lengkap', false);
 
-        if ($pesertaList->isEmpty() || $belumLengkap->isNotEmpty()) {
-            $pesan = $pesertaList->isEmpty()
-                ? 'Belum ada peserta dalam kontingen ini.'
-                : 'Data peserta kontingen ini belum lengkap. Harap lengkapi data peserta sebelum mengambil nomor antrian.';
-
-            return $this->jsonResponse(422, $pesan);
+        if ($pesertaList->isEmpty()) {
+            return $this->jsonResponse(422, 'Belum ada peserta dalam kontingen ini.');
         }
 
         return DB::transaction(function () use ($institusi) {
