@@ -90,6 +90,10 @@
         #modal-pindah-kontingen .form-label, #modal-pindah-kontingen .text-muted { color: #0e1726 !important; }
         #modal-pindah-kontingen .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
 
+        #modal-tambah-peserta-admin .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-tambah-peserta-admin .form-label, #modal-tambah-peserta-admin .text-muted { color: #0e1726 !important; }
+        #modal-tambah-peserta-admin .form-control, #modal-tambah-peserta-admin .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+
         #modal-detail-peserta .modal-content {
             background-color: #fff;
             color: #3b3f5c;
@@ -354,6 +358,9 @@
                                             @endif
                                         </td>
                                         <td class="text-center text-nowrap">
+                                            <button type="button" class="btn btn-sm btn-outline-success btn-tambah-peserta-admin" title="Tambah Peserta" data-idinstitusi-asal="{{ $institusi->idinstitusi_asal }}" data-idjenis-institusi="{{ $institusi->idjenis_institusi }}" data-nama-institusi="{{ $institusi->nama_institusi }}">
+                                                <i class="fa-solid fa-user-plus"></i>
+                                            </button>
                                             @if($institusi->semuaLengkap)
                                                 <a href="{{ route('admin.peserta.cetak-kartu') }}?token={{ $institusi->token }}" class="btn btn-sm btn-outline-primary" title="Cetak Kartu Registrasi">
                                                     <i class="fa-solid fa-id-card"></i>
@@ -423,7 +430,15 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Detail Peserta</h5>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <h5 class="modal-title mb-0">Detail Peserta</h5>
+                        <a href="javascript:void(0);" class="btn btn-sm btn-light btn-edit-foto-detail" title="Edit Foto" target="_blank">
+                            <i class="fa-solid fa-camera me-1"></i> Edit Foto
+                        </a>
+                        <a href="javascript:void(0);" class="btn btn-sm btn-light btn-edit-logistik-detail" title="Edit Logistik" target="_blank">
+                            <i class="fa-solid fa-suitcase-rolling me-1"></i> Edit Logistik
+                        </a>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -551,6 +566,51 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: tambah peserta baru ke kontingen manapun (pola sama seperti
+         modal "Tambah Peserta" di sisi Peserta, cuma institusi tujuan dipilih
+         dari baris institusi yang diklik Admin) --}}
+    <div class="modal fade" id="modal-tambah-peserta-admin" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-tambah-peserta-admin">
+                    <input type="hidden" name="idinstitusi_asal">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tambah Peserta Baru <small class="text-muted sel-tambah-peserta-institusi"></small></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nama</label>
+                            <input type="text" name="nama" class="form-control" maxlength="1000" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" maxlength="500" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nomor WhatsApp</label>
+                            <input type="text" name="no_wa" class="form-control" inputmode="numeric" maxlength="30" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Jabatan</label>
+                            <select name="idjabatan" class="form-select" required>
+                                <option value="" selected disabled>Pilih jabatan...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-submit-tambah-peserta-admin">
+                            <span class="btn-label">Tambah Peserta</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page-js')
@@ -587,6 +647,10 @@
             var fotoUrl = '{{ route('admin.peserta.foto') }}';
             var updateEmailUrl = '{{ route('admin.peserta.email.update') }}';
             var hapusRolePesertaUrl = '{{ route('admin.peserta.hapus-role') }}';
+            var tambahPesertaAdminUrl = '{{ route('admin.peserta.tambah') }}';
+            var jabatanPerJenis = {!! json_encode($jabatanPerJenis) !!};
+            var fotoEditUrl = '{{ route('admin.peserta.foto.edit') }}';
+            var logistikUrl = '{{ route('admin.peserta.logistik') }}';
 
             $('[data-bs-toggle="collapse"]').on('click', function () {
                 $(this).toggleClass('expanded');
@@ -606,6 +670,9 @@
 
             $('.btn-detail-peserta').on('click', function () {
                 var token = $(this).data('token');
+
+                $modalDetail.find('.btn-edit-foto-detail').attr('href', fotoEditUrl + '?token=' + encodeURIComponent(token));
+                $modalDetail.find('.btn-edit-logistik-detail').attr('href', logistikUrl + '?token=' + encodeURIComponent(token));
 
                 $detailLoading.removeClass('d-none');
                 $detailContent.addClass('d-none');
@@ -873,6 +940,79 @@
                     } else {
                         $selectPindahInstitusi.val('');
                     }
+                });
+            });
+
+            // ------- Tambah peserta baru ke kontingen manapun (pola SweetAlert2 -------
+            // confirm sama seperti sisi Peserta, bukan modal verifikasi teks) -------
+            var $modalTambahPesertaAdmin = $('#modal-tambah-peserta-admin');
+            var $formTambahPesertaAdmin = $('#form-tambah-peserta-admin');
+            var $selectTambahPesertaAdminJabatan = $formTambahPesertaAdmin.find('[name="idjabatan"]');
+
+            $('.btn-tambah-peserta-admin').on('click', function () {
+                var idinstitusiAsal = $(this).data('idinstitusi-asal');
+                var idjenisInstitusi = $(this).data('idjenis-institusi');
+                var namaInstitusi = $(this).data('nama-institusi');
+                var jabatanOptions = jabatanPerJenis[idjenisInstitusi] || [];
+
+                $formTambahPesertaAdmin[0].reset();
+                $modalTambahPesertaAdmin.find('.modal-alert').addClass('d-none').text('');
+                $modalTambahPesertaAdmin.find('.sel-tambah-peserta-institusi').text('— ' + namaInstitusi);
+                $formTambahPesertaAdmin.find('[name="idinstitusi_asal"]').val(idinstitusiAsal);
+
+                $selectTambahPesertaAdminJabatan.empty().append('<option value="" selected disabled>Pilih jabatan...</option>');
+                jabatanOptions.forEach(function (jabatan) {
+                    $selectTambahPesertaAdminJabatan.append($('<option>').val(jabatan.idjabatan).text(jabatan.nama_jabatan));
+                });
+
+                $modalTambahPesertaAdmin.modal('show');
+            });
+
+            $formTambahPesertaAdmin.on('submit', function (e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $btn = $form.find('.btn-submit-tambah-peserta-admin');
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Apakah data peserta sudah benar?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                    $modalTambahPesertaAdmin.find('.modal-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: tambahPesertaAdminUrl,
+                        method: 'POST',
+                        data: $form.serialize(),
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        } else if (res.errors) {
+                            pesan = Object.values(res.errors).flat().join('\n');
+                        }
+                        $modalTambahPesertaAdmin.find('.modal-alert').removeClass('d-none').text(pesan);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
                 });
             });
         });

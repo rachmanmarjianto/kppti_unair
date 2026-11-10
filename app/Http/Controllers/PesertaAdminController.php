@@ -51,6 +51,13 @@ class PesertaAdminController extends Controller
             ];
         })->values();
 
+        $jabatanPerJenis = DB::table('jabatan as j')
+            ->join('jenis_institusi_jabatan as jij', 'jij.idkelompok_jabatan', '=', 'j.idkelompok_jabatan')
+            ->select('jij.idjenis_institusi', 'j.idjabatan', 'j.nama_jabatan')
+            ->orderBy('j.nama_jabatan')
+            ->get()
+            ->groupBy('idjenis_institusi');
+
         $dashboard = [
             'totalPeserta' => $pesertaList->count(),
             'totalInstitusi' => $institusiList->where('jumlahPeserta', '>', 0)->count(),
@@ -63,7 +70,100 @@ class PesertaAdminController extends Controller
             'jumlahFotoLengkap' => $pesertaList->where('fotoLengkap', true)->count(),
         ];
 
-        return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard'));
+        return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard', 'jabatanPerJenis'));
+    }
+
+    /**
+     * Tambahkan peserta baru ke kontingen manapun — duplikasi
+     * PesertaController::tambahPeserta() apa adanya (akun baru, role
+     * Peserta, kirim kredensial lewat WA, daftar otomatis ke acara
+     * wajib), bedanya institusi tujuan dipilih Admin lewat input (bukan
+     * dari session, karena Admin tidak terikat satu kontingen) dan rute
+     * ini SENGAJA TIDAK digerbangi jadwalPenting — Admin boleh menambah
+     * peserta kapan pun walau sesi registrasi peserta sudah ditutup.
+     */
+    public function tambahPeserta(Request $request)
+    {
+        $validated = $request->validate([
+            'idinstitusi_asal' => ['required', 'integer', 'exists:institusi_asal,idinstitusi_asal'],
+            'nama' => ['required', 'string', 'max:1000'],
+            'email' => ['required', 'email', 'max:500'],
+            'no_wa' => ['required', 'string', 'max:30'],
+            'idjabatan' => ['required', 'integer', 'exists:jabatan,idjabatan'],
+        ]);
+
+        $idInstitusiAsal = (int) $validated['idinstitusi_asal'];
+        $jenisInstitusi = $this->institusiJenis($idInstitusiAsal);
+
+        $sudahTerdaftar = DB::table('pengguna')
+            ->where('is_deleted', false)
+            ->where(function ($query) use ($validated) {
+                $query->where('email', $validated['email'])
+                    ->orWhere('no_wa', $validated['no_wa']);
+            })
+            ->exists();
+
+        if ($sudahTerdaftar) {
+            return $this->jsonResponse(409, 'Email atau nomor WhatsApp sudah terdaftar.');
+        }
+
+        if (! $this->jabatanValidUntukJenis((int) $validated['idjabatan'], $jenisInstitusi)) {
+            return $this->jsonResponse(422, 'Jabatan tidak sesuai dengan jenis institusi.');
+        }
+
+        $nama = mb_strtoupper($validated['nama']);
+        $password = $this->generateRandomPassword();
+
+        try {
+            $idpengguna = DB::transaction(function () use ($validated, $idInstitusiAsal, $password, $nama) {
+                $idpengguna = DB::table('pengguna')->insertGetId([
+                    'nama' => $nama,
+                    'email' => $validated['email'],
+                    'no_wa' => $validated['no_wa'],
+                    'password' => Hash::make($password),
+                    'idinstitusi_asal' => $idInstitusiAsal,
+                    'created_at' => now(),
+                    'is_deleted' => false,
+                ], 'idpengguna');
+
+                DB::table('role_pengguna')->insert([
+                    'idpengguna' => $idpengguna,
+                    'idrole' => self::ROLE_PESERTA,
+                    'status' => true,
+                ]);
+
+                $idpeserta = DB::table('peserta')->insertGetId([
+                    'idpengguna' => $idpengguna,
+                    'idjabatan' => $validated['idjabatan'],
+                ], 'idpeserta');
+
+                $this->registerWajibAcaraUntukPeserta($idpeserta);
+
+                return $idpengguna;
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal menambahkan peserta.');
+        }
+
+        $pesan_1 = 'Akun KPPTI 2026 Anda telah dibuat. Berikut informasi login Anda:';
+        $pesan_2 = "Email: {$validated['email']} || Password: {$password}";
+        $pesan_3 = 'Akun Aktif';
+
+        try {
+            $result = $this->kirim_wa_oca_token_3($pesan_1, $pesan_2, $pesan_3, $validated['no_wa']);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp, PERIKSA NOMOR WHATSAPP dan Silahkan Refresh Halaman!!', ['idpengguna' => $idpengguna]);
+        }
+
+        if (strtoupper($result) != 'SUKSES') {
+            return $this->jsonResponse(500, 'Peserta berhasil ditambahkan, namun informasi login gagal dikirim melalui WhatsApp, PERIKSA NOMOR WHATSAPP dan Silahkan Refresh Halaman!!', ['idpengguna' => $idpengguna]);
+        }
+
+        return $this->jsonResponse(200, 'Peserta berhasil ditambahkan dan informasi login telah dikirim melalui WhatsApp.', ['idpengguna' => $idpengguna, 'wa_response' => $result]);
     }
 
     /**
@@ -208,6 +308,256 @@ class PesertaAdminController extends Controller
         }
 
         return Storage::disk('local')->response($pathFoto);
+    }
+
+    /**
+     * Show the upload/crop page for any peserta's photo — same as
+     * PesertaController::foto(), just not scoped to one institusi (an Admin
+     * may edit any peserta).
+     */
+    public function foto(Request $request)
+    {
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $idpeserta = (int) $idpeserta;
+
+        $peserta = $this->findPesertaById($idpeserta);
+
+        if (! $peserta) {
+            abort(404);
+        }
+
+        $menu = 'users';
+        $submenu = 'peserta';
+        $token = $this->encryptRouteValue($idpeserta);
+        $adaFoto = DB::table('peserta')->where('idpeserta', $idpeserta)->value('path_foto') !== null;
+
+        return view('admin.foto-peserta', compact('menu', 'submenu', 'peserta', 'idpeserta', 'token', 'adaFoto'));
+    }
+
+    /**
+     * Save any peserta's cropped photo — same rules and re-encoding as
+     * PesertaController::updateFoto() (`simpanFotoPeserta()`, now shared on
+     * the base Controller), just not scoped to one institusi.
+     */
+    public function updateFoto(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+            'foto' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:10240'],
+        ]);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $pathLama = DB::table('peserta')->where('idpeserta', $peserta->idpeserta)->value('path_foto');
+
+        try {
+            $path = $this->simpanFotoPeserta($peserta->idpeserta, file_get_contents($request->file('foto')->getRealPath()));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal memproses foto. Silakan coba unggah foto lain.');
+        }
+
+        if ($pathLama && $pathLama !== $path && Storage::disk('local')->exists($pathLama)) {
+            Storage::disk('local')->delete($pathLama);
+        }
+
+        DB::table('peserta')->where('idpeserta', $peserta->idpeserta)->update(['path_foto' => $path]);
+
+        $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], 'Foto diperbarui oleh admin');
+
+        return $this->jsonResponse(200, 'Foto berhasil disimpan.');
+    }
+
+    /**
+     * Show the "Edit Logistik" page for any peserta — same fields as modal
+     * "Data Logistik" di sisi Peserta (`PesertaController::detailLogistik()`),
+     * tapi sebagai halaman penuh (bukan modal+AJAX): nilai awal langsung
+     * diisi dari sini, bukan di-fetch ulang lewat JS. `pesertaLainLengkap`
+     * (kandidat "Salin Data dari Peserta Lain") di-scope ke kontingen
+     * peserta ini, bukan lintas institusi.
+     */
+    public function logistik(Request $request)
+    {
+        $idpeserta = $this->decryptRouteValue($request->query('token'));
+
+        if ($idpeserta === null) {
+            abort(404);
+        }
+
+        $idpeserta = (int) $idpeserta;
+
+        $peserta = $this->findPesertaById($idpeserta);
+
+        if (! $peserta) {
+            abort(404);
+        }
+
+        $menu = 'users';
+        $submenu = 'peserta';
+        $token = $this->encryptRouteValue($idpeserta);
+
+        $logistik = DB::table('peserta')
+            ->where('idpeserta', $idpeserta)
+            ->select(
+                'idpeserta',
+                'idjenis_transportasi_kedatangan',
+                'stasiun_kedatangan',
+                'tanggal_kedatangan',
+                'jam_kedatangan',
+                'idjenis_transportasi_kepulangan',
+                'stasiun_kepulangan',
+                'tanggal_kepulangan',
+                'jam_kepulangan',
+                'nama_hotel',
+                'city_tour'
+            )
+            ->first();
+
+        $jenisTransportOptions = DB::table('jenis_transport')
+            ->where('status', true)
+            ->orderBy('idjenis_transport')
+            ->get();
+
+        $idKendaraanPribadi = $this->idJenisTransportKendaraanPribadi();
+
+        $pesertaLainLengkap = $this->pesertaDenganStatusLengkap($peserta->idinstitusi_asal)
+            ->where('logistikLengkap', true)
+            ->where('idpeserta', '!=', $idpeserta)
+            ->values();
+
+        return view('admin.logistik-peserta', compact(
+            'menu', 'submenu', 'peserta', 'idpeserta', 'token', 'logistik',
+            'jenisTransportOptions', 'idKendaraanPribadi', 'pesertaLainLengkap'
+        ));
+    }
+
+    /**
+     * Update any peserta's logistik fields — same validation and change-log
+     * logic as PesertaController::updateLogistik(), just not scoped to one
+     * institusi.
+     */
+    public function updateLogistik(Request $request)
+    {
+        $userdata = session('userdata');
+
+        $idKendaraanPribadi = $this->idJenisTransportKendaraanPribadi();
+
+        $rules = [
+            'idpeserta' => ['required', 'integer'],
+            'idjenis_transportasi_kedatangan' => ['required', 'integer', 'exists:jenis_transport,idjenis_transport'],
+            'tanggal_kedatangan' => ['required', 'date'],
+            'jam_kedatangan' => ['required'],
+            'idjenis_transportasi_kepulangan' => ['required', 'integer', 'exists:jenis_transport,idjenis_transport'],
+            'tanggal_kepulangan' => ['required', 'date'],
+            'jam_kepulangan' => ['required'],
+            'nama_hotel' => ['nullable', 'string', 'max:255'],
+            'city_tour' => ['nullable', 'boolean'],
+            'stasiun_kedatangan' => (int) $request->input('idjenis_transportasi_kedatangan') === $idKendaraanPribadi
+                ? ['nullable', 'string', 'max:255']
+                : ['required', 'string', 'max:255'],
+            'stasiun_kepulangan' => (int) $request->input('idjenis_transportasi_kepulangan') === $idKendaraanPribadi
+                ? ['nullable', 'string', 'max:255']
+                : ['required', 'string', 'max:255'],
+        ];
+
+        $validated = $request->validate($rules);
+
+        $peserta = $this->findPesertaById((int) $validated['idpeserta']);
+
+        if (! $peserta) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        $logistikLama = DB::table('peserta')->where('idpeserta', $peserta->idpeserta)->first();
+
+        $update = [
+            'idjenis_transportasi_kedatangan' => $validated['idjenis_transportasi_kedatangan'],
+            'stasiun_kedatangan' => $validated['stasiun_kedatangan'] ?? null,
+            'tanggal_kedatangan' => $validated['tanggal_kedatangan'],
+            'jam_kedatangan' => $validated['jam_kedatangan'],
+            'idjenis_transportasi_kepulangan' => $validated['idjenis_transportasi_kepulangan'],
+            'stasiun_kepulangan' => $validated['stasiun_kepulangan'] ?? null,
+            'tanggal_kepulangan' => $validated['tanggal_kepulangan'],
+            'jam_kepulangan' => $validated['jam_kepulangan'],
+            'nama_hotel' => $validated['nama_hotel'] ?? null,
+            'city_tour' => $request->boolean('city_tour'),
+        ];
+
+        $labelField = [
+            'idjenis_transportasi_kedatangan' => 'Jenis transportasi kedatangan',
+            'stasiun_kedatangan' => 'Stasiun/titik kedatangan',
+            'tanggal_kedatangan' => 'Tanggal kedatangan',
+            'jam_kedatangan' => 'Jam kedatangan',
+            'idjenis_transportasi_kepulangan' => 'Jenis transportasi kepulangan',
+            'stasiun_kepulangan' => 'Stasiun/titik kepulangan',
+            'tanggal_kepulangan' => 'Tanggal kepulangan',
+            'jam_kepulangan' => 'Jam kepulangan',
+            'nama_hotel' => 'Nama hotel',
+            'city_tour' => 'City tour',
+        ];
+
+        $kolomWaktu = ['jam_kedatangan', 'jam_kepulangan'];
+        $kolomJenisTransport = ['idjenis_transportasi_kedatangan', 'idjenis_transportasi_kepulangan'];
+        $namaJenisTransport = DB::table('jenis_transport')->pluck('nama_jenis_transport', 'idjenis_transport');
+        $changes = [];
+
+        foreach ($update as $kolom => $nilaiBaru) {
+            $nilaiLama = $logistikLama->$kolom;
+
+            if ($kolom === 'city_tour') {
+                $nilaiLama = (bool) $nilaiLama;
+            } elseif (in_array($kolom, $kolomWaktu, true)) {
+                // Normalisasi "HH:MM:SS" (dari DB) vs "HH:MM" (dari input type="time")
+                // supaya tidak dianggap "berubah" kalau nilainya sebenarnya sama.
+                $nilaiLama = $nilaiLama !== null ? substr($nilaiLama, 0, 5) : null;
+            }
+
+            if ($nilaiLama != $nilaiBaru) {
+                if (in_array($kolom, $kolomJenisTransport, true)) {
+                    $label = $namaJenisTransport[$nilaiBaru] ?? $nilaiBaru;
+                } elseif (is_bool($nilaiBaru)) {
+                    $label = $nilaiBaru ? 'Ya' : 'Tidak';
+                } else {
+                    $label = $nilaiBaru;
+                }
+
+                $changes[] = "{$labelField[$kolom]} diubah menjadi '{$label}'";
+            }
+        }
+
+        if (empty($changes)) {
+            return $this->jsonResponse(200, 'Tidak ada perubahan data.');
+        }
+
+        try {
+            DB::transaction(function () use ($peserta, $update, $changes, $userdata) {
+                DB::table('peserta')
+                    ->where('idpeserta', $peserta->idpeserta)
+                    ->update($update);
+
+                foreach ($changes as $aktifitas) {
+                    $this->logPeserta($peserta->idpeserta, $userdata['idpengguna'], $aktifitas.' (oleh admin)');
+                }
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal memperbarui data logistik.');
+        }
+
+        return $this->jsonResponse(200, 'Data logistik berhasil diperbarui.');
     }
 
     /**
@@ -618,7 +968,7 @@ class PesertaAdminController extends Controller
             ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
             ->where('pe.idpeserta', $idpeserta)
             ->where('p.is_deleted', false)
-            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'pe.idjabatan')
+            ->select('p.idpengguna', 'pe.idpeserta', 'p.nama', 'p.email', 'p.no_wa', 'pe.idjabatan', 'p.idinstitusi_asal')
             ->first();
     }
 }

@@ -1035,53 +1035,6 @@ class PesertaController extends Controller
         return $this->jsonResponse(200, 'Berhasil mendaftar ulang ke acara wajib ini.');
     }
 
-    /**
-     * Re-encode an uploaded photo into exactly 600×800 JPEG (3:4 portrait),
-     * compressed to stay under 200 KB, and store it on the private `local`
-     * disk under `foto-peserta/`. Returns the stored relative path.
-     */
-    private function simpanFotoPeserta(int $idpeserta, string $binaryImage): string
-    {
-        $sumber = imagecreatefromstring($binaryImage);
-
-        if ($sumber === false) {
-            throw new \RuntimeException('Berkas bukan gambar yang valid.');
-        }
-
-        $tujuan = imagecreatetruecolor(600, 800);
-        imagecopyresampled($tujuan, $sumber, 0, 0, 0, 0, 600, 800, imagesx($sumber), imagesy($sumber));
-
-        $kualitas = 92;
-
-        do {
-            ob_start();
-            imagejpeg($tujuan, null, $kualitas);
-            $data = ob_get_clean();
-            $kualitas -= 5;
-        } while (strlen($data) > 200 * 1024 && $kualitas > 10);
-
-        $path = "foto-peserta/peserta-{$idpeserta}.jpg";
-        Storage::disk('local')->put($path, $data);
-
-        return $path;
-    }
-
-    private function institusiJenis(int $idInstitusiAsal): int
-    {
-        return (int) DB::table('institusi_asal')
-            ->where('idinstitusi_asal', $idInstitusiAsal)
-            ->value('idjenis_institusi');
-    }
-
-    private function jabatanValidUntukJenis(int $idJabatan, int $idJenisInstitusi): bool
-    {
-        return DB::table('jabatan')
-            ->join('jenis_institusi_jabatan', 'jenis_institusi_jabatan.idkelompok_jabatan', '=', 'jabatan.idkelompok_jabatan')
-            ->where('jenis_institusi_jabatan.idjenis_institusi', $idJenisInstitusi)
-            ->where('jabatan.idjabatan', $idJabatan)
-            ->exists();
-    }
-
     private function labelPtnPts(?string $value): string
     {
         return match ($value) {

@@ -39,6 +39,11 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-peserta/pindah-kontingen', [PesertaAdminController::class, 'pindahKontingen'])->name('admin.peserta.pindah-kontingen');
     Route::post('/admin-peserta/hapus-role', [PesertaAdminController::class, 'hapusRolePeserta'])->name('admin.peserta.hapus-role');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
+    Route::post('/admin-peserta/tambah', [PesertaAdminController::class, 'tambahPeserta'])->name('admin.peserta.tambah');
+    Route::get('/admin-peserta/foto/edit', [PesertaAdminController::class, 'foto'])->name('admin.peserta.foto.edit');
+    Route::post('/admin-peserta/foto/update', [PesertaAdminController::class, 'updateFoto'])->name('admin.peserta.foto.update');
+    Route::get('/admin-peserta/logistik', [PesertaAdminController::class, 'logistik'])->name('admin.peserta.logistik');
+    Route::post('/admin-peserta/logistik/update', [PesertaAdminController::class, 'updateLogistik'])->name('admin.peserta.logistik.update');
     Route::get('/admin-peserta/acara', [PesertaAdminController::class, 'acara'])->name('admin.peserta.acara');
     Route::get('/admin-peserta/pilih-acara', [PesertaAdminController::class, 'pilihAcara'])->name('admin.peserta.pilih-acara');
     Route::get('/admin-test-card', [AdminController::class, 'testCard'])->name('admin.test-card');
