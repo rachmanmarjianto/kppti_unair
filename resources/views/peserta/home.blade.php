@@ -60,18 +60,9 @@
                     <strong>{{ $jumlahLengkap }}</strong> dari <strong>{{ $jumlahPeserta }}</strong> peserta sudah lengkap datanya.
                 </p>
 
-                @if($semuaLengkap)
-                    <a href="{{ route('peserta.kartu-kontingen') }}" class="btn btn-primary">
-                        <i class="fa-solid fa-download me-1"></i> Unduh Kartu Registrasi Kontingen
-                    </a>
-                @else
-                    <button type="button" class="btn btn-secondary" disabled>
-                        <i class="fa-solid fa-download me-1"></i> Unduh Kartu Registrasi Kontingen
-                    </button>
-                    <div class="mt-2 text-muted" style="font-size: 12.5px;">
-                        Lengkapi semua data peserta terlebih dahulu (lihat menu "Peserta Kontingen") sebelum kartu registrasi bisa diunduh.
-                    </div>
-                @endif
+                <a href="{{ route('peserta.kartu-kontingen') }}" class="btn btn-primary">
+                    <i class="fa-solid fa-download me-1"></i> Unduh Kartu Registrasi Kontingen
+                </a>
             </div>
         </div>
     </div>
@@ -91,10 +82,13 @@
 
             var semuaLengkap = {!! json_encode($semuaLengkap) !!};
             var jumlahPeserta = {!! json_encode($jumlahPeserta) !!};
-            var jumlahBelumLengkap = {!! json_encode($jumlahBelumLengkap) !!};
-            var urlSekontingen = '{{ route('peserta.sekontingen') }}';
             var urlKartuKontingen = '{{ route('peserta.kartu-kontingen') }}';
 
+            // Modal peringatan "Lengkapi Data Peserta!" untuk kontingen yang
+            // belum lengkap dicabut (dikonfirmasi developer) — kartu
+            // kontingen sekarang selalu bisa diunduh, jadi modal itu tidak
+            // relevan lagi. Modal sukses untuk kontingen yang SUDAH lengkap
+            // tetap ditampilkan.
             if (semuaLengkap) {
                 Swal.fire({
                     icon: 'success',
@@ -106,19 +100,6 @@
                 }).then(function (result) {
                     if (result.isConfirmed) {
                         window.location.href = urlKartuKontingen;
-                    }
-                });
-            } else {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Lengkapi Data Peserta!',
-                    text: jumlahBelumLengkap + ' dari ' + jumlahPeserta + ' peserta di kontingen Anda belum lengkap datanya. Data setiap peserta wajib lengkap untuk dapat melakukan registrasi ulang di hari kedatangan.',
-                    showCancelButton: true,
-                    confirmButtonText: 'Lengkapi Sekarang',
-                    cancelButtonText: 'Nanti',
-                }).then(function (result) {
-                    if (result.isConfirmed) {
-                        window.location.href = urlSekontingen;
                     }
                 });
             }

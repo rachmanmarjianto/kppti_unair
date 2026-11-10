@@ -37,19 +37,23 @@ class PesertaController extends Controller
         $pesertaList = $this->pesertaDenganStatusLengkap($userdata['idinstitusi_asal']);
         $jumlahPeserta = $pesertaList->count();
         $jumlahLengkap = $pesertaList->where('lengkap', true)->count();
-        $jumlahBelumLengkap = $jumlahPeserta - $jumlahLengkap;
         $semuaLengkap = $jumlahPeserta > 0 && $jumlahLengkap === $jumlahPeserta;
 
-        // Modal peringatan kelengkapan data hanya tampil sekali per sesi
-        // login (dikonfirmasi developer) — session di-flush saat logout
+        // Modal "Data Kontingen Lengkap!" hanya tampil sekali per sesi login
+        // (dikonfirmasi developer) — session di-flush saat logout
         // (LoginController::logout()), jadi otomatis muncul lagi di login
-        // berikutnya tanpa perlu kolom/migrasi DB baru.
+        // berikutnya tanpa perlu kolom/migrasi DB baru. Modal peringatan
+        // untuk kontingen yang BELUM lengkap sudah dicabut (dikonfirmasi
+        // developer) — kartu kontingen sekarang selalu bisa diunduh
+        // berapa pun peserta yang belum lengkap (lihat
+        // `PesertaController::kartuKontingen()`), jadi peringatan itu tidak
+        // relevan lagi.
         $tampilkanModalKelengkapan = ! session('modal_kelengkapan_shown');
         session(['modal_kelengkapan_shown' => true]);
 
         return view('peserta.home', compact(
             'menu', 'submenu', 'institusi', 'jumlahPeserta', 'jumlahLengkap',
-            'jumlahBelumLengkap', 'semuaLengkap', 'tampilkanModalKelengkapan'
+            'semuaLengkap', 'tampilkanModalKelengkapan'
         ));
     }
 
@@ -709,26 +713,24 @@ class PesertaController extends Controller
     }
 
     /**
-     * Download the kontingen's registration card (PDF, A5) — only allowed once
-     * every peserta in the institusi has complete data (see
-     * docs/features/011-logistik-dan-kartu-kontingen.md §2.2).
+     * Download the kontingen's registration card (PDF, A5) — selalu bisa
+     * diunduh berapa pun peserta yang belum lengkap datanya (dikonfirmasi
+     * developer, gerbang kelengkapan data dicabut dari sini). Satu-satunya
+     * syarat yang tersisa: kontingen harus punya minimal 1 peserta untuk
+     * dicetak. Kelengkapan data tetap jadi syarat di tempat lain yang tidak
+     * terkait (lihat `AntrianRegisController::ambilNomor()` untuk gerbang
+     * registrasi ulang di lokasi acara).
      */
     public function kartuKontingen()
     {
         $userdata = session('userdata');
 
         $pesertaList = $this->pesertaDenganStatusLengkap($userdata['idinstitusi_asal']);
-        $belumLengkap = $pesertaList->where('lengkap', false);
 
-        if ($pesertaList->isEmpty() || $belumLengkap->isNotEmpty()) {
-            $namaBelumLengkap = $belumLengkap->pluck('nama')->implode(', ');
-            $pesan = $pesertaList->isEmpty()
-                ? 'Belum ada peserta dalam kontingen ini.'
-                : "Untuk mengunduh kartu registrasi, harap lengkapi semua data peserta. Belum lengkap: {$namaBelumLengkap}.";
-
+        if ($pesertaList->isEmpty()) {
             return redirect()->route('peserta.home')->with('status', [
                 'status' => 'danger',
-                'message' => $pesan,
+                'message' => 'Belum ada peserta dalam kontingen ini.',
             ]);
         }
 
