@@ -108,4 +108,5 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-kedatangan/petugas-meja/ubah', [MejaRegisAdminController::class, 'ubah'])->name('admin.kedatangan.petugas-meja.ubah');
     Route::post('/admin-kedatangan/petugas-meja/hapus', [MejaRegisAdminController::class, 'hapus'])->name('admin.kedatangan.petugas-meja.hapus');
     Route::get('/admin-kedatangan/kehadiran', [MejaRegisAdminController::class, 'kehadiranIndex'])->name('admin.kedatangan.kehadiran');
+    Route::get('/admin-kedatangan/kehadiran/peserta', [MejaRegisAdminController::class, 'pesertaHadirInstitusi'])->name('admin.kedatangan.kehadiran.peserta');
 });

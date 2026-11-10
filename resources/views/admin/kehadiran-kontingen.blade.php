@@ -44,6 +44,14 @@
 
         .stat-box-kehadiran-peserta .widget-content-area { background: linear-gradient(135deg, #0ca678, #0a9396) !important; }
         .stat-box-kehadiran-institusi .widget-content-area { background: linear-gradient(135deg, #f72585, #7209b7) !important; }
+
+        #table-kehadiran-kontingen tbody tr {
+            cursor: pointer;
+        }
+
+        #modal-peserta-hadir .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-peserta-hadir .table { color: #0e1726 !important; }
+        #modal-peserta-hadir .table thead th { background-color: #f1f2f3 !important; color: #0e1726 !important; }
     </style>
 @endsection
 
@@ -156,7 +164,7 @@
                         </thead>
                         <tbody>
                             @foreach($kehadiranList as $baris)
-                                <tr>
+                                <tr data-token="{{ $baris->token }}">
                                     <td>{{ $baris->nama_institusi }}</td>
                                     <td>{{ $baris->nama_jenis_institusi }}</td>
                                     <td>{{ $baris->jumlah_hadir }}</td>
@@ -164,6 +172,45 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: daftar peserta yang hadir milik satu institusi — kolom sama
+         seperti tabel peserta di layar "Sedang Dilayani" Petugas Meja
+         Registrasi (lihat resources/views/petugas-meja-regis/index.blade.php). --}}
+    <div class="modal fade" id="modal-peserta-hadir" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Peserta Hadir — <span class="sel-nama-institusi"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                    <div class="peserta-hadir-loading text-center py-4">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
+                    </div>
+
+                    <div class="table-responsive peserta-hadir-content d-none">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;" class="text-center">Hadir</th>
+                                    <th>Nama Peserta</th>
+                                    <th class="text-center">Foto Lengkap</th>
+                                    <th class="text-center">Narasumber</th>
+                                    <th class="text-center">Booth Crew</th>
+                                </tr>
+                            </thead>
+                            <tbody id="baris-peserta-hadir"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -196,6 +243,78 @@
 
             $('#filter-jenis-institusi').on('change', function () {
                 tableKehadiran.column(1).search(this.value).draw();
+            });
+
+            // ------- Modal: daftar peserta hadir per institusi (klik baris tabel) -------
+            var pesertaHadirUrl = '{{ route('admin.kedatangan.kehadiran.peserta') }}';
+            var $modalPesertaHadir = $('#modal-peserta-hadir');
+            var $pesertaHadirLoading = $modalPesertaHadir.find('.peserta-hadir-loading');
+            var $pesertaHadirContent = $modalPesertaHadir.find('.peserta-hadir-content');
+
+            $('#table-kehadiran-kontingen tbody').on('click', 'tr', function () {
+                var token = $(this).data('token');
+
+                if (!token) {
+                    return;
+                }
+
+                $pesertaHadirLoading.removeClass('d-none');
+                $pesertaHadirContent.addClass('d-none');
+                $modalPesertaHadir.find('.modal-alert').addClass('d-none').text('');
+                $modalPesertaHadir.find('.sel-nama-institusi').text('');
+                $modalPesertaHadir.modal('show');
+
+                $.ajax({
+                    url: pesertaHadirUrl + '?token=' + encodeURIComponent(token),
+                    method: 'GET',
+                    dataType: 'json',
+                })
+                .done(function (res) {
+                    $modalPesertaHadir.find('.sel-nama-institusi').text(res.data.nama_institusi);
+
+                    var $tbody = $('#baris-peserta-hadir').empty();
+
+                    if (res.data.pesertaList.length === 0) {
+                        $tbody.html('<tr><td colspan="5" class="text-center text-muted">Belum ada peserta yang hadir.</td></tr>');
+                    } else {
+                        res.data.pesertaList.forEach(function (peserta) {
+                            var $checkbox = $('<input>').attr({ type: 'checkbox', disabled: true }).addClass('form-check-input');
+                            $checkbox.prop('checked', !!peserta.hadir);
+
+                            var $fotoLengkap = peserta.fotoLengkap
+                                ? $('<span>').text('Ya')
+                                : $('<span>').addClass('text-danger').text('Belum');
+
+                            var $centangNarasumber = peserta.isNarasumberDiterima
+                                ? $('<i>').addClass('fa-solid fa-check text-success')
+                                : $('<span>');
+
+                            var $centangBoothCrew = peserta.isPetugasJaga
+                                ? $('<i>').addClass('fa-solid fa-check text-success')
+                                : $('<span>');
+
+                            $('<tr>')
+                                .append($('<td>').addClass('text-center').append($checkbox))
+                                .append($('<td>').text(peserta.nama))
+                                .append($('<td>').addClass('text-center').append($fotoLengkap))
+                                .append($('<td>').addClass('text-center').append($centangNarasumber))
+                                .append($('<td>').addClass('text-center').append($centangBoothCrew))
+                                .appendTo($tbody);
+                        });
+                    }
+
+                    $pesertaHadirLoading.addClass('d-none');
+                    $pesertaHadirContent.removeClass('d-none');
+                })
+                .fail(function (xhr) {
+                    var res = xhr.responseJSON || {};
+                    var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                    if (xhr.status === 0) {
+                        pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                    }
+                    $pesertaHadirLoading.addClass('d-none');
+                    $modalPesertaHadir.find('.modal-alert').removeClass('d-none').text(pesan);
+                });
             });
         });
     </script>

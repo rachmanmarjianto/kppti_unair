@@ -161,6 +161,7 @@ class MejaRegisAdminController extends Controller
             ->get()
             ->map(function ($baris) use ($jumlahHadirPerInstitusi) {
                 $baris->jumlah_hadir = $jumlahHadirPerInstitusi->get($baris->idinstitusi_asal, 0);
+                $baris->token = $this->encryptRouteValue($baris->idinstitusi_asal);
 
                 return $baris;
             });
@@ -193,5 +194,55 @@ class MejaRegisAdminController extends Controller
         return view('admin.kehadiran-kontingen', compact(
             'menu', 'submenu', 'kehadiranList', 'jenisInstitusiList', 'rekapJenisInstitusi', 'jumlahPesertaHadir', 'jumlahInstitusiHadir'
         ));
+    }
+
+    /**
+     * AJAX — daftar peserta yang hadir (`peserta.hadir = true`) milik satu
+     * institusi, untuk modal detail di baris tabel Kehadiran. Kolom sama
+     * seperti tabel peserta di layar "Sedang Dilayani" Petugas Meja
+     * Registrasi (lihat `PetugasMejaRegisController::dataKartuAktif()`):
+     * `fotoLengkap`, `isNarasumberDiterima`, `isPetugasJaga`.
+     */
+    public function pesertaHadirInstitusi(Request $request)
+    {
+        $idInstitusiAsal = $this->decryptRouteValue($request->query('token'));
+
+        if ($idInstitusiAsal === null) {
+            return $this->jsonResponse(404, 'Institusi tidak ditemukan.');
+        }
+
+        $idInstitusiAsal = (int) $idInstitusiAsal;
+
+        $institusi = DB::table('institusi_asal')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        if (! $institusi) {
+            return $this->jsonResponse(404, 'Institusi tidak ditemukan.');
+        }
+
+        $pesertaList = $this->pesertaAktifQuery($idInstitusiAsal)
+            ->where('pe.hadir', true)
+            ->select('pe.idpeserta', 'p.idpengguna', 'p.nama', 'pe.hadir', 'pe.path_foto')
+            ->orderBy('p.nama')
+            ->get();
+
+        $idPenggunaNarasumber = $this->idPenggunaNarasumberDiterima();
+
+        $idPesertaJaga = DB::table('petugas_jaga')
+            ->whereIn('idpeserta', $pesertaList->pluck('idpeserta'))
+            ->pluck('idpeserta')
+            ->unique();
+
+        $pesertaList = $pesertaList->map(function ($peserta) use ($idPenggunaNarasumber, $idPesertaJaga) {
+            $peserta->fotoLengkap = $peserta->path_foto !== null;
+            $peserta->isNarasumberDiterima = $idPenggunaNarasumber->contains($peserta->idpengguna);
+            $peserta->isPetugasJaga = $idPesertaJaga->contains($peserta->idpeserta);
+
+            return $peserta;
+        });
+
+        return $this->jsonResponse(200, 'Berhasil.', [
+            'nama_institusi' => $institusi->nama_institusi,
+            'pesertaList' => $pesertaList,
+        ]);
     }
 }
