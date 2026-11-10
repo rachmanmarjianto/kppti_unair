@@ -58,7 +58,13 @@ class MouController extends Controller
                     'ia_mitra.nama_institusi as nama_institusi_mitra', 'pic_mitra.nama as nama_pic_mitra'
                 )
                 ->get()
-                ->keyBy(fn ($p) => $p->idsesi_mou.'-'.$p->idruang_mou)
+                // `groupBy`, bukan `keyBy` — satu sel sesi×ruang bisa diisi
+                // lebih dari satu pertemuan sekaligus (ruang dengan kapasitas
+                // lebih dari 1 pengajuan per slot, dikonfirmasi oleh data:
+                // banyak kombinasi tanggal+sesi+ruang di `pertemuan_mou`
+                // punya lebih dari satu baris). `keyBy` akan diam-diam
+                // menimpa/menghilangkan pertemuan lain di sel yang sama.
+                ->groupBy(fn ($p) => $p->idsesi_mou.'-'.$p->idruang_mou)
             : collect();
 
         return view('peserta.mou-jadwal-temu', compact(

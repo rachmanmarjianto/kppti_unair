@@ -20,6 +20,41 @@
         #table-jadwal-temu td {
             min-width: 200px;
         }
+
+        /* `border-collapse: separate` (bukan default `collapse` punya
+           `table-bordered`) — dengan border collapse, border kolom yang
+           di-scroll ikut "menyatu" dengan border kolom sesi yang freeze
+           di titik temunya, jadi waktu di-scroll keduanya rebutan di
+           lapisan paling atas dan kelihatan tumpang tindih. Dipisah supaya
+           kolom sesi konsisten selalu di atas (lihat z-index di bawah). */
+        #table-jadwal-temu {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        /* Freeze kolom "Sesi" (kolom pertama) saat tabel di-scroll
+           horizontal — pola Excel freeze pane. Kolom lain (z-index: 1)
+           selalu di belakang kolom sesi (z-index: 2/3) saat di-scroll.
+           Background putih solid (bukan var(--bs-table-bg), yang
+           transparan di tema ini) supaya konten kolom lain tidak tembus
+           pandang di baliknya. */
+        #table-jadwal-temu th:not(:first-child),
+        #table-jadwal-temu td:not(:first-child) {
+            position: relative;
+            z-index: 1;
+        }
+
+        #table-jadwal-temu th:first-child,
+        #table-jadwal-temu td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #ffffff !important;
+        }
+
+        #table-jadwal-temu thead th:first-child {
+            z-index: 3;
+        }
     </style>
 @endsection
 
@@ -70,16 +105,16 @@
                                     <tr>
                                         <td class="fw-bold">{{ substr($sesi->jam_mulai, 0, 5) }} - {{ substr($sesi->jam_akhir, 0, 5) }}</td>
                                         @foreach($ruangList as $ruang)
-                                            @php $pertemuan = $pertemuanList->get($sesi->idsesi_mou.'-'.$ruang->idruang_mou); @endphp
+                                            @php $pertemuanSel = $pertemuanList->get($sesi->idsesi_mou.'-'.$ruang->idruang_mou, collect()); @endphp
                                             <td>
-                                                @if($pertemuan)
-                                                    <div class="kotak-pertemuan">
+                                                @forelse($pertemuanSel as $pertemuan)
+                                                    <div class="kotak-pertemuan @if(! $loop->last) mb-2 @endif">
                                                         <div><strong>Pengaju:</strong> {{ $pertemuan->nama_institusi_pengaju }} (PIC: {{ $pertemuan->nama_pic_pengaju ?? '-' }})</div>
                                                         <div><strong>Mitra:</strong> {{ $pertemuan->nama_institusi_mitra }} (PIC: {{ $pertemuan->nama_pic_mitra ?? '-' }})</div>
                                                     </div>
-                                                @else
+                                                @empty
                                                     <span class="text-muted">-</span>
-                                                @endif
+                                                @endforelse
                                             </td>
                                         @endforeach
                                     </tr>
