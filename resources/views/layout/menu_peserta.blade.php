@@ -85,6 +85,9 @@
                             <li @if($submenu == 'pengajuan') class="active" @endif>
                                 <a href="{{ route('peserta.mou.pengajuan') }}"> Pengajuan </a>
                             </li>
+                            <li @if($submenu == 'jadwal-temu') class="active" @endif>
+                                <a href="{{ route('peserta.mou.jadwal-temu') }}"> Jadwal Temu </a>
+                            </li>
                         </ul>
                     </li>
 

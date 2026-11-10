@@ -79,6 +79,11 @@
                         @if($pengajuan->no_wa_pic_pengaju)
                             <span class="text-muted">({{ $pengajuan->no_wa_pic_pengaju }})</span>
                         @endif
+                        @if($bisaUbahPicPengaju)
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="btn-ubah-pic-pengaju">
+                                <i class="fa-solid fa-pen"></i> Ubah
+                            </button>
+                        @endif
                     </div>
                 </div>
                 <div class="row mb-2">
@@ -336,6 +341,56 @@
                                 Swal.fire({ icon: 'error', title: 'Gagal', text: pesan }).then(function () {
                                     location.reload();
                                 });
+                            });
+                        });
+                    });
+
+                    var ubahPicUrl = '{{ route('peserta.mou.pengajuan.ubah-pic') }}';
+                    // Map, bukan object biasa — object dengan key berupa angka
+                    // (idpengguna) otomatis diurutkan ulang oleh JS mengikuti
+                    // urutan numerik key, bukan urutan abjad nama yang sudah
+                    // disusun di server (`orderBy('p.nama')`). Map
+                    // mempertahankan urutan insert apa pun bentuk key-nya.
+                    var opsiPicPengaju = new Map(@json($pesertaOptionsPengaju->map(fn ($p) => [$p->idpengguna, $p->nama])->values()));
+
+                    $('#btn-ubah-pic-pengaju').on('click', function () {
+                        Swal.fire({
+                            title: 'Ubah PIC Pengaju',
+                            input: 'select',
+                            inputOptions: opsiPicPengaju,
+                            inputPlaceholder: '-- Pilih PIC --',
+                            showCancelButton: true,
+                            confirmButtonText: 'Simpan',
+                            cancelButtonText: 'Batal',
+                            inputValidator: function (value) {
+                                if (!value) {
+                                    return 'Pilih PIC terlebih dahulu.';
+                                }
+                            },
+                        }).then(function (result) {
+                            if (!result.isConfirmed) {
+                                return;
+                            }
+
+                            $.ajax({
+                                url: ubahPicUrl,
+                                method: 'POST',
+                                data: { token: token, idpic_institusi_pengaju: result.value },
+                                dataType: 'json',
+                                headers: { 'X-CSRF-TOKEN': csrfToken },
+                            })
+                            .done(function (res) {
+                                Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                                    location.reload();
+                                });
+                            })
+                            .fail(function (xhr) {
+                                var res = xhr.responseJSON || {};
+                                var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                                if (xhr.status === 0) {
+                                    pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                                }
+                                Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
                             });
                         });
                     });

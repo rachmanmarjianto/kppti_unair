@@ -51,6 +51,8 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/mou/pengajuan/simpan', [MouController::class, 'simpanPengajuan'])->name('peserta.mou.pengajuan.simpan');
     Route::post('/mou/pengajuan/tunda', [MouController::class, 'tundaAjuan'])->name('peserta.mou.pengajuan.tunda');
     Route::post('/mou/pengajuan/batalkan', [MouController::class, 'batalkanAjuan'])->name('peserta.mou.pengajuan.batalkan');
+    Route::post('/mou/pengajuan/ubah-pic', [MouController::class, 'ubahPicPengaju'])->name('peserta.mou.pengajuan.ubah-pic');
+    Route::get('/mou/jadwal-temu', [MouController::class, 'jadwalTemu'])->name('peserta.mou.jadwal-temu');
     Route::get('/mou/pengajuan/opsi-sesi', [MouController::class, 'opsiSesiTersedia'])->name('peserta.mou.pengajuan.opsi-sesi');
     Route::post('/mou/pengajuan/respon-temu-diskusi', [MouController::class, 'responTemuDiskusi'])->name('peserta.mou.pengajuan.respon-temu-diskusi');
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');

@@ -21,6 +21,51 @@ class MouController extends Controller
      */
     private const IDJADWAL_PENGAJUAN_MOU = 6;
 
+    /**
+     * Submenu "Jadwal Temu" — matrix sesi × ruang untuk satu tanggal
+     * Temu Diskusi, hanya menampilkan pertemuan milik institusi sendiri
+     * (sebagai Pengaju maupun Mitra), bukan jadwal publik semua institusi
+     * (dikonfirmasi developer).
+     */
+    public function jadwalTemu(Request $request)
+    {
+        $menu = 'mou';
+        $submenu = 'jadwal-temu';
+
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $tanggalAktifList = DB::table('tanggal_mou')->where('status', true)->orderBy('tanggal')->get();
+        $idTanggalTerpilih = (int) ($request->query('idtanggal_mou') ?: $tanggalAktifList->first()?->idtanggal_mou);
+
+        $sesiList = DB::table('sesi_mou')->orderBy('jam_mulai')->get();
+        $ruangList = DB::table('ruang_mou')->orderBy('nama_ruang')->get();
+
+        $pertemuanList = $idTanggalTerpilih
+            ? DB::table('pertemuan_mou as pt')
+                ->join('pengajuan_mou as pm', 'pm.idpengajuan_mou', '=', 'pt.idpengajuan_mou')
+                ->join('institusi_asal as ia_pengaju', 'ia_pengaju.idinstitusi_asal', '=', 'pm.idinstitusi_pengaju')
+                ->join('institusi_asal as ia_mitra', 'ia_mitra.idinstitusi_asal', '=', 'pm.idinstitusi_mitra')
+                ->leftJoin('pengguna as pic_pengaju', 'pic_pengaju.idpengguna', '=', 'pm.idpic_institusi_pengaju')
+                ->leftJoin('pengguna as pic_mitra', 'pic_mitra.idpengguna', '=', 'pm.idpic_institusi_mitra')
+                ->where('pt.idtanggal_mou', $idTanggalTerpilih)
+                ->where(function ($query) use ($idInstitusiAsal) {
+                    $query->where('pm.idinstitusi_pengaju', $idInstitusiAsal)->orWhere('pm.idinstitusi_mitra', $idInstitusiAsal);
+                })
+                ->select(
+                    'pt.idsesi_mou', 'pt.idruang_mou',
+                    'ia_pengaju.nama_institusi as nama_institusi_pengaju', 'pic_pengaju.nama as nama_pic_pengaju',
+                    'ia_mitra.nama_institusi as nama_institusi_mitra', 'pic_mitra.nama as nama_pic_mitra'
+                )
+                ->get()
+                ->keyBy(fn ($p) => $p->idsesi_mou.'-'.$p->idruang_mou)
+            : collect();
+
+        return view('peserta.mou-jadwal-temu', compact(
+            'menu', 'submenu', 'tanggalAktifList', 'idTanggalTerpilih', 'sesiList', 'ruangList', 'pertemuanList'
+        ));
+    }
+
     public function listPeserta()
     {
         $menu = 'mou';
@@ -178,7 +223,14 @@ class MouController extends Controller
         // pengajuan yang masih berstatus 1 (Ajuan) yang boleh merespon.
         $bisaRespon = $pengajuan->posisi === 'Penerima' && (int) $pengajuan->status_ajuan === 1;
         $bisaBatalkan = $pengajuan->posisi === 'Pengaju' && (int) $pengajuan->status_ajuan === 1;
+        // Pengaju masih boleh mengganti PIC Pengaju selama Mitra belum
+        // merespon sama sekali (status masih 1/Ajuan) — dikonfirmasi
+        // developer, sama syaratnya dengan $bisaBatalkan.
+        $bisaUbahPicPengaju = $bisaBatalkan;
         $pesertaOptionsMitra = $bisaRespon
+            ? $this->pesertaAktifQuery($idInstitusiAsal)->select('p.idpengguna', 'p.nama')->orderBy('p.nama')->get()
+            : collect();
+        $pesertaOptionsPengaju = $bisaUbahPicPengaju
             ? $this->pesertaAktifQuery($idInstitusiAsal)->select('p.idpengguna', 'p.nama')->orderBy('p.nama')->get()
             : collect();
         $tanggalAktifList = $bisaRespon
@@ -189,7 +241,8 @@ class MouController extends Controller
 
         return view('peserta.mou-pengajuan-detail', compact(
             'menu', 'submenu', 'pengajuan', 'lampiranList', 'riwayatStatus', 'pertemuan',
-            'bisaRespon', 'bisaBatalkan', 'pesertaOptionsMitra', 'tanggalAktifList', 'token'
+            'bisaRespon', 'bisaBatalkan', 'bisaUbahPicPengaju', 'pesertaOptionsMitra',
+            'pesertaOptionsPengaju', 'tanggalAktifList', 'token'
         ));
     }
 
@@ -323,6 +376,84 @@ class MouController extends Controller
         $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Membatalkan pengajuan MoU.');
 
         return $this->jsonResponse(200, 'Pengajuan MoU berhasil dibatalkan.');
+    }
+
+    /**
+     * Ganti PIC Pengaju — hanya boleh selama pengajuan masih berstatus 1
+     * (Ajuan), yaitu Mitra belum merespon sama sekali, sama syaratnya
+     * dengan `batalkanAjuan()` (dikonfirmasi developer).
+     */
+    public function ubahPicPengaju(Request $request)
+    {
+        $userdata = session('userdata');
+        $idInstitusiAsal = $userdata['idinstitusi_asal'];
+
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'idpic_institusi_pengaju' => ['required', 'integer'],
+        ]);
+
+        $idpengajuanMou = $this->decryptRouteValue($validated['token']);
+
+        if ($idpengajuanMou === null) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        $pengajuan = DB::table('pengajuan_mou')
+            ->where('idpengajuan_mou', (int) $idpengajuanMou)
+            ->where('idinstitusi_pengaju', $idInstitusiAsal)
+            ->first();
+
+        if (! $pengajuan) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        if ((int) $pengajuan->status_ajuan !== 1) {
+            return $this->jsonResponse(422, 'Pengajuan ini sudah direspon Mitra — PIC Pengaju tidak bisa diubah lagi.');
+        }
+
+        $picValid = $this->pesertaAktifQuery($idInstitusiAsal)
+            ->where('p.idpengguna', $validated['idpic_institusi_pengaju'])
+            ->exists();
+
+        if (! $picValid) {
+            return $this->jsonResponse(422, 'PIC harus peserta dari kontingen Anda sendiri.');
+        }
+
+        if ($this->picPengajuSudahPenuh($validated['idpic_institusi_pengaju'], $pengajuan->idpengajuan_mou)) {
+            return $this->jsonResponse(422, 'PIC ini sudah menjadi PIC Pengaju di jumlah pengajuan MoU maksimal (mengikuti jumlah sesi Temu Diskusi yang tersedia). Pilih PIC lain.');
+        }
+
+        DB::table('pengajuan_mou')->where('idpengajuan_mou', $pengajuan->idpengajuan_mou)->update([
+            'idpic_institusi_pengaju' => $validated['idpic_institusi_pengaju'],
+        ]);
+
+        $this->logInstitusi($idInstitusiAsal, $userdata['idpengguna'], 'Mengubah PIC Pengaju pengajuan MoU.');
+
+        return $this->jsonResponse(200, 'PIC Pengaju berhasil diubah.');
+    }
+
+    /**
+     * True kalau seorang PIC sudah menjadi PIC Pengaju di jumlah pengajuan
+     * MoU aktif (bukan Dibatalkan) sebanyak batas maksimal atau lebih.
+     * Batasnya diambil dari jumlah baris `sesi_mou` (bukan angka tetap) —
+     * satu orang tidak mungkin menghadiri lebih dari satu Temu Diskusi
+     * pada waktu yang sama, dan pilihan waktu Temu Diskusi dibatasi oleh
+     * slot sesi yang tersedia (dikonfirmasi developer). Dipakai
+     * `simpanPengajuan()` (ajuan baru) dan `ubahPicPengaju()` (koreksi PIC
+     * Pengaju) — pada koreksi, `$kecualiIdpengajuanMou` dikecualikan dari
+     * hitungan supaya baris yang sedang dikoreksi sendiri tidak ikut
+     * dihitung dobel.
+     */
+    private function picPengajuSudahPenuh(int $idpic, ?int $kecualiIdpengajuanMou = null): bool
+    {
+        $jumlahDipakai = DB::table('pengajuan_mou')
+            ->where('idpic_institusi_pengaju', $idpic)
+            ->where('status_ajuan', '!=', self::STATUS_AJUAN_DIBATALKAN)
+            ->when($kecualiIdpengajuanMou, fn ($query) => $query->where('idpengajuan_mou', '!=', $kecualiIdpengajuanMou))
+            ->count();
+
+        return $jumlahDipakai >= DB::table('sesi_mou')->count();
     }
 
     /**
@@ -654,6 +785,10 @@ class MouController extends Controller
 
         if (! $picValid) {
             return $this->jsonResponse(422, 'PIC harus peserta dari kontingen Anda sendiri.');
+        }
+
+        if ($this->picPengajuSudahPenuh($validated['idpic_institusi_pengaju'])) {
+            return $this->jsonResponse(422, 'PIC ini sudah menjadi PIC Pengaju di jumlah pengajuan MoU maksimal (mengikuti jumlah sesi Temu Diskusi yang tersedia). Pilih PIC lain.');
         }
 
         $idInstitusiDiblokir = $this->institusiDenganPengajuanAktif($idInstitusiAsal);
