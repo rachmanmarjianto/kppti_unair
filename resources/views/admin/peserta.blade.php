@@ -228,6 +228,18 @@
                 </div>
             </div>
         </div>
+
+        <div class="col-xl-2 col-lg-4 col-md-6 col-12 layout-spacing">
+            <div class="statbox widget box box-shadow kartu-statistik" style="--warna-statistik: #8e44ad;">
+                <div class="widget-content widget-content-area">
+                    <span class="ikon-statistik"><i class="fa-solid fa-image"></i></span>
+                    <div>
+                        <p class="nilai-statistik">{{ $dashboard['jumlahFotoLengkap'] }}</p>
+                        <p class="label-statistik">Peserta Sudah Lengkap Foto</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-12 col-md-12 layout-spacing">
