@@ -58,7 +58,6 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/institusi-asal/update', [PesertaController::class, 'updateInstitusi'])->name('peserta.institusi.update');
     Route::get('/peserta-sekontingen', [PesertaController::class, 'sekontingen'])->name('peserta.sekontingen');
     Route::get('/peserta-sekontingen/detail', [PesertaController::class, 'detailPeserta'])->name('peserta.sekontingen.detail');
-    Route::post('/peserta-sekontingen/tambah', [PesertaController::class, 'tambahPeserta'])->name('peserta.sekontingen.tambah');
     Route::post('/peserta-sekontingen/update', [PesertaController::class, 'updatePeserta'])->name('peserta.sekontingen.update');
     Route::post('/peserta-sekontingen/reset-password', [PesertaController::class, 'resetPasswordPeserta'])->name('peserta.sekontingen.reset-password');
     Route::get('/peserta-sekontingen/logistik', [PesertaController::class, 'detailLogistik'])->name('peserta.sekontingen.logistik.detail');
@@ -69,6 +68,15 @@ Route::middleware(['akses:2'])->group(function () {
     Route::post('/peserta-sekontingen/foto/update', [PesertaController::class, 'updateFoto'])->name('peserta.sekontingen.foto.update');
     Route::get('/peserta-acara', [PesertaController::class, 'acara'])->name('peserta.acara');
     Route::get('/peserta-sekontingen/acara', [PesertaController::class, 'pilihAcara'])->name('peserta.sekontingen.acara');
+
+    // Menambah peserta baru ke kontingen hanya boleh selama jadwal_penting
+    // id=1 (Registrasi Peserta) sedang terbuka — syarat default 'buka' (cek
+    // timestamp_buka DAN timestamp_tutup). Mengedit data peserta yang sudah
+    // ada (updatePeserta) TIDAK digerbangi (tetap boleh kapan saja, lihat
+    // komentar di jadwalPenting:7 di bawah).
+    Route::middleware(['jadwalPenting:1'])->group(function () {
+        Route::post('/peserta-sekontingen/tambah', [PesertaController::class, 'tambahPeserta'])->name('peserta.sekontingen.tambah');
+    });
 
     // Khusus penjaga stand pameran × acara wajib — sengaja TIDAK digerbangi
     // jadwalPenting, karena mereka boleh membatalkan/mendaftar ulang acara
