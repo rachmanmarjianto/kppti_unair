@@ -15,6 +15,16 @@ class AcaraController extends Controller
 
         ['acaraList' => $topLevel, 'legendaHari' => $legendaHari] = $this->acaraListDenganPembicara();
 
+        // Urutkan berdasarkan hari lalu jam mulai (bukan urutan insert/idacara
+        // bawaan `acaraAktifQuery()`) — khusus halaman admin ini, acara/sub-acara
+        // tanpa hari/jam diletakkan di paling akhir.
+        $urutkanHariJam = fn ($acara) => [$acara->hari_ke ?? PHP_INT_MAX, $acara->jam_mulai ?? '99:99:99'];
+        $topLevel = $topLevel->sortBy($urutkanHariJam)->values()->map(function ($acara) use ($urutkanHariJam) {
+            $acara->children = $acara->children->sortBy($urutkanHariJam)->values();
+
+            return $acara;
+        });
+
         $keDataJs = function ($a) {
             return [
                 'idacara' => $a->idacara,
