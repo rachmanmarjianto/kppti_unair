@@ -14,13 +14,6 @@ class PesertaAdminController extends Controller
      */
     private const ROLE_PESERTA = 2;
 
-    /**
-     * idjabatan yang dianggap "pimpinan" institusi (puncak + wakil, per
-     * kelompok jabatan: Perguruan Tinggi, asosiasi/lembaga/pemerhati,
-     * LLDikti) — dikonfirmasi developer, bukan flag di tabel jabatan.
-     */
-    private const JABATAN_PIMPINAN = [1, 2, 6, 7, 9, 10];
-
     public function index()
     {
         $menu = 'users';

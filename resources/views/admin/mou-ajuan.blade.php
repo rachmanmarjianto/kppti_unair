@@ -260,17 +260,21 @@
                         <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
                     </div>
 
-                    <div class="table-responsive rekap-mou-content d-none">
-                        <table class="table table-sm table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Institusi</th>
-                                    <th>Status</th>
-                                    <th class="text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-rekap-mou"></tbody>
-                        </table>
+                    <div class="rekap-mou-content d-none">
+                        <div class="alert alert-info pimpinan-penerima-info d-none mb-3"></div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Institusi</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-rekap-mou"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -321,16 +325,19 @@
             var $modalRekapMou = $('#modal-rekap-mou');
             var $rekapMouLoading = $modalRekapMou.find('.rekap-mou-loading');
             var $rekapMouContent = $modalRekapMou.find('.rekap-mou-content');
+            var $pimpinanPenerimaInfo = $modalRekapMou.find('.pimpinan-penerima-info');
             var $tbodyRekapMou = $('#tbody-rekap-mou');
 
             $('#table-rekap-mou').on('click', '.cell-rekap-mou', function () {
                 var $sel = $(this);
                 var labelPeran = $sel.data('peran') === 'pengaju' ? 'Ajuan' : 'Permintaan';
+                var namaInstitusi = $sel.data('nama');
 
-                $('#judul-modal-rekap-mou').text(labelPeran + ' — ' + $sel.data('nama'));
+                $('#judul-modal-rekap-mou').text(labelPeran + ' — ' + namaInstitusi);
                 $rekapMouLoading.removeClass('d-none');
                 $rekapMouContent.addClass('d-none');
                 $modalRekapMou.find('.modal-alert').addClass('d-none').text('');
+                $pimpinanPenerimaInfo.addClass('d-none').html('');
                 $tbodyRekapMou.empty();
                 $modalRekapMou.modal('show');
 
@@ -341,7 +348,19 @@
                     dataType: 'json',
                 })
                 .done(function (res) {
-                    var daftar = res.data || [];
+                    var daftar = res.data.list || [];
+                    var pimpinanPenerima = res.data.pimpinanPenerima || [];
+
+                    if (pimpinanPenerima.length > 0) {
+                        var htmlPimpinan = '<strong>Kontak pimpinan ' + escapeHtml(namaInstitusi) + ' yang belum merespon:</strong><ul class="mb-0">';
+                        $.each(pimpinanPenerima, function (i, p) {
+                            htmlPimpinan += '<li>' + escapeHtml(p.nama) + ' — ' + escapeHtml(p.no_wa || '-') + '</li>';
+                        });
+                        htmlPimpinan += '</ul>';
+                        $pimpinanPenerimaInfo.html(htmlPimpinan).removeClass('d-none');
+                    } else if ($sel.data('peran') === 'mitra' && String($sel.data('status')) === '1') {
+                        $pimpinanPenerimaInfo.text('Belum ada data pimpinan terdaftar untuk ' + namaInstitusi + '.').removeClass('d-none');
+                    }
 
                     if (daftar.length === 0) {
                         $tbodyRekapMou.html('<tr><td colspan="3" class="text-center text-muted">Tidak ada data.</td></tr>');

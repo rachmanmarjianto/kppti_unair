@@ -105,7 +105,12 @@ class MouAdminController extends Controller
 
     /**
      * AJAX — daftar institusi lawan untuk satu sel rekap (peran + status)
-     * yang diklik di submenu "Ajuan".
+     * yang diklik di submenu "Ajuan". Khusus sel "Belum Merespon" di bawah
+     * grup "Penerima" (peran mitra, status 1) — institusi yang diklik
+     * ("penerima ajuan MoU") adalah yang belum merespon, bukan
+     * institusi-institusi lawan di daftar — jadi ikut dikembalikan kontak
+     * pimpinannya (`pimpinanInstitusi()`, base Controller) supaya Admin
+     * bisa menindaklanjuti langsung.
      */
     public function ajuanModalList(Request $request)
     {
@@ -121,12 +126,14 @@ class MouAdminController extends Controller
             return $this->jsonResponse(404, 'Institusi tidak ditemukan.');
         }
 
+        $idInstitusiAsal = (int) $idInstitusiAsal;
+
         $kolomSendiri = $validated['peran'] === 'pengaju' ? 'idinstitusi_pengaju' : 'idinstitusi_mitra';
         $kolomLawan = $validated['peran'] === 'pengaju' ? 'idinstitusi_mitra' : 'idinstitusi_pengaju';
 
         $query = DB::table('pengajuan_mou as pm')
             ->join('institusi_asal as ia_lawan', 'ia_lawan.idinstitusi_asal', '=', "pm.{$kolomLawan}")
-            ->where("pm.{$kolomSendiri}", (int) $idInstitusiAsal);
+            ->where("pm.{$kolomSendiri}", $idInstitusiAsal);
 
         if ($validated['status'] !== 'total') {
             $query->where('pm.status_ajuan', (int) $validated['status']);
@@ -144,7 +151,14 @@ class MouAdminController extends Controller
                 return $baris;
             });
 
-        return $this->jsonResponse(200, 'Berhasil.', $list);
+        $pimpinanPenerima = ($validated['peran'] === 'mitra' && $validated['status'] === '1')
+            ? $this->pimpinanInstitusi($idInstitusiAsal)
+            : collect();
+
+        return $this->jsonResponse(200, 'Berhasil.', [
+            'list' => $list,
+            'pimpinanPenerima' => $pimpinanPenerima,
+        ]);
     }
 
     /**

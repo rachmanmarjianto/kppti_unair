@@ -36,6 +36,16 @@ class Controller extends BaseController
     protected const TAGIHAN_STATUS_EXPIRED = 5;
 
     /**
+     * idjabatan yang dianggap "pimpinan" institusi (puncak + wakil, per
+     * kelompok jabatan: Perguruan Tinggi, asosiasi/lembaga/pemerhati,
+     * LLDikti) — dikonfirmasi developer, bukan flag di tabel jabatan.
+     * Dipakai bersama oleh PesertaAdminController (list lintas institusi)
+     * dan MouAdminController (kontak pimpinan institusi yang belum
+     * merespon ajuan MoU).
+     */
+    protected const JABATAN_PIMPINAN = [1, 2, 6, 7, 9, 10];
+
+    /**
      * Redirect target (route name) per active role. Role 3 (Nara Sumber)
      * doesn't have an area built yet. Shared by LoginController (initial
      * redirect after login) and PenggunaController (switching active role
@@ -622,6 +632,26 @@ class Controller extends BaseController
     protected function idPenggunaNarasumberDiterima(): Collection
     {
         return DB::table('narasumber')->where('status_ajuan', '5')->pluck('idpengguna')->unique();
+    }
+
+    /**
+     * Pimpinan (nama + no_wa) aktif milik satu institusi — idjabatan
+     * termasuk `self::JABATAN_PIMPINAN`. Dipakai mis. untuk menampilkan
+     * kontak yang perlu dihubungi saat sebuah institusi belum merespon
+     * ajuan MoU.
+     *
+     * @return Collection<int, object>
+     */
+    protected function pimpinanInstitusi(int $idInstitusiAsal): Collection
+    {
+        return DB::table('pengguna as p')
+            ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->where('p.is_deleted', false)
+            ->whereIn('pe.idjabatan', self::JABATAN_PIMPINAN)
+            ->select('p.nama', 'p.no_wa')
+            ->orderBy('p.nama')
+            ->get();
     }
 
     /**
