@@ -50,6 +50,22 @@
         }
 
         #modal-peserta-hadir .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+
+        .checkbox-hadir-institusi {
+            width: 1.3em;
+            height: 1.3em;
+        }
+
+        /* `!important` pada opacity perlu ditimpa khusus karena checkbox ini
+           disabled (read-only, cuma menampilkan status) — Bootstrap
+           memudarkan opacity `.form-check-input:disabled` jadi 0.5 bawaan,
+           yang membuat warna biru di bawah ini jadi pudar kalau tidak
+           ditimpa juga. */
+        .checkbox-hadir-institusi:checked {
+            background-color: #4361ee !important;
+            border-color: #4361ee !important;
+            opacity: 1 !important;
+        }
         #modal-peserta-hadir .table { color: #0e1726 !important; }
         #modal-peserta-hadir .table thead th { background-color: #f1f2f3 !important; color: #0e1726 !important; }
     </style>
@@ -278,7 +294,7 @@
                         $tbody.html('<tr><td colspan="5" class="text-center text-muted">Belum ada peserta yang hadir.</td></tr>');
                     } else {
                         res.data.pesertaList.forEach(function (peserta) {
-                            var $checkbox = $('<input>').attr({ type: 'checkbox', disabled: true }).addClass('form-check-input');
+                            var $checkbox = $('<input>').attr({ type: 'checkbox', disabled: true }).addClass('form-check-input checkbox-hadir-institusi');
                             $checkbox.prop('checked', !!peserta.hadir);
 
                             var $fotoLengkap = peserta.fotoLengkap
