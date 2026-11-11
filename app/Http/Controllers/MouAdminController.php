@@ -192,9 +192,11 @@ class MouAdminController extends Controller
      * select di modal "Belum Merespon") memberi tahu institusinya punya
      * ajuan MoU yang belum direspon. `$jumlahBelumRespon` dihitung ulang
      * di sini (bukan dipercaya dari payload klien) supaya tidak basi
-     * antara modal dibuka dan tombol diklik. Setiap pengiriman dicatat ke
-     * `log_notif_mou` (pola sama seperti `Controller::kirimWaPameranTerpilih()`
-     * dan `log_notif_pameran`).
+     * antara modal dibuka dan tombol diklik. Respons `kirim_wa_oca_token_3()`
+     * dicek isinya ("sukses"), bukan cuma exception — pola sama seperti
+     * `PesertaAdminController::resetPassword()` — supaya kegagalan dari sisi
+     * gateway (bukan HTTP) tetap terdeteksi. `log_notif_mou` hanya dicatat
+     * kalau benar-benar terkirim.
      */
     public function kirimWaBelumRespon(Request $request)
     {
@@ -226,16 +228,31 @@ class MouAdminController extends Controller
             return $this->jsonResponse(422, 'Institusi ini sudah tidak memiliki ajuan yang belum direspon.');
         }
 
+        // 3 baris wajib terisi (gateway WA ini memang "kirim-wa_3line_token",
+        // 3 baris template) — baris kosong terbukti membuat pengiriman gagal
+        // di production meski tidak melempar exception, karena gateway-nya
+        // sendiri yang menolak, bukan request HTTP-nya. Dipecah dari kalimat
+        // asli, tanpa menambah kata baru.
         $pesan1 = "Anda menerima {$jumlahBelumRespon} ajuan kerjasama MoU yang belum anda respon,";
-        $pesan2 = 'silahkan login ke halaman KPPTI 2026 untuk memberi respon ajuan kerjasama tersebut.';
-        $pesan3 = '';
+        $pesan2 = 'silahkan login ke halaman KPPTI 2026';
+        $pesan3 = 'untuk memberi respon ajuan kerjasama tersebut.';
 
         try {
-            $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $penerima->no_wa);
+            $res = $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $penerima->no_wa);
         } catch (\Throwable $e) {
             report($e);
 
             return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp.');
+        }
+
+        // Curl bisa sukses (tidak melempar exception) walau gateway-nya
+        // sendiri menolak permintaan — responsnya berupa teks "sukses"
+        // kalau benar-benar terkirim, pola sama seperti
+        // PesertaAdminController::resetPassword()/PesertaController::tambahPeserta().
+        // Tanpa pengecekan ini method akan selalu lapor berhasil walau WA-nya
+        // tidak pernah terkirim.
+        if (strtoupper($res) != strtoupper('sukses')) {
+            return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp. Respon: '.$res);
         }
 
         $userdata = session('userdata');
@@ -251,7 +268,7 @@ class MouAdminController extends Controller
             'sent_by' => $userdata['idpengguna'] ?? null,
         ]);
 
-        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.');
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.', ['wa_response' => $res]);
     }
 
     /**
