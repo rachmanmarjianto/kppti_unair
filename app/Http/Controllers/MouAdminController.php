@@ -208,7 +208,7 @@ class MouAdminController extends Controller
             ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
             ->where('pe.idpeserta', $validated['idpeserta'])
             ->where('p.is_deleted', false)
-            ->select('p.nama', 'p.no_wa', 'p.idinstitusi_asal')
+            ->select('p.idpengguna', 'p.nama', 'p.no_wa', 'p.idinstitusi_asal')
             ->first();
 
         if (! $penerima) {
@@ -234,8 +234,8 @@ class MouAdminController extends Controller
         // sendiri yang menolak, bukan request HTTP-nya. Dipecah dari kalimat
         // asli, tanpa menambah kata baru.
         $pesan1 = "Anda menerima {$jumlahBelumRespon} ajuan kerjasama MoU yang belum anda respon,";
-        $pesan2 = 'silahkan login ke halaman KPPTI 2026';
-        $pesan3 = 'untuk memberi respon ajuan kerjasama tersebut.';
+        $pesan2 = 'silahkan login ke halaman KPPTI 2026 untuk memberi respon ajuan kerjasama tersebut.';
+        $pesan3 = '12 November 2024 adalah batas akhir untuk memberi respon.';
 
         try {
             $res = $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $penerima->no_wa);
@@ -258,8 +258,8 @@ class MouAdminController extends Controller
         $userdata = session('userdata');
 
         DB::table('log_notif_mou')->insert([
-            'idinstitusi_asal' => $penerima->idinstitusi_asal,
-            'idpeserta' => $validated['idpeserta'],
+            'idinstitusi_asal_penerima' => $penerima->idinstitusi_asal,
+            'idpengguna_penerima' => $penerima->idpengguna,
             'pesan_1' => $pesan1,
             'pesan_2' => $pesan2,
             'pesan_3' => $pesan3,
