@@ -879,6 +879,35 @@ class Controller extends BaseController
     }
 
     /**
+     * Sama seperti `hapusIdcardPengguna()`, tapi sekaligus mencatat
+     * penghapusannya ke `history_card` (`aktifitas` = 2, delete) — dipakai
+     * khusus menu "Test Card" (role Admin & Petugas Kit; lihat
+     * `AdminController::hapusIdcardTestCard()` dan
+     * `PetugasKitController::hapusIdcardTestCard()`). `$doneBy` adalah
+     * idpengguna yang melakukan penghapusan (admin/petugas yang login).
+     */
+    protected function hapusIdcardPenggunaDenganLog(int $idpengguna, ?int $doneBy): bool
+    {
+        $pengguna = DB::table('pengguna')->where('idpengguna', $idpengguna)->where('is_deleted', false)->first();
+
+        if (! $pengguna) {
+            return false;
+        }
+
+        DB::table('pengguna')->where('idpengguna', $idpengguna)->update(['idcard' => null]);
+
+        DB::table('history_card')->insert([
+            'idpengguna' => $idpengguna,
+            'aktifitas' => 2,
+            'idcard' => $pengguna->idcard,
+            'done_at' => now(),
+            'done_by' => $doneBy,
+        ]);
+
+        return true;
+    }
+
+    /**
      * The idjenis_transport of the active ("status" = true) "Kendaraan Pribadi"
      * row — looked up by name instead of a hardcoded ID, since the seeder keeps
      * an inactive duplicate row around.

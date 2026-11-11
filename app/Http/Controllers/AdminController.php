@@ -543,7 +543,9 @@ class AdminController extends Controller
             'idpengguna' => ['required', 'integer'],
         ]);
 
-        if (! $this->hapusIdcardPengguna($validated['idpengguna'])) {
+        $userdata = session('userdata');
+
+        if (! $this->hapusIdcardPenggunaDenganLog($validated['idpengguna'], $userdata['idpengguna'])) {
             return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
         }
 

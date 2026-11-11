@@ -199,6 +199,13 @@ class PetugasKitController extends Controller
      * aktif (dikonfirmasi developer — satu kartu fisik tidak boleh terpetakan
      * ke dua akun berbeda); boleh ditimpa bebas kapan pun.
      */
+    /**
+     * Simpan idcard satu pengguna, dicatat ke `history_card`: kalau
+     * sebelumnya belum ada idcard, cuma 1 baris log aktifitas=1 (tambah);
+     * kalau sebelumnya SUDAH ada idcard (ditimpa), dicatat 2 baris —
+     * aktifitas=2 (delete, idcard lama) lalu aktifitas=1 (tambah, idcard
+     * baru), dikonfirmasi developer.
+     */
     public function simpanIdcard(Request $request)
     {
         $validated = $request->validate([
@@ -222,7 +229,31 @@ class PetugasKitController extends Controller
             return $this->jsonResponse(409, 'ID card ini sudah dipakai pengguna lain.');
         }
 
-        DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard']]);
+        $idcardLama = $pengguna->idcard;
+        $userdata = session('userdata');
+        $waktu = now();
+
+        DB::transaction(function () use ($validated, $idcardLama, $userdata, $waktu) {
+            DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard']]);
+
+            if ($idcardLama !== null && $idcardLama !== '') {
+                DB::table('history_card')->insert([
+                    'idpengguna' => $validated['idpengguna'],
+                    'aktifitas' => 2,
+                    'idcard' => $idcardLama,
+                    'done_at' => $waktu,
+                    'done_by' => $userdata['idpengguna'],
+                ]);
+            }
+
+            DB::table('history_card')->insert([
+                'idpengguna' => $validated['idpengguna'],
+                'aktifitas' => 1,
+                'idcard' => $validated['idcard'],
+                'done_at' => $waktu,
+                'done_by' => $userdata['idpengguna'],
+            ]);
+        });
 
         return $this->jsonResponse(200, 'ID card berhasil disimpan.');
     }
@@ -238,7 +269,9 @@ class PetugasKitController extends Controller
             'idpengguna' => ['required', 'integer'],
         ]);
 
-        if (! $this->hapusIdcardPengguna($validated['idpengguna'])) {
+        $userdata = session('userdata');
+
+        if (! $this->hapusIdcardPenggunaDenganLog($validated['idpengguna'], $userdata['idpengguna'])) {
             return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
         }
 
@@ -315,7 +348,9 @@ class PetugasKitController extends Controller
             'idpengguna' => ['required', 'integer'],
         ]);
 
-        if (! $this->hapusIdcardPengguna($validated['idpengguna'])) {
+        $userdata = session('userdata');
+
+        if (! $this->hapusIdcardPenggunaDenganLog($validated['idpengguna'], $userdata['idpengguna'])) {
             return $this->jsonResponse(404, 'Pengguna tidak ditemukan.');
         }
 
