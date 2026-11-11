@@ -278,6 +278,38 @@ class MouAdminController extends Controller
     }
 
     /**
+     * AJAX — riwayat notifikasi WA MoU yang sudah dikirim untuk satu
+     * institusi, dipicu klik teks jumlah notifikasi di modal "Belum
+     * Merespon". Pola sama seperti
+     * `PameranAdminController::logNotifikasiTerpilih()` (`log_notif_pameran`).
+     */
+    public function riwayatNotifikasi(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $idInstitusiAsal = $this->decryptRouteValue($validated['token']);
+
+        if ($idInstitusiAsal === null) {
+            return $this->jsonResponse(404, 'Institusi tidak ditemukan.');
+        }
+
+        $logs = DB::table('log_notif_mou as l')
+            ->leftJoin('pengguna as penerima', 'penerima.idpengguna', '=', 'l.idpengguna_penerima')
+            ->leftJoin('pengguna as pengirim', 'pengirim.idpengguna', '=', 'l.sent_by')
+            ->where('l.idinstitusi_asal_penerima', (int) $idInstitusiAsal)
+            ->select(
+                'l.pesan_1', 'l.pesan_2', 'l.pesan_3', 'l.no_wa', 'l.created_at',
+                'penerima.nama as nama_penerima', 'pengirim.nama as nama_pengirim'
+            )
+            ->orderByDesc('l.created_at')
+            ->get();
+
+        return $this->jsonResponse(200, 'Berhasil.', ['logs' => $logs]);
+    }
+
+    /**
      * Submenu "Sesi MoU" — view only.
      */
     public function sesiIndex()

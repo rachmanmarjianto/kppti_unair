@@ -45,6 +45,10 @@
         #modal-rekap-mou .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
         #modal-rekap-mou .kirim-wa-penerima-box { border-color: #e0e6ed !important; }
 
+        #modal-riwayat-notifikasi-mou .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-riwayat-notifikasi-mou .table { color: #0e1726 !important; }
+        #modal-riwayat-notifikasi-mou .table thead th { background-color: #f1f2f3 !important; color: #0e1726 !important; }
+
         /* `.widget-content-area` punya background putih/gelap sendiri dari
            tema (dt-global_style.css, termasuk varian `body.dark` yang
            spesifisitasnya lebih tinggi dari sekadar menata ulang class di
@@ -268,7 +272,7 @@
                     <div class="rekap-mou-content d-none">
                         <div class="kirim-wa-penerima-box d-none mb-3 p-3 border rounded">
                             <p class="mb-2"><strong><span class="sel-jumlah-belum-respon"></span> ajuan belum direspon</strong> oleh institusi ini. Pilih penerima notifikasi WA:</p>
-                            <p class="mb-2" style="color: #e2a03f;"><span class="sel-jumlah-notif-terkirim"></span></p>
+                            <p class="mb-2 riwayat-notifikasi-trigger" style="color: #e2a03f; cursor: pointer; text-decoration: underline;" title="Klik untuk lihat riwayat notifikasi"><span class="sel-jumlah-notif-terkirim"></span></p>
                             <div class="row g-2 align-items-start">
                                 <div class="col-md-8">
                                     <select class="form-select select-penerima-wa"></select>
@@ -302,6 +306,44 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: riwayat notifikasi WA MoU yang sudah dikirim untuk satu
+         institusi — dipicu klik teks jumlah notifikasi di modal rekap. --}}
+    <div class="modal fade" id="modal-riwayat-notifikasi-mou" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Riwayat Notifikasi WA — <span class="sel-riwayat-notifikasi-institusi"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                    <div class="riwayat-notifikasi-loading text-center py-4">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
+                    </div>
+
+                    <div class="table-responsive riwayat-notifikasi-content d-none">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>Penerima</th>
+                                    <th>No. WA</th>
+                                    <th>Pesan</th>
+                                    <th>Dikirim Oleh</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-riwayat-notifikasi-mou"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page-js')
@@ -314,6 +356,7 @@
             var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var listUrl = '{{ route('admin.mou.ajuan.list') }}';
             var kirimWaUrl = '{{ route('admin.mou.ajuan.kirim-wa') }}';
+            var riwayatNotifikasiUrl = '{{ route('admin.mou.ajuan.riwayat-notifikasi') }}';
             var detailUrl = '{{ route('admin.mou.pengajuan.detail') }}';
 
             var tableRekapMou = $('#table-rekap-mou').DataTable({
@@ -393,6 +436,7 @@
 
                     if (res.data.jumlahBelumRespon > 0 && pesertaPenerima.length > 0) {
                         $kirimWaBox.find('.sel-jumlah-belum-respon').text(res.data.jumlahBelumRespon);
+                        $kirimWaBox.data('token', $sel.data('token')).data('nama-institusi', namaInstitusi);
                         tampilkanJumlahNotifTerkirim(res.data.jumlahNotifTerkirim || 0);
 
                         var idpesertaDefault = null;
@@ -483,6 +527,65 @@
                         $btnKirimWaPenerima.html(teksAwal);
                         sinkronkanTombolKirimWa();
                     });
+                });
+            });
+
+            // ------- Riwayat notifikasi WA MoU (klik teks jumlah notifikasi) -------
+            var $modalRiwayatNotifikasi = $('#modal-riwayat-notifikasi-mou');
+            var $riwayatNotifikasiLoading = $modalRiwayatNotifikasi.find('.riwayat-notifikasi-loading');
+            var $riwayatNotifikasiContent = $modalRiwayatNotifikasi.find('.riwayat-notifikasi-content');
+            var $tbodyRiwayatNotifikasi = $('#tbody-riwayat-notifikasi-mou');
+
+            $('.riwayat-notifikasi-trigger').on('click', function () {
+                var token = $kirimWaBox.data('token');
+
+                if (!token) {
+                    return;
+                }
+
+                $modalRiwayatNotifikasi.find('.sel-riwayat-notifikasi-institusi').text($kirimWaBox.data('nama-institusi') || '');
+                $riwayatNotifikasiLoading.removeClass('d-none');
+                $riwayatNotifikasiContent.addClass('d-none');
+                $modalRiwayatNotifikasi.find('.modal-alert').addClass('d-none').text('');
+                $tbodyRiwayatNotifikasi.empty();
+                $modalRiwayatNotifikasi.modal('show');
+
+                $.ajax({
+                    url: riwayatNotifikasiUrl,
+                    method: 'GET',
+                    data: { token: token },
+                    dataType: 'json',
+                })
+                .done(function (res) {
+                    var logs = res.data.logs || [];
+
+                    if (logs.length === 0) {
+                        $tbodyRiwayatNotifikasi.html('<tr><td colspan="5" class="text-center text-muted">Belum ada notifikasi yang dikirim.</td></tr>');
+                    } else {
+                        $.each(logs, function (i, log) {
+                            var pesan = [log.pesan_1, log.pesan_2, log.pesan_3].filter(Boolean).join(' ');
+
+                            $tbodyRiwayatNotifikasi.append(
+                                '<tr>' +
+                                '<td>' + escapeHtml(log.created_at) + '</td>' +
+                                '<td>' + escapeHtml(log.nama_penerima || '-') + '</td>' +
+                                '<td>' + escapeHtml(log.no_wa || '-') + '</td>' +
+                                '<td>' + escapeHtml(pesan) + '</td>' +
+                                '<td>' + escapeHtml(log.nama_pengirim || '-') + '</td>' +
+                                '</tr>'
+                            );
+                        });
+                    }
+
+                    $riwayatNotifikasiLoading.addClass('d-none');
+                    $riwayatNotifikasiContent.removeClass('d-none');
+                })
+                .fail(function (xhr) {
+                    var resErr = xhr.responseJSON || {};
+                    var pesan = resErr.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+
+                    $riwayatNotifikasiLoading.addClass('d-none');
+                    $modalRiwayatNotifikasi.find('.modal-alert').removeClass('d-none').text(pesan);
                 });
             });
         });
