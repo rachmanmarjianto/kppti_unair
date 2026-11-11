@@ -232,6 +232,7 @@
                                 <thead>
                                     <tr>
                                         <th>Petugas Meja Registrasi</th>
+                                        <th>Nomor Meja</th>
                                         <th>Waktu Melayani</th>
                                     </tr>
                                 </thead>
@@ -337,11 +338,12 @@
                     var $tbodyRiwayat = $('#baris-riwayat-petugas').empty();
 
                     if (res.data.riwayatPetugas.length === 0) {
-                        $tbodyRiwayat.html('<tr><td colspan="2" class="text-center text-muted">Belum ada riwayat petugas yang melayani.</td></tr>');
+                        $tbodyRiwayat.html('<tr><td colspan="3" class="text-center text-muted">Belum ada riwayat petugas yang melayani.</td></tr>');
                     } else {
                         res.data.riwayatPetugas.forEach(function (riwayat) {
                             $('<tr>')
                                 .append($('<td>').text(riwayat.nama))
+                                .append($('<td>').text(riwayat.nomor_meja))
                                 .append($('<td>').text(riwayat.created_at))
                                 .appendTo($tbodyRiwayat);
                         });

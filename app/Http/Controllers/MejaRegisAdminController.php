@@ -248,13 +248,17 @@ class MejaRegisAdminController extends Controller
         // dipakai sebagai "waktu melayani" karena `antrian_regis` tidak
         // punya kolom tersendiri untuk waktu selesai dilayani. Bisa lebih
         // dari satu baris kalau institusi ini registrasi ulang/ditangani
-        // beberapa kali.
+        // beberapa kali. `nomor_meja` ikut ditampilkan (dikonfirmasi
+        // developer) karena nama petugas/meja ini dibaca dari kondisi
+        // `meja_regis` SAAT INI, bukan snapshot historis — kalau nanti
+        // pemetaan meja diubah/dihapus, nomor meja tetap jadi referensi
+        // tambahan yang lebih stabil.
         $riwayatPetugas = DB::table('antrian_regis as ar')
             ->join('meja_regis as mr', 'mr.idmeja_regis', '=', 'ar.dipanggil_oleh')
             ->join('pengguna as p', 'p.idpengguna', '=', 'mr.idpengguna')
             ->where('ar.idinstitusi_asal', $idInstitusiAsal)
             ->where('ar.status', '4')
-            ->select('p.nama', 'ar.created_at')
+            ->select('p.nama', 'mr.nomor_meja', 'ar.created_at')
             ->orderByDesc('ar.created_at')
             ->get();
 
