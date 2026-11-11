@@ -210,19 +210,34 @@
                         <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
                     </div>
 
-                    <div class="table-responsive peserta-hadir-content d-none">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th style="width: 60px;" class="text-center">Hadir</th>
-                                    <th>Nama Peserta</th>
-                                    <th class="text-center">Foto Lengkap</th>
-                                    <th class="text-center">Narasumber</th>
-                                    <th class="text-center">Booth Crew</th>
-                                </tr>
-                            </thead>
-                            <tbody id="baris-peserta-hadir"></tbody>
-                        </table>
+                    <div class="peserta-hadir-content d-none">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;" class="text-center">Hadir</th>
+                                        <th>Nama Peserta</th>
+                                        <th class="text-center">Foto Lengkap</th>
+                                        <th class="text-center">Narasumber</th>
+                                        <th class="text-center">Booth Crew</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="baris-peserta-hadir"></tbody>
+                            </table>
+                        </div>
+
+                        <h6 class="mt-4">Riwayat Petugas Meja yang Melayani</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Petugas Meja Registrasi</th>
+                                        <th>Waktu Melayani</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="baris-riwayat-petugas"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -316,6 +331,19 @@
                                 .append($('<td>').addClass('text-center').append($centangNarasumber))
                                 .append($('<td>').addClass('text-center').append($centangBoothCrew))
                                 .appendTo($tbody);
+                        });
+                    }
+
+                    var $tbodyRiwayat = $('#baris-riwayat-petugas').empty();
+
+                    if (res.data.riwayatPetugas.length === 0) {
+                        $tbodyRiwayat.html('<tr><td colspan="2" class="text-center text-muted">Belum ada riwayat petugas yang melayani.</td></tr>');
+                    } else {
+                        res.data.riwayatPetugas.forEach(function (riwayat) {
+                            $('<tr>')
+                                .append($('<td>').text(riwayat.nama))
+                                .append($('<td>').text(riwayat.created_at))
+                                .appendTo($tbodyRiwayat);
                         });
                     }
 

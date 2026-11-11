@@ -240,9 +240,28 @@ class MejaRegisAdminController extends Controller
             return $peserta;
         });
 
+        // Riwayat petugas meja yang menyelesaikan layanan (status '4'
+        // Terlayani) untuk institusi ini — diambil langsung dari
+        // `antrian_regis.dipanggil_oleh` (dikonfirmasi developer), bukan
+        // dari `log_antrian_regis` (tabel itu ada di skema tapi belum
+        // pernah ditulis kode mana pun, jadi selalu kosong). `created_at`
+        // dipakai sebagai "waktu melayani" karena `antrian_regis` tidak
+        // punya kolom tersendiri untuk waktu selesai dilayani. Bisa lebih
+        // dari satu baris kalau institusi ini registrasi ulang/ditangani
+        // beberapa kali.
+        $riwayatPetugas = DB::table('antrian_regis as ar')
+            ->join('meja_regis as mr', 'mr.idmeja_regis', '=', 'ar.dipanggil_oleh')
+            ->join('pengguna as p', 'p.idpengguna', '=', 'mr.idpengguna')
+            ->where('ar.idinstitusi_asal', $idInstitusiAsal)
+            ->where('ar.status', '4')
+            ->select('p.nama', 'ar.created_at')
+            ->orderByDesc('ar.created_at')
+            ->get();
+
         return $this->jsonResponse(200, 'Berhasil.', [
             'nama_institusi' => $institusi->nama_institusi,
             'pesertaList' => $pesertaList,
+            'riwayatPetugas' => $riwayatPetugas,
         ]);
     }
 }
