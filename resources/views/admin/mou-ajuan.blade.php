@@ -7,6 +7,9 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/table/datatable/datatables.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/table/datatable/dt-global_style.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/table/datatable/dt-global_style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
     <style>
         .dataTables_wrapper .page-item.previous .page-link,
         .dataTables_wrapper .page-item.next .page-link,
@@ -39,6 +42,8 @@
         #modal-rekap-mou .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
         #modal-rekap-mou .table { color: #0e1726 !important; }
         #modal-rekap-mou .table thead th { background-color: #f1f2f3 !important; color: #0e1726 !important; }
+        #modal-rekap-mou .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+        #modal-rekap-mou .kirim-wa-penerima-box { border-color: #e0e6ed !important; }
 
         /* `.widget-content-area` punya background putih/gelap sendiri dari
            tema (dt-global_style.css, termasuk varian `body.dark` yang
@@ -261,7 +266,20 @@
                     </div>
 
                     <div class="rekap-mou-content d-none">
-                        <div class="alert alert-info pimpinan-penerima-info d-none mb-3"></div>
+                        <div class="kirim-wa-penerima-box d-none mb-3 p-3 border rounded">
+                            <p class="mb-2"><strong><span class="sel-jumlah-belum-respon"></span> ajuan belum direspon</strong> oleh institusi ini. Pilih penerima notifikasi WA:</p>
+                            <div class="row g-2 align-items-start">
+                                <div class="col-md-8">
+                                    <select class="form-select select-penerima-wa"></select>
+                                    <div class="form-text text-danger d-none peringatan-tanpa-wa">Peserta ini belum memiliki nomor WhatsApp.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-primary w-100 btn-kirim-wa-penerima">
+                                        <span class="btn-label"><i class="fa-solid fa-paper-plane me-1"></i> Kirim WA</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered">
@@ -288,10 +306,13 @@
 @section('page-js')
     <script src="{{ asset('src/plugins/src/global/vendors.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/datatables.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.min.js') }}"></script>
 
     <script>
         $(function () {
+            var csrfToken = $('meta[name="csrf-token"]').attr('content');
             var listUrl = '{{ route('admin.mou.ajuan.list') }}';
+            var kirimWaUrl = '{{ route('admin.mou.ajuan.kirim-wa') }}';
             var detailUrl = '{{ route('admin.mou.pengajuan.detail') }}';
 
             var tableRekapMou = $('#table-rekap-mou').DataTable({
@@ -325,8 +346,19 @@
             var $modalRekapMou = $('#modal-rekap-mou');
             var $rekapMouLoading = $modalRekapMou.find('.rekap-mou-loading');
             var $rekapMouContent = $modalRekapMou.find('.rekap-mou-content');
-            var $pimpinanPenerimaInfo = $modalRekapMou.find('.pimpinan-penerima-info');
+            var $kirimWaBox = $modalRekapMou.find('.kirim-wa-penerima-box');
+            var $selectPenerimaWa = $modalRekapMou.find('.select-penerima-wa');
+            var $peringatanTanpaWa = $modalRekapMou.find('.peringatan-tanpa-wa');
+            var $btnKirimWaPenerima = $modalRekapMou.find('.btn-kirim-wa-penerima');
             var $tbodyRekapMou = $('#tbody-rekap-mou');
+
+            function sinkronkanTombolKirimWa() {
+                var adaWa = !!$selectPenerimaWa.find('option:selected').data('no-wa');
+                $peringatanTanpaWa.toggleClass('d-none', adaWa);
+                $btnKirimWaPenerima.prop('disabled', !adaWa);
+            }
+
+            $selectPenerimaWa.on('change', sinkronkanTombolKirimWa);
 
             $('#table-rekap-mou').on('click', '.cell-rekap-mou', function () {
                 var $sel = $(this);
@@ -337,7 +369,8 @@
                 $rekapMouLoading.removeClass('d-none');
                 $rekapMouContent.addClass('d-none');
                 $modalRekapMou.find('.modal-alert').addClass('d-none').text('');
-                $pimpinanPenerimaInfo.addClass('d-none').html('');
+                $kirimWaBox.addClass('d-none');
+                $selectPenerimaWa.empty();
                 $tbodyRekapMou.empty();
                 $modalRekapMou.modal('show');
 
@@ -349,17 +382,24 @@
                 })
                 .done(function (res) {
                     var daftar = res.data.list || [];
-                    var pimpinanPenerima = res.data.pimpinanPenerima || [];
+                    var pesertaPenerima = res.data.pesertaPenerima || [];
 
-                    if (pimpinanPenerima.length > 0) {
-                        var htmlPimpinan = '<strong>Kontak pimpinan ' + escapeHtml(namaInstitusi) + ' yang belum merespon:</strong><ul class="mb-0">';
-                        $.each(pimpinanPenerima, function (i, p) {
-                            htmlPimpinan += '<li>' + escapeHtml(p.nama) + ' — ' + escapeHtml(p.no_wa || '-') + '</li>';
+                    if (res.data.jumlahBelumRespon > 0 && pesertaPenerima.length > 0) {
+                        $kirimWaBox.find('.sel-jumlah-belum-respon').text(res.data.jumlahBelumRespon);
+
+                        var idpesertaDefault = null;
+                        $.each(pesertaPenerima, function (i, p) {
+                            var label = p.nama + ' — ' + p.nama_jabatan + (p.isPimpinan ? ' (Pimpinan)' : '');
+                            $('<option>').val(p.idpeserta).attr('data-no-wa', p.no_wa || '').text(label).appendTo($selectPenerimaWa);
+
+                            if (idpesertaDefault === null && p.isPimpinan) {
+                                idpesertaDefault = p.idpeserta;
+                            }
                         });
-                        htmlPimpinan += '</ul>';
-                        $pimpinanPenerimaInfo.html(htmlPimpinan).removeClass('d-none');
-                    } else if ($sel.data('peran') === 'mitra' && String($sel.data('status')) === '1') {
-                        $pimpinanPenerimaInfo.text('Belum ada data pimpinan terdaftar untuk ' + namaInstitusi + '.').removeClass('d-none');
+
+                        $selectPenerimaWa.val(idpesertaDefault !== null ? idpesertaDefault : pesertaPenerima[0].idpeserta);
+                        sinkronkanTombolKirimWa();
+                        $kirimWaBox.data('idinstitusi-label', namaInstitusi).removeClass('d-none');
                     }
 
                     if (daftar.length === 0) {
@@ -385,6 +425,55 @@
 
                     $rekapMouLoading.addClass('d-none');
                     $modalRekapMou.find('.modal-alert').removeClass('d-none').text(pesan);
+                });
+            });
+
+            $btnKirimWaPenerima.on('click', function () {
+                var idpeserta = $selectPenerimaWa.val();
+                var namaPenerima = $selectPenerimaWa.find('option:selected').text();
+
+                if (!idpeserta) {
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Kirim notifikasi WhatsApp ke ' + namaPenerima + '?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, kirim',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btnKirimWaPenerima.html();
+                    $btnKirimWaPenerima.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...');
+                    $modalRekapMou.find('.modal-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: kirimWaUrl,
+                        method: 'POST',
+                        data: { idpeserta: idpeserta },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message });
+                    })
+                    .fail(function (xhr) {
+                        var resErr = xhr.responseJSON || {};
+                        var pesan = resErr.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        }
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                    })
+                    .always(function () {
+                        $btnKirimWaPenerima.html(teksAwal);
+                        sinkronkanTombolKirimWa();
+                    });
                 });
             });
         });

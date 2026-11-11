@@ -94,6 +94,7 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-data-master/universitas/tambah', [DataMasterController::class, 'tambahUniversitas'])->name('admin.data-master.universitas.tambah');
     Route::get('/admin-mou/ajuan', [MouAdminController::class, 'ajuanIndex'])->name('admin.mou.ajuan');
     Route::get('/admin-mou/ajuan/list', [MouAdminController::class, 'ajuanModalList'])->name('admin.mou.ajuan.list');
+    Route::post('/admin-mou/ajuan/kirim-wa', [MouAdminController::class, 'kirimWaBelumRespon'])->name('admin.mou.ajuan.kirim-wa');
     Route::get('/admin-mou/sesi', [MouAdminController::class, 'sesiIndex'])->name('admin.mou.sesi');
     Route::get('/admin-mou/ruang', [MouAdminController::class, 'ruangIndex'])->name('admin.mou.ruang');
     Route::get('/admin-mou/tanggal', [MouAdminController::class, 'tanggalIndex'])->name('admin.mou.tanggal');

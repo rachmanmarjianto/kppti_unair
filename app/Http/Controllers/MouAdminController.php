@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -108,9 +109,10 @@ class MouAdminController extends Controller
      * yang diklik di submenu "Ajuan". Khusus sel "Belum Merespon" di bawah
      * grup "Penerima" (peran mitra, status 1) — institusi yang diklik
      * ("penerima ajuan MoU") adalah yang belum merespon, bukan
-     * institusi-institusi lawan di daftar — jadi ikut dikembalikan kontak
-     * pimpinannya (`pimpinanInstitusi()`, base Controller) supaya Admin
-     * bisa menindaklanjuti langsung.
+     * institusi-institusi lawan di daftar — jadi ikut dikembalikan semua
+     * peserta kontingennya (`pesertaDenganJabatan()`) supaya Admin bisa
+     * memilih siapa yang dikirimi notifikasi WA lewat
+     * `kirimWaBelumRespon()`.
      */
     public function ajuanModalList(Request $request)
     {
@@ -151,14 +153,105 @@ class MouAdminController extends Controller
                 return $baris;
             });
 
-        $pimpinanPenerima = ($validated['peran'] === 'mitra' && $validated['status'] === '1')
-            ? $this->pimpinanInstitusi($idInstitusiAsal)
-            : collect();
+        $belumMeresponSebagaiMitra = $validated['peran'] === 'mitra' && $validated['status'] === '1';
 
         return $this->jsonResponse(200, 'Berhasil.', [
             'list' => $list,
-            'pimpinanPenerima' => $pimpinanPenerima,
+            'pesertaPenerima' => $belumMeresponSebagaiMitra ? $this->pesertaDenganJabatan($idInstitusiAsal) : collect(),
+            'jumlahBelumRespon' => $belumMeresponSebagaiMitra ? $list->count() : 0,
         ]);
+    }
+
+    /**
+     * Semua peserta aktif satu institusi beserta nama jabatannya, plus
+     * flag `isPimpinan` (idjabatan termasuk `self::JABATAN_PIMPINAN`,
+     * base Controller) — dipakai untuk mengisi pilihan penerima WA di
+     * modal "Belum Merespon".
+     *
+     * @return Collection<int, object>
+     */
+    private function pesertaDenganJabatan(int $idInstitusiAsal)
+    {
+        return DB::table('pengguna as p')
+            ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+            ->join('jabatan as j', 'j.idjabatan', '=', 'pe.idjabatan')
+            ->where('p.idinstitusi_asal', $idInstitusiAsal)
+            ->where('p.is_deleted', false)
+            ->select('pe.idpeserta', 'p.nama', 'p.no_wa', 'j.nama_jabatan', 'pe.idjabatan')
+            ->orderBy('p.nama')
+            ->get()
+            ->map(function ($peserta) {
+                $peserta->isPimpinan = in_array((int) $peserta->idjabatan, self::JABATAN_PIMPINAN, true);
+
+                return $peserta;
+            });
+    }
+
+    /**
+     * AJAX — kirim notifikasi WA ke satu peserta (dipilih Admin dari
+     * select di modal "Belum Merespon") memberi tahu institusinya punya
+     * ajuan MoU yang belum direspon. `$jumlahBelumRespon` dihitung ulang
+     * di sini (bukan dipercaya dari payload klien) supaya tidak basi
+     * antara modal dibuka dan tombol diklik. Setiap pengiriman dicatat ke
+     * `log_notif_mou` (pola sama seperti `Controller::kirimWaPameranTerpilih()`
+     * dan `log_notif_pameran`).
+     */
+    public function kirimWaBelumRespon(Request $request)
+    {
+        $validated = $request->validate([
+            'idpeserta' => ['required', 'integer'],
+        ]);
+
+        $penerima = DB::table('pengguna as p')
+            ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
+            ->where('pe.idpeserta', $validated['idpeserta'])
+            ->where('p.is_deleted', false)
+            ->select('p.nama', 'p.no_wa', 'p.idinstitusi_asal')
+            ->first();
+
+        if (! $penerima) {
+            return $this->jsonResponse(404, 'Peserta tidak ditemukan.');
+        }
+
+        if (! $penerima->no_wa) {
+            return $this->jsonResponse(422, 'Peserta ini belum memiliki nomor WhatsApp.');
+        }
+
+        $jumlahBelumRespon = DB::table('pengajuan_mou')
+            ->where('idinstitusi_mitra', $penerima->idinstitusi_asal)
+            ->where('status_ajuan', 1)
+            ->count();
+
+        if ($jumlahBelumRespon === 0) {
+            return $this->jsonResponse(422, 'Institusi ini sudah tidak memiliki ajuan yang belum direspon.');
+        }
+
+        $pesan1 = "Anda menerima {$jumlahBelumRespon} ajuan kerjasama MoU yang belum anda respon,";
+        $pesan2 = 'silahkan login ke halaman KPPTI 2026 untuk memberi respon ajuan kerjasama tersebut.';
+        $pesan3 = '';
+
+        try {
+            $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $penerima->no_wa);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengirim notifikasi WhatsApp.');
+        }
+
+        $userdata = session('userdata');
+
+        DB::table('log_notif_mou')->insert([
+            'idinstitusi_asal' => $penerima->idinstitusi_asal,
+            'idpeserta' => $validated['idpeserta'],
+            'pesan_1' => $pesan1,
+            'pesan_2' => $pesan2,
+            'pesan_3' => $pesan3,
+            'no_wa' => $penerima->no_wa,
+            'created_at' => now(),
+            'sent_by' => $userdata['idpengguna'] ?? null,
+        ]);
+
+        return $this->jsonResponse(200, 'Notifikasi WhatsApp berhasil dikirim.');
     }
 
     /**
