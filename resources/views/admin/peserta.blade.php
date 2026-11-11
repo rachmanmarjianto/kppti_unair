@@ -7,6 +7,7 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/sweetalerts2/sweetalerts2.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/light/sweetalerts2/custom-sweetalert.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/css/dark/sweetalerts2/custom-sweetalert.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('src/plugins/src/tomSelect/tom-select.default.min.css') }}">
 
     <style>
         .btn-toggle-anak {
@@ -93,6 +94,10 @@
         #modal-tambah-peserta-admin .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
         #modal-tambah-peserta-admin .form-label, #modal-tambah-peserta-admin .text-muted { color: #0e1726 !important; }
         #modal-tambah-peserta-admin .form-control, #modal-tambah-peserta-admin .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
+
+        #modal-tambah-institusi .modal-content { background-color: #ffffff !important; color: #0e1726 !important; }
+        #modal-tambah-institusi .form-label, #modal-tambah-institusi .text-muted, #modal-tambah-institusi .form-text { color: #0e1726 !important; }
+        #modal-tambah-institusi .form-control, #modal-tambah-institusi .form-select { background-color: #ffffff !important; color: #0e1726 !important; border-color: #e0e6ed !important; }
 
         #modal-detail-peserta .modal-content {
             background-color: #fff;
@@ -254,6 +259,9 @@
                         <h4>Peserta &amp; Institusi per Jenis Institusi</h4>
                     </div>
                     <div class="col-6 text-end">
+                        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#modal-tambah-institusi">
+                            <i class="fa-solid fa-building me-1"></i> Tambah Institusi Peserta Baru
+                        </button>
                         <button type="button" class="btn btn-outline-success btn-sm" id="btn-download-excel-peserta">
                             <i class="fa-solid fa-file-excel me-1"></i> Download Excel
                         </button>
@@ -611,6 +619,72 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: tambah institusi peserta baru — ketentuan pilih institusi
+         sama persis seperti halaman registrasi publik
+         (resources/views/registrasikppti.blade.php), lewat
+         PesertaAdminController::tambahInstitusi() -> Controller::resolveInstitusiAsal(). --}}
+    <div class="modal fade" id="modal-tambah-institusi" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <form id="form-tambah-institusi">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tambah Institusi Peserta Baru</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="modal-alert alert alert-danger d-none mb-3" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Institusi</label>
+                            <select name="jenis_institusi" class="form-select select-tambah-institusi-jenis" required>
+                                <option value="" selected disabled>Pilih jenis institusi...</option>
+                                @foreach ($jenisInstitusiReferensi as $jenis)
+                                    <option value="{{ $jenis->idjenis_institusi }}">{{ $jenis->nama_jenis_institusi }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3 group-tambah-institusi-ptn-pts d-none">
+                            <label class="form-label">PTN / PTS</label>
+                            <select name="ptn_pts" class="form-select">
+                                <option value="" selected disabled>Pilih PTN atau PTS...</option>
+                                <option value="1">PTN</option>
+                                <option value="2">PTS</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 group-tambah-institusi-universitas d-none">
+                            <label class="form-label">Nama Perguruan Tinggi</label>
+                            <select id="select-tambah-institusi-universitas" name="iduniversitas"></select>
+                        </div>
+
+                        <div class="mb-3 group-tambah-institusi-lldikti d-none">
+                            <label class="form-label">Wilayah LLDikti</label>
+                            <select name="idlldikti" class="form-select">
+                                <option value="" selected disabled>Pilih wilayah LLDikti...</option>
+                                @foreach ($lldiktiList as $wilayah)
+                                    <option value="{{ $wilayah->idlldikti }}">LLDikti {{ $wilayah->nomor_lldikti }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3 group-tambah-institusi-nama d-none">
+                            <label class="form-label">Nama Institusi</label>
+                            <select id="select-tambah-institusi-nama" name="nama_institusi"></select>
+                            <div class="form-text">Ketik nama institusi — pilih dari saran kalau institusi tersebut sudah pernah terdaftar, supaya tidak membuat duplikat.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-submit-tambah-institusi">
+                            <span class="btn-label">Tambah Institusi</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page-js')
@@ -620,6 +694,7 @@
     <script src="{{ asset('src/plugins/src/table/datatable/button-ext/dataTables.buttons.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/button-ext/jszip.min.js') }}"></script>
     <script src="{{ asset('src/plugins/src/table/datatable/button-ext/buttons.html5.min.js') }}"></script>
+    <script src="{{ asset('src/plugins/src/tomSelect/tom-select.base.js') }}"></script>
 
     <script>
         $(function () {
@@ -651,6 +726,9 @@
             var jabatanPerJenis = {!! json_encode($jabatanPerJenis) !!};
             var fotoEditUrl = '{{ route('admin.peserta.foto.edit') }}';
             var logistikUrl = '{{ route('admin.peserta.logistik') }}';
+            var tambahInstitusiUrl = '{{ route('admin.peserta.tambah-institusi') }}';
+            var searchUniversitasUrl = '{{ route('admin.peserta.search-universitas') }}';
+            var searchInstitusiUrl = '{{ route('admin.peserta.search-institusi') }}';
 
             $('[data-bs-toggle="collapse"]').on('click', function () {
                 $(this).toggleClass('expanded');
@@ -1011,6 +1089,149 @@
                             pesan = Object.values(res.errors).flat().join('\n');
                         }
                         $modalTambahPesertaAdmin.find('.modal-alert').removeClass('d-none').text(pesan);
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            });
+
+            // ------- Tambah institusi peserta baru — ketentuan pilih institusi -------
+            // sama persis seperti halaman registrasi publik (TomSelect untuk
+            // universitas/nama institusi, field dinamis per jenis institusi). -------
+            var $modalTambahInstitusi = $('#modal-tambah-institusi');
+            var $formTambahInstitusi = $('#form-tambah-institusi');
+            var $selectJenisInstitusi = $formTambahInstitusi.find('.select-tambah-institusi-jenis');
+            var $groupPtnPts = $modalTambahInstitusi.find('.group-tambah-institusi-ptn-pts');
+            var $groupUniversitas = $modalTambahInstitusi.find('.group-tambah-institusi-universitas');
+            var $groupLldikti = $modalTambahInstitusi.find('.group-tambah-institusi-lldikti');
+            var $groupNamaInstitusi = $modalTambahInstitusi.find('.group-tambah-institusi-nama');
+
+            var tomSelectTambahUniversitas = new TomSelect('#select-tambah-institusi-universitas', {
+                valueField: 'iduniversitas',
+                labelField: 'nama_universitas',
+                searchField: ['nama_universitas'],
+                create: false,
+                maxItems: 1,
+                placeholder: 'Ketik nama perguruan tinggi...',
+                load: function (query, callback) {
+                    if (!query.length) {
+                        return callback();
+                    }
+
+                    $.ajax({ url: searchUniversitasUrl, data: { q: query }, dataType: 'json' })
+                        .done(function (data) { callback(data); })
+                        .fail(function () { callback(); });
+                },
+            });
+
+            var tomSelectTambahNamaInstitusi = new TomSelect('#select-tambah-institusi-nama', {
+                valueField: 'nama_institusi',
+                labelField: 'nama_institusi',
+                searchField: ['nama_institusi'],
+                create: true,
+                createOnBlur: true,
+                maxItems: 1,
+                placeholder: 'Ketik nama institusi...',
+                load: function (query, callback) {
+                    var jenis = $selectJenisInstitusi.val();
+
+                    if (!query.length || !jenis) {
+                        return callback();
+                    }
+
+                    $.ajax({
+                        url: searchInstitusiUrl,
+                        data: { q: query, jenis_institusi: jenis, idlldikti: $formTambahInstitusi.find('[name="idlldikti"]').val() },
+                        dataType: 'json',
+                    })
+                        .done(function (data) {
+                            callback(data.map(function (item) { return { nama_institusi: item.nama_institusi }; }));
+                        })
+                        .fail(function () { callback(); });
+                },
+            });
+
+            function updateDynamicFieldsTambahInstitusi() {
+                var jenis = $selectJenisInstitusi.val();
+                var isPerguruanTinggi = jenis === '1';
+                var isLldikti = jenis === '4';
+
+                $groupPtnPts.toggleClass('d-none', !isPerguruanTinggi);
+                $groupUniversitas.toggleClass('d-none', !isPerguruanTinggi);
+                $groupLldikti.toggleClass('d-none', !isLldikti);
+                $groupNamaInstitusi.toggleClass('d-none', !(jenis && !isPerguruanTinggi));
+
+                $formTambahInstitusi.find('[name="ptn_pts"]').prop('required', isPerguruanTinggi);
+                $('#select-tambah-institusi-universitas').prop('required', isPerguruanTinggi);
+                $formTambahInstitusi.find('[name="idlldikti"]').prop('required', isLldikti);
+                $('#select-tambah-institusi-nama').prop('required', !!jenis && !isPerguruanTinggi);
+
+                if (!isPerguruanTinggi) {
+                    $formTambahInstitusi.find('[name="ptn_pts"]').val('');
+                    tomSelectTambahUniversitas.clear();
+                }
+
+                if (!isLldikti) {
+                    $formTambahInstitusi.find('[name="idlldikti"]').val('');
+                }
+
+                if (isPerguruanTinggi) {
+                    tomSelectTambahNamaInstitusi.clear();
+                }
+            }
+
+            $selectJenisInstitusi.on('change', updateDynamicFieldsTambahInstitusi);
+
+            $modalTambahInstitusi.on('show.bs.modal', function () {
+                $formTambahInstitusi[0].reset();
+                $modalTambahInstitusi.find('.modal-alert').addClass('d-none').text('');
+                tomSelectTambahUniversitas.clear();
+                tomSelectTambahNamaInstitusi.clear();
+                updateDynamicFieldsTambahInstitusi();
+            });
+
+            $formTambahInstitusi.on('submit', function (e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $btn = $form.find('.btn-submit-tambah-institusi');
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Tambahkan institusi ini?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Memproses...');
+                    $modalTambahInstitusi.find('.modal-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: tambahInstitusiUrl,
+                        method: 'POST',
+                        data: $form.serialize(),
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message }).then(function () {
+                            location.reload();
+                        });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        } else if (res.errors) {
+                            pesan = Object.values(res.errors).flat().join('\n');
+                        }
+                        $modalTambahInstitusi.find('.modal-alert').removeClass('d-none').text(pesan);
                         $btn.prop('disabled', false).html(teksAwal);
                     });
                 });

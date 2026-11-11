@@ -8,6 +8,7 @@ use App\Http\Controllers\MejaRegisAdminController;
 use App\Http\Controllers\MouAdminController;
 use App\Http\Controllers\NarasumberAdminController;
 use App\Http\Controllers\PameranAdminController;
+use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\PesertaAdminController;
 use App\Http\Controllers\PosterAdminController;
 use App\Http\Controllers\SeminarKitController;
@@ -40,6 +41,9 @@ Route::middleware(['akses:1'])->group(function () {
     Route::post('/admin-peserta/hapus-role', [PesertaAdminController::class, 'hapusRolePeserta'])->name('admin.peserta.hapus-role');
     Route::get('/admin-peserta/cetak-kartu', [PesertaAdminController::class, 'cetakKartu'])->name('admin.peserta.cetak-kartu');
     Route::post('/admin-peserta/tambah', [PesertaAdminController::class, 'tambahPeserta'])->name('admin.peserta.tambah');
+    Route::get('/admin-peserta/search-universitas', [PenggunaController::class, 'searchUniversitas'])->name('admin.peserta.search-universitas');
+    Route::get('/admin-peserta/search-institusi', [PenggunaController::class, 'searchInstitusiAsal'])->name('admin.peserta.search-institusi');
+    Route::post('/admin-peserta/tambah-institusi', [PesertaAdminController::class, 'tambahInstitusi'])->name('admin.peserta.tambah-institusi');
     Route::get('/admin-peserta/foto/edit', [PesertaAdminController::class, 'foto'])->name('admin.peserta.foto.edit');
     Route::post('/admin-peserta/foto/update', [PesertaAdminController::class, 'updateFoto'])->name('admin.peserta.foto.update');
     Route::get('/admin-peserta/logistik', [PesertaAdminController::class, 'logistik'])->name('admin.peserta.logistik');

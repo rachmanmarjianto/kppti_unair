@@ -9,6 +9,7 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
@@ -187,6 +188,121 @@ class Controller extends BaseController
             'done_at' => now(),
             'done_by' => $doneBy,
         ]);
+    }
+
+    /**
+     * Find the institusi_asal row shared by everyone from the same institution,
+     * or create a new one (with a freshly generated kode_kontingen) if none
+     * matches yet. Shared by PenggunaController::storeRegistrasi() (self
+     * registration, $doneBy null — no authenticated pengguna yet) and
+     * PesertaAdminController::tambahInstitusi() ($doneBy = admin's idpengguna).
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    protected function resolveInstitusiAsal(int $jenisInstitusi, array $validated, ?int $doneBy = null): int
+    {
+        if ($jenisInstitusi === 1) {
+            $existing = DB::table('institusi_asal')
+                ->where('idjenis_institusi', 1)
+                ->where('tabel_ref_institusi', 'universitas')
+                ->where('idref_institusi', $validated['iduniversitas'])
+                ->first();
+
+            if ($existing) {
+                return $existing->idinstitusi_asal;
+            }
+
+            $namaUniversitas = DB::table('universitas')
+                ->where('iduniversitas', $validated['iduniversitas'])
+                ->value('nama_universitas');
+
+            $idInstitusiAsal = $this->insertInstitusiAsalDenganKodeUnik([
+                'idjenis_institusi' => 1,
+                'ptn_pts' => (string) $validated['ptn_pts'],
+                'nama_institusi' => mb_strtoupper($namaUniversitas),
+                'tabel_ref_institusi' => 'universitas',
+                'idref_institusi' => $validated['iduniversitas'],
+                'created_at' => now(),
+            ], 1);
+
+            $this->logInstitusi($idInstitusiAsal, $doneBy, 'Create institusi baru');
+
+            return $idInstitusiAsal;
+        }
+
+        $namaInstitusi = mb_strtoupper(trim($validated['nama_institusi']));
+
+        $query = DB::table('institusi_asal')
+            ->where('idjenis_institusi', $jenisInstitusi)
+            ->whereRaw('lower(nama_institusi) = lower(?)', [$namaInstitusi]);
+
+        if ($jenisInstitusi === 4) {
+            $query->where('idlldikti', $validated['idlldikti']);
+        }
+
+        $existing = $query->first();
+
+        if ($existing) {
+            return $existing->idinstitusi_asal;
+        }
+
+        $idInstitusiAsal = $this->insertInstitusiAsalDenganKodeUnik([
+            'idjenis_institusi' => $jenisInstitusi,
+            'idlldikti' => $jenisInstitusi === 4 ? $validated['idlldikti'] : null,
+            'nama_institusi' => $namaInstitusi,
+            'created_at' => now(),
+        ], $jenisInstitusi);
+
+        $this->logInstitusi($idInstitusiAsal, $doneBy, 'Create institusi baru');
+
+        return $idInstitusiAsal;
+    }
+
+    /**
+     * Insert a new institusi_asal row with a freshly generated kode_kontingen,
+     * retrying with a newly generated code if a concurrent request already
+     * claimed the one just generated (institusi_asal.kode_kontingen has a
+     * unique index — generateKodeKontingen()'s count-then-insert is not
+     * atomic, so two requests in the same month can race for the same
+     * sequence number).
+     *
+     * @param  array<string, mixed>  $dataTanpaKode
+     */
+    protected function insertInstitusiAsalDenganKodeUnik(array $dataTanpaKode, int $idJenisInstitusi): int
+    {
+        $maksimalPercobaan = 5;
+
+        for ($percobaan = 1; $percobaan <= $maksimalPercobaan; $percobaan++) {
+            try {
+                return DB::table('institusi_asal')->insertGetId(
+                    $dataTanpaKode + ['kode_kontingen' => $this->generateKodeKontingen($idJenisInstitusi)],
+                    'idinstitusi_asal'
+                );
+            } catch (UniqueConstraintViolationException $e) {
+                if ($percobaan === $maksimalPercobaan) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Format MMZZZYY: MM = registration month (2 digits), ZZZ = sequence of
+     * institusi_asal rows created that same month (3 digits), YY =
+     * idjenis_institusi (2 digits).
+     */
+    protected function generateKodeKontingen(int $idJenisInstitusi): string
+    {
+        $bulan = now()->format('m');
+
+        $urutan = DB::table('institusi_asal')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count() + 1;
+
+        $jenis = str_pad((string) $idJenisInstitusi, 2, '0', STR_PAD_LEFT);
+
+        return $bulan.str_pad((string) $urutan, 3, '0', STR_PAD_LEFT).$jenis;
     }
 
     /**

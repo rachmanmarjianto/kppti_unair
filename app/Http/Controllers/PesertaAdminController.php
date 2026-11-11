@@ -51,6 +51,11 @@ class PesertaAdminController extends Controller
             ->get()
             ->groupBy('idjenis_institusi');
 
+        // Untuk modal "Tambah Institusi Peserta Baru" — field jenis institusi
+        // & wilayah LLDikti, pola sama seperti PenggunaController::registrasi().
+        $jenisInstitusiReferensi = DB::table('jenis_institusi')->orderBy('idjenis_institusi')->get();
+        $lldiktiList = DB::table('lldikti')->orderBy('nomor_lldikti')->get();
+
         $dashboard = [
             'totalPeserta' => $pesertaList->count(),
             'totalInstitusi' => $institusiList->where('jumlahPeserta', '>', 0)->count(),
@@ -63,7 +68,72 @@ class PesertaAdminController extends Controller
             'jumlahFotoLengkap' => $pesertaList->where('fotoLengkap', true)->count(),
         ];
 
-        return view('admin.peserta', compact('menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard', 'jabatanPerJenis'));
+        return view('admin.peserta', compact(
+            'menu', 'submenu', 'jenisInstitusiList', 'institusiList', 'dashboard', 'jabatanPerJenis',
+            'jenisInstitusiReferensi', 'lldiktiList'
+        ));
+    }
+
+    /**
+     * Tambahkan institusi (`institusi_asal`) baru — ketentuan pilih
+     * institusinya sama persis dengan halaman registrasi publik
+     * (`PenggunaController::storeRegistrasi()`), lewat helper bersama
+     * `resolveInstitusiAsal()` (base Controller): dedup institusi yang
+     * sudah ada, generate `kode_kontingen` unik, catat ke `log_institusi`
+     * — bedanya `done_by` di sini diisi admin yang login (bukan null
+     * seperti alur registrasi yang belum login). Setelah institusi ada,
+     * admin memakai tombol "Tambah Peserta" yang sudah ada untuk mengisi
+     * peserta pertamanya.
+     */
+    public function tambahInstitusi(Request $request)
+    {
+        $validated = $request->validate([
+            'jenis_institusi' => ['required', 'integer', 'exists:jenis_institusi,idjenis_institusi'],
+            'ptn_pts' => ['required_if:jenis_institusi,1', 'nullable', 'in:1,2'],
+            'iduniversitas' => ['required_if:jenis_institusi,1', 'nullable', 'integer', 'exists:universitas,iduniversitas'],
+            'idlldikti' => ['required_if:jenis_institusi,4', 'nullable', 'integer', 'exists:lldikti,idlldikti'],
+            'nama_institusi' => ['required_unless:jenis_institusi,1', 'nullable', 'string', 'max:255'],
+        ]);
+
+        $jenisInstitusi = (int) $validated['jenis_institusi'];
+
+        // Pre-check — buat Perguruan Tinggi (jenis=1), institusinya terikat
+        // ke data master `universitas`, jadi kalau sudah ada, TOLAK
+        // permintaan (dikonfirmasi developer) daripada reuse otomatis.
+        // Jenis institusi lain (tidak punya data master, nama bebas) tetap
+        // reuse kalau namanya sudah terdaftar, sama seperti alur registrasi.
+        $existing = $jenisInstitusi === 1
+            ? DB::table('institusi_asal')
+                ->where('idjenis_institusi', 1)
+                ->where('tabel_ref_institusi', 'universitas')
+                ->where('idref_institusi', $validated['iduniversitas'])
+                ->first()
+            : DB::table('institusi_asal')
+                ->where('idjenis_institusi', $jenisInstitusi)
+                ->whereRaw('lower(nama_institusi) = lower(?)', [trim($validated['nama_institusi'])])
+                ->when($jenisInstitusi === 4, fn ($q) => $q->where('idlldikti', $validated['idlldikti']))
+                ->first();
+
+        if ($jenisInstitusi === 1 && $existing) {
+            return $this->jsonResponse(409, "Institusi \"{$existing->nama_institusi}\" sudah terdaftar sebelumnya (kode kontingen: {$existing->kode_kontingen}). Tidak bisa menambahkan institusi yang sama.");
+        }
+
+        $userdata = session('userdata');
+
+        $idInstitusiAsal = DB::transaction(
+            fn () => $this->resolveInstitusiAsal($jenisInstitusi, $validated, $userdata['idpengguna'])
+        );
+
+        $institusi = DB::table('institusi_asal')->where('idinstitusi_asal', $idInstitusiAsal)->first();
+
+        $pesan = $existing
+            ? "Institusi \"{$institusi->nama_institusi}\" sudah ada sebelumnya (kode kontingen: {$institusi->kode_kontingen}). Anda bisa langsung menambahkan peserta ke institusi ini."
+            : "Institusi \"{$institusi->nama_institusi}\" berhasil ditambahkan (kode kontingen: {$institusi->kode_kontingen}).";
+
+        return $this->jsonResponse(200, $pesan, [
+            'idinstitusi_asal' => $idInstitusiAsal,
+            'baru' => ! $existing,
+        ]);
     }
 
     /**
