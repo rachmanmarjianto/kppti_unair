@@ -881,10 +881,14 @@ class Controller extends BaseController
     /**
      * Sama seperti `hapusIdcardPengguna()`, tapi sekaligus mencatat
      * penghapusannya ke `history_card` (`aktifitas` = 2, delete) — dipakai
-     * khusus menu "Test Card" (role Admin & Petugas Kit; lihat
-     * `AdminController::hapusIdcardTestCard()` dan
-     * `PetugasKitController::hapusIdcardTestCard()`). `$doneBy` adalah
+     * dipakai menu "Test Card" (role Admin & Petugas Kit) maupun menu
+     * "Tapping Card" (role Petugas Kit; lihat
+     * `AdminController::hapusIdcardTestCard()`,
+     * `PetugasKitController::hapusIdcardTestCard()`, dan
+     * `PetugasKitController::hapusIdcardTappingCard()`). `$doneBy` adalah
      * idpengguna yang melakukan penghapusan (admin/petugas yang login).
+     * `pengguna.updated_at` ikut diperbarui setiap kali idcard berubah
+     * (dikonfirmasi developer).
      */
     protected function hapusIdcardPenggunaDenganLog(int $idpengguna, ?int $doneBy): bool
     {
@@ -894,7 +898,7 @@ class Controller extends BaseController
             return false;
         }
 
-        DB::table('pengguna')->where('idpengguna', $idpengguna)->update(['idcard' => null]);
+        DB::table('pengguna')->where('idpengguna', $idpengguna)->update(['idcard' => null, 'updated_at' => now()]);
 
         DB::table('history_card')->insert([
             'idpengguna' => $idpengguna,

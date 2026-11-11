@@ -197,14 +197,12 @@ class PetugasKitController extends Controller
     /**
      * Simpan ID card satu pengguna. idcard divalidasi unik antar pengguna
      * aktif (dikonfirmasi developer — satu kartu fisik tidak boleh terpetakan
-     * ke dua akun berbeda); boleh ditimpa bebas kapan pun.
-     */
-    /**
-     * Simpan idcard satu pengguna, dicatat ke `history_card`: kalau
-     * sebelumnya belum ada idcard, cuma 1 baris log aktifitas=1 (tambah);
-     * kalau sebelumnya SUDAH ada idcard (ditimpa), dicatat 2 baris —
-     * aktifitas=2 (delete, idcard lama) lalu aktifitas=1 (tambah, idcard
-     * baru), dikonfirmasi developer.
+     * ke dua akun berbeda); boleh ditimpa bebas kapan pun. Dicatat ke
+     * `history_card`: kalau sebelumnya belum ada idcard, cuma 1 baris log
+     * aktifitas=1 (tambah); kalau sebelumnya SUDAH ada idcard (ditimpa),
+     * dicatat 2 baris — aktifitas=2 (delete, idcard lama) lalu aktifitas=1
+     * (tambah, idcard baru), dikonfirmasi developer. `pengguna.updated_at`
+     * ikut diperbarui setiap kali idcard berubah.
      */
     public function simpanIdcard(Request $request)
     {
@@ -234,7 +232,7 @@ class PetugasKitController extends Controller
         $waktu = now();
 
         DB::transaction(function () use ($validated, $idcardLama, $userdata, $waktu) {
-            DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard']]);
+            DB::table('pengguna')->where('idpengguna', $validated['idpengguna'])->update(['idcard' => $validated['idcard'], 'updated_at' => $waktu]);
 
             if ($idcardLama !== null && $idcardLama !== '') {
                 DB::table('history_card')->insert([
