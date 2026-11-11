@@ -165,26 +165,36 @@ class MouAdminController extends Controller
     /**
      * Semua peserta aktif satu institusi beserta nama jabatannya, plus
      * flag `isPimpinan` (idjabatan termasuk `self::JABATAN_PIMPINAN`,
-     * base Controller) — dipakai untuk mengisi pilihan penerima WA di
-     * modal "Belum Merespon".
+     * base Controller) dan `jumlahNotifTerkirim` (berapa kali peserta ini
+     * sudah pernah dikirimi notifikasi WA lewat `log_notif_mou`) — dipakai
+     * untuk mengisi pilihan penerima WA di modal "Belum Merespon".
      *
      * @return Collection<int, object>
      */
     private function pesertaDenganJabatan(int $idInstitusiAsal)
     {
-        return DB::table('pengguna as p')
+        $pesertaList = DB::table('pengguna as p')
             ->join('peserta as pe', 'pe.idpengguna', '=', 'p.idpengguna')
             ->join('jabatan as j', 'j.idjabatan', '=', 'pe.idjabatan')
             ->where('p.idinstitusi_asal', $idInstitusiAsal)
             ->where('p.is_deleted', false)
-            ->select('pe.idpeserta', 'p.nama', 'p.no_wa', 'j.nama_jabatan', 'pe.idjabatan')
+            ->select('pe.idpeserta', 'p.idpengguna', 'p.nama', 'p.no_wa', 'j.nama_jabatan', 'pe.idjabatan')
             ->orderBy('p.nama')
-            ->get()
-            ->map(function ($peserta) {
-                $peserta->isPimpinan = in_array((int) $peserta->idjabatan, self::JABATAN_PIMPINAN, true);
+            ->get();
 
-                return $peserta;
-            });
+        $jumlahNotifPerPengguna = DB::table('log_notif_mou')
+            ->whereIn('idpengguna_penerima', $pesertaList->pluck('idpengguna'))
+            ->select('idpengguna_penerima')
+            ->selectRaw('count(*) as jumlah')
+            ->groupBy('idpengguna_penerima')
+            ->pluck('jumlah', 'idpengguna_penerima');
+
+        return $pesertaList->map(function ($peserta) use ($jumlahNotifPerPengguna) {
+            $peserta->isPimpinan = in_array((int) $peserta->idjabatan, self::JABATAN_PIMPINAN, true);
+            $peserta->jumlahNotifTerkirim = $jumlahNotifPerPengguna->get($peserta->idpengguna, 0);
+
+            return $peserta;
+        });
     }
 
     /**

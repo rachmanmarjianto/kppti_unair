@@ -268,6 +268,7 @@
                     <div class="rekap-mou-content d-none">
                         <div class="kirim-wa-penerima-box d-none mb-3 p-3 border rounded">
                             <p class="mb-2"><strong><span class="sel-jumlah-belum-respon"></span> ajuan belum direspon</strong> oleh institusi ini. Pilih penerima notifikasi WA:</p>
+                            <p class="mb-2" style="color: #e2a03f;"><span class="sel-jumlah-notif-terkirim"></span></p>
                             <div class="row g-2 align-items-start">
                                 <div class="col-md-8">
                                     <select class="form-select select-penerima-wa"></select>
@@ -349,13 +350,18 @@
             var $kirimWaBox = $modalRekapMou.find('.kirim-wa-penerima-box');
             var $selectPenerimaWa = $modalRekapMou.find('.select-penerima-wa');
             var $peringatanTanpaWa = $modalRekapMou.find('.peringatan-tanpa-wa');
+            var $jumlahNotifTerkirim = $modalRekapMou.find('.sel-jumlah-notif-terkirim');
             var $btnKirimWaPenerima = $modalRekapMou.find('.btn-kirim-wa-penerima');
             var $tbodyRekapMou = $('#tbody-rekap-mou');
 
             function sinkronkanTombolKirimWa() {
-                var adaWa = !!$selectPenerimaWa.find('option:selected').data('no-wa');
+                var $opsiTerpilih = $selectPenerimaWa.find('option:selected');
+                var adaWa = !!$opsiTerpilih.data('no-wa');
+                var jumlahNotif = $opsiTerpilih.data('jumlah-notif') || 0;
+
                 $peringatanTanpaWa.toggleClass('d-none', adaWa);
                 $btnKirimWaPenerima.prop('disabled', !adaWa);
+                $jumlahNotifTerkirim.text('Sudah dikirimi notifikasi WA ' + jumlahNotif + ' kali sebelumnya.');
             }
 
             $selectPenerimaWa.on('change', sinkronkanTombolKirimWa);
@@ -390,7 +396,7 @@
                         var idpesertaDefault = null;
                         $.each(pesertaPenerima, function (i, p) {
                             var label = p.nama + ' — ' + p.nama_jabatan + (p.isPimpinan ? ' (Pimpinan)' : '');
-                            $('<option>').val(p.idpeserta).attr('data-no-wa', p.no_wa || '').text(label).appendTo($selectPenerimaWa);
+                            $('<option>').val(p.idpeserta).attr('data-no-wa', p.no_wa || '').attr('data-jumlah-notif', p.jumlahNotifTerkirim || 0).text(label).appendTo($selectPenerimaWa);
 
                             if (idpesertaDefault === null && p.isPimpinan) {
                                 idpesertaDefault = p.idpeserta;
@@ -460,6 +466,8 @@
                         headers: { 'X-CSRF-TOKEN': csrfToken },
                     })
                     .done(function (res) {
+                        var $opsiTerpilih = $selectPenerimaWa.find('option:selected');
+                        $opsiTerpilih.data('jumlah-notif', (parseInt($opsiTerpilih.data('jumlah-notif'), 10) || 0) + 1);
                         Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message });
                     })
                     .fail(function (xhr) {
