@@ -355,13 +355,14 @@
             var $tbodyRekapMou = $('#tbody-rekap-mou');
 
             function sinkronkanTombolKirimWa() {
-                var $opsiTerpilih = $selectPenerimaWa.find('option:selected');
-                var adaWa = !!$opsiTerpilih.data('no-wa');
-                var jumlahNotif = $opsiTerpilih.data('jumlah-notif') || 0;
+                var adaWa = !!$selectPenerimaWa.find('option:selected').data('no-wa');
 
                 $peringatanTanpaWa.toggleClass('d-none', adaWa);
                 $btnKirimWaPenerima.prop('disabled', !adaWa);
-                $jumlahNotifTerkirim.text('Sudah dikirimi notifikasi WA ' + jumlahNotif + ' kali sebelumnya.');
+            }
+
+            function tampilkanJumlahNotifTerkirim(jumlah) {
+                $jumlahNotifTerkirim.data('jumlah', jumlah).text('Sudah dikirimi notifikasi WA ' + jumlah + ' kali sebelumnya untuk institusi ini.');
             }
 
             $selectPenerimaWa.on('change', sinkronkanTombolKirimWa);
@@ -392,11 +393,12 @@
 
                     if (res.data.jumlahBelumRespon > 0 && pesertaPenerima.length > 0) {
                         $kirimWaBox.find('.sel-jumlah-belum-respon').text(res.data.jumlahBelumRespon);
+                        tampilkanJumlahNotifTerkirim(res.data.jumlahNotifTerkirim || 0);
 
                         var idpesertaDefault = null;
                         $.each(pesertaPenerima, function (i, p) {
                             var label = p.nama + ' — ' + p.nama_jabatan + (p.isPimpinan ? ' (Pimpinan)' : '');
-                            $('<option>').val(p.idpeserta).attr('data-no-wa', p.no_wa || '').attr('data-jumlah-notif', p.jumlahNotifTerkirim || 0).text(label).appendTo($selectPenerimaWa);
+                            $('<option>').val(p.idpeserta).attr('data-no-wa', p.no_wa || '').text(label).appendTo($selectPenerimaWa);
 
                             if (idpesertaDefault === null && p.isPimpinan) {
                                 idpesertaDefault = p.idpeserta;
@@ -466,8 +468,7 @@
                         headers: { 'X-CSRF-TOKEN': csrfToken },
                     })
                     .done(function (res) {
-                        var $opsiTerpilih = $selectPenerimaWa.find('option:selected');
-                        $opsiTerpilih.data('jumlah-notif', (parseInt($opsiTerpilih.data('jumlah-notif'), 10) || 0) + 1);
+                        tampilkanJumlahNotifTerkirim((parseInt($jumlahNotifTerkirim.data('jumlah'), 10) || 0) + 1);
                         Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message });
                     })
                     .fail(function (xhr) {
