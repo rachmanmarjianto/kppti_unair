@@ -126,8 +126,14 @@
                                                         </span>
                                                         <div class="sel-terisi">
                                                             <strong>{{ $sel->nama_institusi_pengaju }}</strong>
+                                                            @if($sel->pic_pengaju_hadir_at)
+                                                                <i class="fa-solid fa-check text-success" title="Perwakilan hadir"></i>
+                                                            @endif
                                                             <br>&harr;<br>
                                                             <strong>{{ $sel->nama_institusi_mitra }}</strong>
+                                                            @if($sel->pic_mitra_hadir_at)
+                                                                <i class="fa-solid fa-check text-success" title="Perwakilan hadir"></i>
+                                                            @endif
                                                         </div>
                                                     </a>
                                                 @endif

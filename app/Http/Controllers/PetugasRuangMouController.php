@@ -55,7 +55,8 @@ class PetugasRuangMouController extends Controller
                 ->select(
                     'pt.idsesi_mou', 'pt.isi_ke', 'pt.idpengajuan_mou', 'pm.status_ajuan',
                     'ia_pengaju.nama_institusi as nama_institusi_pengaju',
-                    'ia_mitra.nama_institusi as nama_institusi_mitra'
+                    'ia_mitra.nama_institusi as nama_institusi_mitra',
+                    'pm.pic_pengaju_hadir_at', 'pm.pic_mitra_hadir_at'
                 )
                 ->get()
                 ->map(function ($baris) {
