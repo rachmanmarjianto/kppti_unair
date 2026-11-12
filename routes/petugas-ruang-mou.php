@@ -12,4 +12,6 @@ Route::middleware(['akses:7'])->group(function () {
     Route::post('/petugas-ruang-mou/pengajuan/hadir-mitra', [PetugasRuangMouController::class, 'hadirMitra'])->name('petugas-ruang-mou.pengajuan.hadir-mitra');
     Route::post('/petugas-ruang-mou/pengajuan/batal-hadir-mitra', [PetugasRuangMouController::class, 'batalHadirMitra'])->name('petugas-ruang-mou.pengajuan.batal-hadir-mitra');
     Route::post('/petugas-ruang-mou/pengajuan/ubah-hasil', [PetugasRuangMouController::class, 'ubahHasilPertemuan'])->name('petugas-ruang-mou.pengajuan.ubah-hasil');
+    Route::post('/petugas-ruang-mou/pengajuan/ingatkan-pengaju', [PetugasRuangMouController::class, 'ingatkanPengaju'])->name('petugas-ruang-mou.pengajuan.ingatkan-pengaju');
+    Route::post('/petugas-ruang-mou/pengajuan/ingatkan-mitra', [PetugasRuangMouController::class, 'ingatkanMitra'])->name('petugas-ruang-mou.pengajuan.ingatkan-mitra');
 });

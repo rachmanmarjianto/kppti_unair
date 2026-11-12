@@ -300,6 +300,65 @@ class PetugasRuangMouController extends Controller
     }
 
     /**
+     * Kirim WA pengingat ke PIC Pengaju bahwa mereka punya Jadwal Temu hari
+     * ini — tidak mengubah data apa pun (cuma notifikasi), boleh diklik
+     * berulang kali. Menyebut nama institusi Mitra sebagai lawan temu.
+     */
+    public function ingatkanPengaju(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $idpengajuanMou = $this->decryptRouteValue($validated['token']);
+
+        if ($idpengajuanMou === null) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        $data = $this->ambilDataUntukPengingat((int) $idpengajuanMou);
+
+        if (! $data) {
+            return $this->jsonResponse(404, 'Jadwal pertemuan untuk pengajuan ini tidak ditemukan.');
+        }
+
+        if (! $data->no_wa_pic_pengaju) {
+            return $this->jsonResponse(422, 'PIC Pengaju belum memiliki nomor WhatsApp.');
+        }
+
+        return $this->kirimPengingatWa($data->no_wa_pic_pengaju, $data->jam_mulai, $data->nama_ruang, $data->nama_institusi_mitra);
+    }
+
+    /**
+     * Simetris dengan `ingatkanPengaju()` — kirim WA pengingat ke PIC
+     * Mitra, menyebut nama institusi Pengaju sebagai lawan temu.
+     */
+    public function ingatkanMitra(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $idpengajuanMou = $this->decryptRouteValue($validated['token']);
+
+        if ($idpengajuanMou === null) {
+            return $this->jsonResponse(404, 'Pengajuan MoU tidak ditemukan.');
+        }
+
+        $data = $this->ambilDataUntukPengingat((int) $idpengajuanMou);
+
+        if (! $data) {
+            return $this->jsonResponse(404, 'Jadwal pertemuan untuk pengajuan ini tidak ditemukan.');
+        }
+
+        if (! $data->no_wa_pic_mitra) {
+            return $this->jsonResponse(422, 'PIC Mitra belum memiliki nomor WhatsApp.');
+        }
+
+        return $this->kirimPengingatWa($data->no_wa_pic_mitra, $data->jam_mulai, $data->nama_ruang, $data->nama_institusi_pengaju);
+    }
+
+    /**
      * Card 3 — tetapkan hasil pertemuan (Terjalin/Tunda Lain Waktu). Boleh
      * diubah bolak-balik kapan saja; tiap kali dijalankan, `log_status_mou`
      * ditambah satu baris dan `pertemuan_mou.selesai_at` di-set ulang.
@@ -392,5 +451,60 @@ class PetugasRuangMouController extends Controller
         $pengajuan->token = $this->encryptRouteValue($pengajuan->idpengajuan_mou);
 
         return $pengajuan;
+    }
+
+    /**
+     * Data satu pengajuan MoU yang dibutuhkan untuk pesan pengingat: jam
+     * sesi + nama ruang (dari slot `pertemuan_mou` yang menampung pengajuan
+     * ini), nama kedua institusi, dan nomor WA kedua PIC.
+     */
+    private function ambilDataUntukPengingat(int $idpengajuanMou): ?object
+    {
+        return DB::table('pertemuan_mou as pt')
+            ->join('pengajuan_mou as pm', 'pm.idpengajuan_mou', '=', 'pt.idpengajuan_mou')
+            ->join('sesi_mou as s', 's.idsesi_mou', '=', 'pt.idsesi_mou')
+            ->join('ruang_mou as r', 'r.idruang_mou', '=', 'pt.idruang_mou')
+            ->join('institusi_asal as ia_pengaju', 'ia_pengaju.idinstitusi_asal', '=', 'pm.idinstitusi_pengaju')
+            ->join('institusi_asal as ia_mitra', 'ia_mitra.idinstitusi_asal', '=', 'pm.idinstitusi_mitra')
+            ->leftJoin('pengguna as pic_pengaju', 'pic_pengaju.idpengguna', '=', 'pm.idpic_institusi_pengaju')
+            ->leftJoin('pengguna as pic_mitra', 'pic_mitra.idpengguna', '=', 'pm.idpic_institusi_mitra')
+            ->where('pt.idpengajuan_mou', $idpengajuanMou)
+            ->select(
+                's.jam_mulai', 'r.nama_ruang',
+                'ia_pengaju.nama_institusi as nama_institusi_pengaju',
+                'ia_mitra.nama_institusi as nama_institusi_mitra',
+                'pic_pengaju.no_wa as no_wa_pic_pengaju',
+                'pic_mitra.no_wa as no_wa_pic_mitra'
+            )
+            ->first();
+    }
+
+    /**
+     * Kirim WA pengingat 3 baris ke satu PIC. Respons `kirim_wa_oca_token_3()`
+     * dicek isinya ("sukses"), bukan cuma exception — pola sama seperti
+     * `MouAdminController::kirimWaBelumRespon()` — supaya kegagalan dari
+     * sisi gateway (bukan HTTP) tetap terdeteksi.
+     */
+    private function kirimPengingatWa(string $noWa, string $jamMulai, string $namaRuang, string $namaInstitusiLawan)
+    {
+        $jam = substr($jamMulai, 0, 5);
+
+        $pesan1 = "Mohon perhatian, hari ini pukul {$jam} di ruang {$namaRuang} anda memiliki Jadwal Temu untuk diskusi MoU dengan {$namaInstitusiLawan}.";
+        $pesan2 = 'Mohon kesediaannya untuk hadir.';
+        $pesan3 = 'Terimakasih Banyak';
+
+        try {
+            $res = $this->kirim_wa_oca_token_3($pesan1, $pesan2, $pesan3, $noWa);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->jsonResponse(500, 'Gagal mengirim pengingat WhatsApp.');
+        }
+
+        if (strtoupper($res) != strtoupper('sukses')) {
+            return $this->jsonResponse(500, 'Gagal mengirim pengingat WhatsApp. Respon: '.$res);
+        }
+
+        return $this->jsonResponse(200, 'Pengingat WhatsApp berhasil dikirim.');
     }
 }

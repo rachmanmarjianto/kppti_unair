@@ -173,6 +173,9 @@
                                         <button type="button" class="btn btn-outline-danger btn-batal-hadir-pengaju d-none">
                                             <i class="fa-solid fa-rotate-left me-1"></i> Batalkan Hadir
                                         </button>
+                                        <button type="button" class="btn btn-outline-warning float-end btn-ingatkan-pengaju">
+                                            <i class="fa-solid fa-bell me-1"></i> Ingatkan
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -188,6 +191,9 @@
                                         </button>
                                         <button type="button" class="btn btn-outline-danger btn-batal-hadir-mitra d-none">
                                             <i class="fa-solid fa-rotate-left me-1"></i> Batalkan Hadir
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning float-end btn-ingatkan-mitra">
+                                            <i class="fa-solid fa-bell me-1"></i> Ingatkan
                                         </button>
                                     </div>
                                 </div>
@@ -229,6 +235,8 @@
             var hadirMitraUrl = '{{ route('petugas-ruang-mou.pengajuan.hadir-mitra') }}';
             var batalHadirMitraUrl = '{{ route('petugas-ruang-mou.pengajuan.batal-hadir-mitra') }}';
             var ubahHasilUrl = '{{ route('petugas-ruang-mou.pengajuan.ubah-hasil') }}';
+            var ingatkanPengajuUrl = '{{ route('petugas-ruang-mou.pengajuan.ingatkan-pengaju') }}';
+            var ingatkanMitraUrl = '{{ route('petugas-ruang-mou.pengajuan.ingatkan-mitra') }}';
             var baseUrl = '{{ route('petugas-ruang-mou.pengajuan') }}';
 
             var $modal = $('#modal-kerja-petugas');
@@ -444,6 +452,57 @@
             $modal.on('click', '.btn-ubah-hasil', function () {
                 var statusAjuan = $(this).data('status');
                 jalankanAksi(ubahHasilUrl, { status_ajuan: statusAjuan }, $(this), true);
+            });
+
+            // ------- Ingatkan PIC via WA — tidak mengubah data, jadi tidak -------
+            // perlu renderModal() ulang seperti jalankanAksi(). -------
+            function kirimPengingat(url, $btn) {
+                Swal.fire({
+                    title: 'Kirim Pengingat?',
+                    text: 'Kirim pengingat WhatsApp ke PIC ini sekarang?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, kirim',
+                    cancelButtonText: 'Batal',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    var teksAwal = $btn.html();
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...');
+                    $modal.find('.modal-alert').addClass('d-none').text('');
+
+                    $.ajax({
+                        url: url,
+                        method: 'POST',
+                        data: { token: tokenAktif },
+                        dataType: 'json',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                    })
+                    .done(function (res) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message });
+                    })
+                    .fail(function (xhr) {
+                        var res = xhr.responseJSON || {};
+                        var pesan = res.message || 'Terjadi kesalahan pada server. Silakan coba lagi.';
+                        if (xhr.status === 0) {
+                            pesan = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                        }
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+                    })
+                    .always(function () {
+                        $btn.prop('disabled', false).html(teksAwal);
+                    });
+                });
+            }
+
+            $modal.on('click', '.btn-ingatkan-pengaju', function () {
+                kirimPengingat(ingatkanPengajuUrl, $(this));
+            });
+
+            $modal.on('click', '.btn-ingatkan-mitra', function () {
+                kirimPengingat(ingatkanMitraUrl, $(this));
             });
 
             $modal.on('hidden.bs.modal', function () {
