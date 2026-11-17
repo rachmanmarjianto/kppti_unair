@@ -518,7 +518,7 @@ class Controller extends BaseController
 
         try {
             $ch2 = curl_init();
-            curl_setopt($ch2, CURLOPT_URL, 'https://h2h.unair.ac.id/token/ambil-token-v2');
+            curl_setopt($ch2, CURLOPT_URL, services.h2h.url_token);
             curl_setopt($ch2, CURLOPT_POST, 1);
             $param = [
                 'user' => config('services.h2h.user'),
@@ -548,7 +548,7 @@ class Controller extends BaseController
 
         try {
             $ch2 = curl_init();
-            curl_setopt($ch2, CURLOPT_URL, 'https://h2h.unair.ac.id/wabaoca/kirim-wa_3line_token');
+            curl_setopt($ch2, CURLOPT_URL, services.h2h.url_wa);
             curl_setopt($ch2, CURLOPT_POST, 1);
             $param = [
                 'nowa' => $hp,

@@ -38,6 +38,8 @@ return [
     'h2h' => [
         'user' => env('H2H_USER'),
         'key' => env('H2H_KEY'),
+        'url_token' => env('H2H_URL_TOKEN'),
+        'url_wa' => env('H2H_URL_WA'),
     ],
 
     'bni' => [
